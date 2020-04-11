@@ -1,0 +1,303 @@
+---
+title: Coronavirus Covid-19 / SARS-CoV-2 
+subtitle: Time Series of Confirmed, Death and Recovered Cases
+author: "Wolfgang Vollmer"
+date: '`r Sys.Date()`'
+output:
+  html_document: default
+  pdf_document:
+    fig_caption: no
+    fig_height: 6
+    fig_width: 12
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+urlcolor: blue
+papersize: a4
+
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE, echo = FALSE, warning = FALSE,      
+                      message = FALSE, fig.width = 7, fig.height = 4)
+
+```
+
+
+```{r initialization, eval = TRUE, include = FALSE}
+#           fig.width=12, fig.height=6 ## old: fig.width=14.4, fig.height=7.2
+################################################################################
+## Plot and Analyze                                                           ##
+## Corona Virus -Time Series of Confirmed, Death and Recovered Cases          ##
+##                                                                            ##
+##                                              Wolfgang Vollmer, March 2020  ##
+##                                                                            ##
+################################################################################
+
+######  variables clean up, library() and	source() statements
+# setwd("D:/Wolfgang/Programs-R/R-WeatherAnalysis")
+setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
+rm(list=ls()) # deletes all existing objects / variables !!
+Prog.Start <- Sys.time()
+
+library(tidyverse)
+library(magrittr)
+library(lubridate)
+library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages & some tidyverse
+library(stlplus) # Enhanced Seasonal Decomposition of Time Series by Loess
+library(DT)      # R interface to the JavaScript library DataTables
+library(rlang)
+library(gridExtra)
+
+library(janitor)
+library(highcharter)
+
+
+######  Plot and util functions
+# source("./../uts_TimeSeries.R")  # utility functions for time series
+# source("./../ggts_TimeSeries.R") # ggplot2 functions for time series plots
+
+theme_replace(
+  plot.title = element_text(
+    hjust = 0.5, face = "bold.italic", color = "darkcyan", size = 12),
+  plot.subtitle = element_text(
+    hjust = 0.5, face = "italic", color = "darkcyan")
+)
+x_axis_theme <- element_text(size = 14)
+```
+
+# Source data file: covid_19_data.csv
+
+Downloaded from <https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/>
+
+
+```{r read data bind rows and chanfge to long format}
+
+# source data file: covid_19_data.csv from
+# <https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/>
+
+corona_confirmed <- read_csv(
+  "./novel-corona-virus-2019-dataset/time_series_covid_19_confirmed.csv") %>% 
+  mutate(count_type = "Confirmed")
+corona_deaths <- read_csv(
+  "./novel-corona-virus-2019-dataset/time_series_covid_19_deaths.csv") %>% 
+  mutate(count_type = "Deaths")
+corona_recovered <- read_csv(
+  "./novel-corona-virus-2019-dataset/time_series_covid_19_recovered.csv")  %>% 
+  mutate(count_type = "Recovered")
+
+sum((corona_confirmed %>% filter(`Country/Region` == "US"))$`3/10/20`, na.rm = TRUE)
+#> [1] 1670
+# sum((corona_confirmed %>% filter(`Country/Region` == "US"))$`3/11/20`, na.rm = TRUE)
+#> [1] 1281
+
+corona_wide <- bind_rows(corona_confirmed, corona_deaths, corona_recovered)
+
+corona <- corona_wide  %>%
+    pivot_longer(cols = c(-`Province/State`, -`Country/Region`, -count_type, 
+                          -Lat,  -Long ), 
+                 names_to = c("Date"),
+                 values_to = "count")
+
+corona %<>% mutate(Date = as.Date(Date, format = "%m/%d/%y"))
+corona %<>% rename(Country = `Country/Region`) 
+
+```
+
+
+```{r data clean-up}
+
+# clean-up column names
+# corona %>% janitor::clean_names()
+
+
+# clean-up content of column Country
+corona %<>% mutate(
+  Country = case_when(
+  Country == "Mainland China" ~ "China",
+  Country == "Hong Kong SAR" ~ "Hong Kong",
+  Country == "Iran (Islamic Republic of)" ~ "Iran",
+  Country == "Macao SAR" ~ "Macao",
+  Country == "occupied Palestinian territory" ~ "Palestine",
+  Country == "Republic of Korea" ~ "South Korea",
+  Country == "Korea, South" ~ "South Korea",
+  Country == "Taipei and environs" ~ "Taiwan",
+  Country == "US" ~ "United States of America",
+  Country == "Viet Nam" ~ "Vietnam",
+  TRUE ~ as.character(Country)))
+
+# clean-up content of column `Province/State`
+# replace NAs by Country
+# replace "Bavaria"  by  Country since `Province/State` exists only until 
+# end of January, as begin of February inluded in "Germany" data
+# `Province/State` == "Bavaria" ~ Country, not needed in time series format,
+#  needed for data file: covid_19_data.csv
+corona %<>% mutate(    
+  `Province/State` = case_when(
+    is.na(`Province/State`) ~ Country,
+    TRUE ~ `Province/State`)) %>% 
+  arrange(Country, `Province/State`) %>% 
+  group_by(count_type, Country, `Province/State`)
+
+# provide last line of each `Province/State`
+# slice(corona, n())
+
+
+```
+
+
+```{r}
+
+
+# provide latest cases for each province, country and worldwide
+# note: last(count) does not work for provinces w7o latest data => use max()
+corona_province_last <- corona %>% 
+  summarise(Count = max(count, na.rm = TRUE))
+
+# for sum( , na.rm = TRUE) removing missing values is important,
+# otherwise one region with NA (no cases) resulty in NA worldwide
+corona_country_last <- corona_province_last %>% 
+  summarise(Count = sum(Count, na.rm = TRUE))
+
+corona_world_last <- corona_country_last %>% 
+  summarise(Count = sum(Count, na.rm = TRUE))
+
+```
+
+```{r sum province data for country and country for world}
+
+
+corona_country_sum <- corona %>% 
+  group_by(count_type, Date, Country)  %>% 
+  summarise(Count = sum(count))
+corona_country_sum %<>% 
+  group_by(count_type, Country) %>% 
+  mutate(Daily_Change = c(NA, diff(Count)))
+
+corona_world_sum <- corona %>% 
+  group_by(count_type, Date)  %>% 
+  summarise(Count = sum(count))
+corona_world_sum %<>% 
+  group_by(count_type) %>% 
+  mutate(Daily_Change = c(NA, diff(Count)))
+
+```
+
+
+```{r}
+ggts_counts_facet <- function(data, x = Date, y = Count) {
+  col_scheme <- "Set1" # "RdYlGn" #"YlOrRd" #"Oranges" # "YlGnBu" # 
+  ggplot(data, aes_(substitute(x), substitute(y), col = substitute(count_type))) +
+    facet_wrap(vars(count_type), ncol = 1, scales = "free",
+               strip.position = "left") +
+    geom_point(size = 1.5, na.rm = TRUE) +
+    geom_line(size = 1, na.rm = TRUE) +  
+    theme(legend.position = "none")  +
+    labs(y = "") + 
+    scale_x_date(date_labels = "%b %d", date_breaks = "14 days") +
+    # scale_colour_distiller(palette = col_scheme, direction = 1) +
+    scale_colour_brewer(palette = col_scheme, direction = 1) +
+    # scale_color_discrete(c("blue",  "green", "red")) +
+    ggtitle("Confirmed, Death and Recovered Cases")
+}
+
+```
+
+
+# World Map - Total Confirmed for each Country
+
+
+```{r World Map}
+#plot T-confirmed in world
+highchart() %>%
+  hc_add_series_map(worldgeojson, 
+                    filter(corona_country_last, count_type == "Confirmed"), 
+                    value = 'Count', 
+                    joinBy = c('name', 'Country'))  %>% 
+  #hc_colors(c("darkorange", "darkgray")) %>% 
+  hc_colorAxis(stops = color_stops()) %>% 
+  hc_title(text = "Countries with nCov exposure") %>% 
+  hc_subtitle(text = 'with Total Confirmed - Actual Figures')
+```
+
+# Top Ten Bar Chart - Total Confirmed and Total Deaths
+
+```{r Top Ten Bar Chart}
+# Visualization with bar chart
+
+#Top 10 countries of confirmed 
+filter(corona_country_last, count_type == "Confirmed") %>%
+  arrange(desc(Count)) %>% 
+  head(10) %>%
+  hchart("bar",hcaes(x = Country,  y = Count)) %>%
+  hc_title(text = "Total Confirmed - Top Ten Countries") %>% 
+  hc_add_theme(hc_theme_sandsignika())
+
+title <- "Top 10 countries of death"
+filter(corona_country_last, count_type == "Deaths") %>%
+  arrange(desc(Count)) %>% 
+  head(10) %>%
+  hchart("bar",hcaes(x = Country,  y = Count, title = title)) %>%
+  hc_title(text = "Total Deaths - Top Ten Countries") %>% 
+  hc_add_theme(hc_theme_sandsignika())
+```
+
+# Diagram - Cumulated Cases and Daily Changes over Time
+
+```{r  Time Series Diagram, fig.width = 10, fig.height = 6}
+i <- "Worldwide"
+plot_count <- ggts_counts_facet(corona_world_sum) + 
+      labs(title = paste(i, "- Cumulated Cases"))
+plot_daily_change <- ggts_counts_facet(corona_world_sum, y = Daily_Change) +
+        labs(title = paste(i, "- Daily Changes"))
+gridExtra::grid.arrange(plot_count, plot_daily_change, ncol = 2)
+
+countries <- c("China", "Italy", "South Korea", "Germany")
+for (i in countries) {
+  plot_count <- 
+    ggts_counts_facet(corona_country_sum %>% filter(Country == i)) +
+      labs(title = paste(i, "- Cumulated Cases")) 
+  plot_daily_change <- ggts_counts_facet(
+    corona_country_sum %>% filter(Country == i), y = Daily_Change) +
+            labs(title = paste(i, "- Daily Changes"))
+gridExtra::grid.arrange(plot_count, plot_daily_change, ncol = 2)
+}
+
+```
+
+
+# Backup
+
+## Data Source
+
+**Johns Hopkins University** data files on GitHub  
+<https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_time_series>
+
+* Data files:  
+*time_series_covid_19_confirmed.csv*,  
+*time_series_covid_19_deaths.csv*  
+*time_series_covid_19_recovered.csv*
+
+The data are visualized on their excellent Dashboard  
+**Johns Hopkins University Dashboard**  
+<https://coronavirus.jhu.edu/map.html>
+
+Files are also provided on  
+**Novel Corona Virus 2019 Dataset - Day level information on covid-19 affected cases**  
+<https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset>
+
+
+Further links:
+
+**WHO Dashboard**  
+<https://experience.arcgis.com/experience/685d0ace521648f8a5beeeee1b9125cd>
+
+**Robert Koch Institut, Germany**  
+<https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Fallzahlen.html?nn=13490888>
+
+
+## Code Source 
+
+Code is based on ideas from 
+<https://rpubs.com/TimoBoll/583802>

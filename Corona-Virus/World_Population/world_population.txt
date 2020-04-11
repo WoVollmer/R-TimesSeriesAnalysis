@@ -1,0 +1,221 @@
+,https://www.cia.gov/library/publications/resources/the-world-factbook/fields/rawdata_335.txt,
+,,
+Country,Country_CIA,Population
+Afghanistan,Afghanistan,36643815
+Albania,Albania,3074579
+Algeria,Algeria,42972878
+Andorra,Andorra,77000
+Angola,Angola,32522339
+Antigua and Barbuda,Antigua,98179
+Argentina,Argentina,45479118
+Armenia,Armenia,3021324
+Australia,Australia,25466459
+Austria,Austria,8859449
+Azerbaijan,Azerbaijan,10205810
+Bahamas,Bahamas,337721
+Bahrain,Bahrain,1505003
+Bangladesh,Bangladesh,162650853
+Barbados,Barbados,29456
+Belarus,Belarus,9477918
+Belgium,Belgium,11720716
+Belize,Belize,399598
+Benin,Benin,12864634
+Bhutan,Bermuda,7175
+Bolivia,Bolivia,11639909
+Bosnia and Herzegovina,Bosnia,3835586
+Botswana,Botswana,2317233
+Brazil,Brazil,211715973
+Brunei,Brunei,464478
+Bulgaria,Bulgaria,6966899
+Burkina Faso,Burkina,20835401
+Myanmar,Burma,56590071
+Burundi,Burundi,11865821
+Cabo Verde,Cabo,583255
+Cambodia,Cambodia,16926984
+Cameroon,Cameroon,27744989
+Canada,Canada,37694085
+Central African Republic,Central,5990855
+Chad,Chad,16877357
+Chile,Chile,18186770
+China,China,1394015977
+Colombia,Colombia,49084841
+Costa Rica,Costa Rica,5097988
+Cote d'Ivoire,Cote d'Ivoire,27481086
+Croatia,Croatia,4227746
+Cuba,Cuba,11059062
+Cyprus,Cyprus,1266676
+Czechia,Czechia,10702498
+Democratic Republic of the Congo,Democratic Republic of the Congo,101780263
+Denmark,Denmark,5869410
+Diamond Princess,Diamond Princess,NA
+Djibouti,Djibouti,921804
+Dominica,Dominica,74243
+Dominican Republic,Dominican,10499707
+Ecuador,Ecuador,16904867
+Egypt,Egypt,104124440
+El Salvador,El,6481102
+Equatorial Guinea,Equatorial,836178
+Eritrea,Eritrea,6081196
+Estonia,Estonia,1228624
+Eswatini,Eswatini,1104479
+Ethiopia,Ethiopia,108113150
+Fiji,Fiji,935974
+Finland,Finland,5571665
+France,France,67848156
+Gabon,Gabon,2230908
+Gambia,Gambia,2173999
+Georgia,Georgia,3997000
+Germany,Germany,80159662
+Ghana,Ghana,29340248
+Greece,Greece,10607051
+Grenada,Grenada,113094
+Guatemala,Guatemala,17153288
+Guinea,Guinea,12527440
+Guinea-Bissau,Guinea-Bissau,1927104
+Guyana,Guyana,750204
+Haiti,Haiti,11067777
+Holy See (Vatican City),Holy See,1000
+Honduras,Honduras,9235340
+Hungary,Hungary,9771827
+Iceland,Iceland,350734
+India,India,1326093247
+Indonesia,Indonesia,267026366
+Iran,Iran,84923314
+Iraq,Iraq,38872655
+Ireland,Ireland,5176569
+Israel,Israel,8675475
+Italy,Italy,62402659
+Jamaica,Jamaica,2808570
+Japan,Japan,125507472
+Jordan,Jordan,10820644
+Kazakhstan,Kazakhstan,19091949
+Kenya,Kenya,53527936
+Kosovo,Kosovo,1932774
+Kuwait,Kuwait,2993706
+Kyrgyzstan,Kyrgyzstan,5964897
+Laos,Laos,7447396
+Latvia,Latvia,1881232
+Lebanon,Lebanon,5469612
+Liberia,Liberia,5073296
+Libya,Libya,6890535
+Liechtenstein,Liechtenstein,39137
+Lithuania,Lithuania,2731464
+Luxembourg,Luxembourg,628381
+Madagascar,Madagascar,26955737
+Malaysia,Malaysia,32652083
+Maldives,Maldives,391904
+Mali,Mali,19553397
+Malta,Malta,457267
+Mauritania,Mauritania,4005475
+Mauritius,Mauritius,1379365
+Mexico,Mexico,128649565
+Moldova,Moldova,3364496
+Monaco,Monaco,39000
+Mongolia,Mongolia,3168026
+Montenegro,Montenegro,609859
+Morocco,Morocco,35561654
+Mozambique,Mozambique,30098197
+MS Zaandam,NA,
+Namibia,Namibia,2630073
+Nepal,Nepal,30327877
+Netherlands,Netherlands,17280397
+New Zealand,New Zealand,4925477
+Nicaragua,Nicaragua,6203441
+Niger,Niger,22772361
+Nigeria,Nigeria,214028302
+North Macedonia,Macedonia,2125971
+Norway,Norway,5467439
+Oman,Oman,4664844
+Pakistan,Pakistan,233500636
+Panama,Panama,3894082
+Papua New Guinea,Papua New Guinea,7259456
+Paraguay,Paraguay,7191685
+Peru,Peru,31914989
+Philippines,Philippines,109180815
+Poland,Poland,38282325
+Portugal,Portugal,10302674
+Qatar,Qatar,2444174
+Republic of the Congo,Republic of the Congo,5293070
+Romania,Romania,21302893
+Russia,Russia,141722205
+Rwanda,Rwanda,12712431
+Saint Kitts and Nevis,Saint Kitts and Nevis,53821
+Saint Lucia,Saint Lucia,166487
+Saint Vincent and the Grenadines,Saint Vincent and the Grenadines,10139
+San Marino,San Marino,34232
+Saudi Arabia,Saudi Arabia,34173498
+Senegal,Senegal,15736368
+Serbia,Serbia,7012165
+Seychelles,Seychelles,95981
+Sierra Leone,Sierra,6624933
+Singapore,Singapore,6209660
+Slovakia,Slovakia,5440602
+Slovenia,Slovenia,2102678
+Somalia,Somalia,11757124
+South Africa,South Africa,56463617
+South Korea,South Korea,51835110
+NA, South Sudan,10561244
+Spain,Spain,50015792
+Sri Lanka,Sri Lanka,22889201
+Sudan,Sudan,45561556
+Suriname,Suriname,609569
+Sweden,Sweden,10202491
+Switzerland,Switzerland,8403994
+Syria,Syria,19398448
+Taiwan,Taiwan,23603049
+United Republic of Tanzania,Tanzania,58552845
+Thailand,Thailand,68977400
+Timor-Leste,Timor-Leste,1383723
+Togo,Togo,8608444
+Trinidad and Tobago,Trinidad and Tobago,1208789
+Tunisia,Tunisia,11721177
+Turkey,Turkey,82017514
+Uganda,Uganda,43252966
+Ukraine,Ukraine,43922939
+United Arab Emirates,United Arab Emirates,9992083
+United Kingdom,United Kingdom,65761117
+United States of America,United States of America,332639102
+Uruguay,Uruguay,3387605
+Uzbekistan,Uzbekistan,30565411
+Venezuela,Venezuela,28644603
+Vietnam,Vietnam,98721275
+West Bank and Gaza,West Bank and Gaza,4818255
+Zambia,Zambia,17426623
+Zimbabwe,Zimbabwe,14546314
+NA,Comoros,846281
+NA,Cook Islands,8574
+NA,Curacao,151345
+NA,Falkland,3198
+NA,Faroe,51628
+NA,Gibraltar,29581
+NA,Greenland,57616
+NA,Guam,168485
+NA,Guernsey,67052
+NA,Hong Kong,7249907
+NA,Isle of Man,90499
+NA,Jersey,101073
+NA,Kiribati,111796
+NA,North Korea,25643466
+NA,Lesotho,1969334
+NA,Macau,614458
+NA,Malawi,21196629
+NA,Marshall,77917
+NA,Micronesia,102436
+NA,Montserrat,5373
+NA,Nauru,11000
+NA,New Caledonia,290009
+NA,Niue,2000
+NA,Norfolk Island,1748
+NA,Northern Mariana Islands,51433
+NA,Palau,21685
+NA,Puerto Rico,3189068
+NA,Tajikistan,8873669
+NA,Tonga,106095
+NA,Turkmenistan,5528627
+NA,Turks and Caicos Islands,55926
+NA,Tuvalu,11342
+NA,Vanuatu,298333
+NA,Virgin Islands,106235
+NA,Wallis and Futuna,15854
+NA,Western Sahara,652271
+NA,Yemen,29884405
