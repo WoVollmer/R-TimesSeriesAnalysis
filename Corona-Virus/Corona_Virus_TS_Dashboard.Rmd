@@ -4,6 +4,7 @@ author: "Wolfgang Vollmer"
 date: '`r Sys.Date()`'
 link-citations: yes
 cite-color: "green"
+bibliography: References_Corona.bib
 output:
    flexdashboard::flex_dashboard:
    vertical_layout: scroll
@@ -76,12 +77,13 @@ countries_exp_growth <- c("World", "China", "Austria", "France", "Germany", "Ita
                        "South Korea", "Spain",  "United States of America")
 country_select <- "Germany"
 
-reg_range <- 7   # important - no Cases value = 0 are llowed => log(0) = inf !
+range_reg <- 7   # important - no Cases value = 0 are llowed => log(0) = inf !
 # changed from 9 -> 7 days, 
 # but whole week is necessary to get rid of weekly fluctuations
-forcast_range <- 14  # 14days forecast => unclass(last_date + 1 + forcast_range -1)
-
-daily_reg_range <- 21  # one week is to short, confidence level to large !!
+range_forcast <- 14  # 14days forecast => unclass(last_date + 1 + range_forcast -1)
+range_daily_reg <- 21  # one week is to short, confidence level to large !!
+range_cfr <- 14  # 14days cfr past period length
+lag_n <- 11  # average confirmed lag - for all countries
 
 ```
 
@@ -255,7 +257,7 @@ World Map
 ***
 ***
 
-**World Map with Confirmed and Death Cases**    
+**World Map with Confirmed and Death Cases** (Data source [[@JHU2020a]](#bib), see also [[@JHU2020]](#bib))  
 
 ### Total Confirmed for each Country
 
@@ -311,6 +313,7 @@ i <- "Deaths"
 bar_chart_countries(filter(corona_country_last,
                            Country != "World" & Case_Type == i), i)
 
+# include comment
 ```
 
 
@@ -319,6 +322,7 @@ Column
 
 ### Table Confirmed and Deaths - Cumulated and Daily Cases
 
+Case numbers are taken from [[@JHU2020a]](#bib)
 
 ```{r print datatable in wide format}
 
@@ -369,6 +373,7 @@ Column
 
 ### Table Confirmed and Deaths - Cumulated and Daily Cases per 100,000 Inhabitants
 
+Population numbers are taken from [[@CIA2020]](#bib), [[@CIA2020a]](#bib)
 
 ```{r print datatable 100k in wide format}
 
@@ -381,6 +386,154 @@ DT::datatable(corona_population_wide %>%
 
 ```
 
+
+Bar Chart - CFR {data-navmenu="Bar Chart" #cfr}
+=====================================
+
+***
+***
+  
+**Bar Chart with descending order**
+
+Column {data-width=400}
+-------------------------------------
+
+### Bar Chart CFR Total - Case Fatality Rate (in %)
+
+```{r calculate lagged CFR}
+
+
+corona_confirmed_lag <- corona_country_wide %>% 
+  # filter(Country %in% compare_countries) %>% 
+  # filter(Country == "Germany") %>% 
+  select(-Daily_Confirmed, -Daily_Deaths) %>% 
+  mutate(confirmed_lag = lag(Confirmed, lag_n),
+         CFR_total = round(Deaths / confirmed_lag * 100, digits = 1),
+         CFR_unlagged = round(Deaths / Confirmed * 100, digits = 1)) 
+
+corona_total_CFR_lag <- corona_confirmed_lag %>% 
+  filter(Date == last_date) 
+
+
+
+corona_before <- corona_confirmed_lag %>% 
+  filter(Date == last_date - range_cfr + 1) %>% 
+  mutate(Deaths_before = Deaths,
+         confirmed_lag_before = confirmed_lag) %>% 
+  select(Country, Deaths_before, confirmed_lag_before )
+
+
+cfr_table <- left_join(corona_total_CFR_lag, corona_before) %>% 
+  mutate(confirmed_past_period = confirmed_lag - confirmed_lag_before,
+         deaths_past_period = Deaths - Deaths_before,
+         CFR_past_period = round(
+           deaths_past_period / confirmed_past_period * 100, digits = 1)) %>% 
+  select(Country, CFR_total, CFR_past_period, CFR_unlagged)
+
+```
+
+
+```{r Top 20 Bar Chart CFR}
+
+# Visualization with top 10 country - CFR  bar chart
+bar_chart_cfr <- function(data, i) {
+  data %>%
+    arrange(desc(CFR_total)) %>% 
+    head(20) %>%
+    hchart("bar",hcaes(x = Country,  y = CFR_total)) %>%
+    hc_title(text = paste(i, "- Case Fatality Rate (in %)")) %>% 
+    hc_add_theme(hc_theme_sandsignika())
+}
+
+
+# plot bar chart Confirmed - CFR countries and + world
+i <- "CFR_total"
+bar_chart_cfr(cfr_table, i)
+
+```
+
+### Bar Chart CFR Total (in %) - - selected countries {data-height=200}
+
+
+```{r Top 20 Bar Chart CFR selected countries}
+
+# Visualization with top 10 country - CFR  bar chart
+bar_chart_cfr <- function(data, i) {
+  data %>%
+    arrange(desc(CFR_total)) %>% 
+    head(25) %>%
+    hchart("bar",hcaes(x = Country,  y = CFR_total)) %>%
+    hc_title(text = paste(i, "- Case Fatality Rate (in %)")) %>% 
+    hc_add_theme(hc_theme_sandsignika())
+}
+
+
+# plot bar chart Confirmed - CFR countries and + world
+i <- "CFR_total"
+bar_chart_cfr(filter(cfr_table, Country %in% compare_countries), i)
+
+```
+
+Column  
+-------------------------------------
+
+### Case Fatality Rate - Proportion of deaths from confirmed cases {data-height=200}
+
+The number of confirmed cases is an early predictor of the number of deaths.
+The number of today's deaths is already determined by the infections about by 
+$\sim19$ days ago or respectively by the confirmed cases about by $\sim11$ days ago.
+The *Confirmed infection to Death* period can be assumed to be an average of 
+$11$ days [[see @RWI2020]](#bib).
+
+However, this varies considerably depending on country-specific test rate and 
+health system. In the worst health systems it is only one day for recognized 
+cases, the "Confirmed" cases must be "lagged" by $\sim1$ day. 
+In the best case, the time from the end of incubation period (in average $\sim5-6$ days) to death is an average $\sim19$ days. In this case, the average 
+*Confirmed infection to Death* period is $\sim14$ days), the "Confirmed" cases
+must be correctly "lagged" by $\sim14$ days.
+For the assumed time periods see [[@RKI2020a]](#bib), [[@RKI2020b]](#bib), for Case Fatality Rate 
+and Incubation Period in general see [[@Wikipedia2020a]](#bib),
+[[@Wikipedia2020b]](#bib).
+
+The simple calculation with unlagged cumulated confirmed cases divided by cumulated
+deaths results in a significant underestimation of the CFR in health systems with early disease detection.
+
+The Infection Fatality Rate (IFR) is the fatality rate of all infection, that means
+detected confirmed cases and undetected cases (asymptomatic and not tested group).
+This lethality is assumed to 
+be country independent and only rough estimates exist (RKI: bottom of existing estimates $\sim0.56\%$). 
+
+
+```{r CFR Table}
+
+title <- paste("Case Fatality Rate in %", "- CFR_total and CFR_past_period (period of past", 
+               range_cfr, "days) w/ Confirmed lagged by", lag_n, "days")
+# knitr::kable(cfr_table,
+#              digits = 2, caption = title)
+
+```
+
+### `r title` {data-height=400}
+
+```{r}
+
+DT::datatable(cfr_table, 
+              options = list(pageLength = 10))
+```
+```
+
+
+### Case Fatality Rate (in %) - selected countries {data-height=200}
+
+
+```{r CFR Table selected countries}
+
+knitr::kable(filter(cfr_table, Country %in% compare_countries),
+             digits = 2)
+
+```
+
+
 Cumulated and Daily Trend {data-orientation=rows}
 =====================================
 
@@ -391,7 +544,7 @@ Cumulated and Daily Trend {data-orientation=rows}
 ```{r}
 
 country <- "World"
-fig_asp_trend <- 0.4
+fig_asp_trend <- 0.35
 
 ```
 
@@ -402,6 +555,7 @@ Row {data-height=400}
 ------------------------------------
 
 ### `r country`
+
 
 ```{r  Time Series Diagram Worldwide, fig.asp = fig_asp_trend}
 
@@ -550,7 +704,7 @@ Virus Spread on log10 scale {data-navmenu="Exp Linear Growth"}
 ***
 
 
-Column {data-width=150}
+Column {data-width=200}
 -------------------------------------
 
 ### Exponential Growth Evaluation
@@ -559,9 +713,10 @@ China and South Korea have slowed down significantly the exponential growth.
 Therefore, their lines in the chart with the log10 scale have no longer a 
 significant slope.
  
-Most other countries are still in a phase of more or less unchecked exponential
-growth. For Italy, the reduced exponential growth is reflected in a reduced slope
-of the cumulated cases. 
+In early phases countries have a more or less unchecked exponential
+growth. 
+If countermeasures are effective, reduced exponential growth is reflected in a 
+reduced slope of the accumulated cases again.
 
 Column
 -------------------------------------
@@ -635,7 +790,8 @@ Column {data-width=400}
 
 Exponential growth over time can be fitted by linear regression if the logarithms
 of the case numbers is taken. Generally, exponential growth corresponds to
-linearly growth over time for the log (to any base) data. 
+linearly growth over time for the log (to any base) data 
+[[see also @Wikipedia2020]](#bib). 
 
 The semi-logorithmic plot with base-10 log scale for the Y axis shows 
 functions following an exponential law $y(t) = y_0 * a^{t/\tau}$
@@ -658,24 +814,25 @@ and doubling time
 $T[days] = t[days] * log_{10}(2) \approx t[days] * 0.30$.
 </p>
 
-For Spain, Italy, Germany we have had a doubling time up to $T \approx 9-12 days * 0.3 \approx 2.7 - 4 days !!$. 
+For Spain, Italy, Germany we have had a doubling time of only $T \approx 9days * 0.3 \approx 2.7 days$ !!. 
 
 The *doubling time $T$* and the *Forecast* is calculated for following
-selected countries: **`r compare_countries`**
+selected countries: **`r compare_countries`** and **World** in total 
+(see [Forecast / Doubling Time](#doubling)).
 
 
 ### `r country_select` - Trend with Forecast on a linear scale
 
 
-```{r corona tsibble reg_range}
+```{r corona tsibble range_reg}
 
 
-# provide tsb of reg_range/last 7 days for linear regression of log data
-corona_tsbl_reg_range <- corona_tsbl %>% 
+# provide tsb of range_reg/last 7 days for linear regression of log data
+corona_tsbl_range_reg <- corona_tsbl %>% 
   ungroup() %>% 
   group_by(Case_Type) %>% 
   filter(Country %in% c("World", compare_countries) & 
-           Date >= last_date - reg_range + 1 &
+           Date >= last_date - range_reg + 1 &
            Case_Type != "Recovered" & Cases >= 10) %>% 
   dplyr::select(Date, Country, Case_Type, Cases)
 
@@ -683,14 +840,14 @@ corona_tsbl_reg_range <- corona_tsbl %>%
 
 ```
 
-```{r corona daily tsibble reg_range}
+```{r corona daily tsibble range_reg}
 
-# provide tsb of reg_range/last 7 days for linear regression of daily data
-corona_daily_reg_range_tsbl <- corona_tsbl %>% 
+# provide tsb of range_reg/last 7 days for linear regression of daily data
+corona_range_daily_reg_tsbl <- corona_tsbl %>% 
   ungroup() %>% 
   group_by(Case_Type) %>% 
   filter(Country %in% c("World", compare_countries) & 
-           Date >= last_date - daily_reg_range + 1 &
+           Date >= last_date - range_daily_reg + 1 &
            Case_Type != "Recovered" & Cases >= 10) %>% 
   dplyr::select(Date, Country, Case_Type, Daily_Cases)
 
@@ -700,14 +857,14 @@ corona_daily_reg_range_tsbl <- corona_tsbl %>%
 
 ```{r example, fig.width = 10, fig.height = 5}
 
-fit_corona <- corona_tsbl_reg_range %>% ungroup() %>% 
+fit_corona <- corona_tsbl_range_reg %>% ungroup() %>% 
   group_by(Case_Type) %>% 
   model(TSLM(log(Cases) ~ Date)) 
 fc_corona <- fit_corona %>% fabletools::forecast(h = "14 days") 
 
 fc_corona %>%  
   filter(Country == country_select) %>% 
-  autoplot(corona_tsbl_reg_range) +
+  autoplot(corona_tsbl_range_reg) +
   ggtitle(paste(country_select, "- Cases and 14-days Forecast on linear y-scale"),
             subtitle = "Example shows the extreme fast increase on linear scale") +
   labs(x = "Days") +
@@ -719,11 +876,11 @@ fc_corona %>%
 ```
 
 
-### Forecast Plot - next `r forcast_range` days {data-height=150}
+### Forecast Plot - next `r range_forcast` days {data-height=150}
 
 The plot shows the extreme forecast increase in case of unchecked exponentiell 
 growth. The dark shaded regions show 80% rsp. 95% prediction intervals. These prediction intervals are displaying the uncertainty in forecasts based on the 
-linear regression over the past `r reg_range` days.
+linear regression over the past `r range_reg` days.
 
 Column {data-width=600}
 ------------------------------------ 
@@ -733,12 +890,12 @@ Column {data-width=600}
 
 ```{r plot log10scale selected Country}
 
-gg_plot <- gg_logscale(corona_tsbl_reg_range)  +
+gg_plot <- gg_logscale(corona_tsbl_range_reg)  +
   geom_smooth(method="lm", aes(col = Country), lty = "dashed", se=FALSE)
   
 gg_plot +
   scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
-  labs(subtitle = paste("Past", reg_range, "days with Linear Regression"))
+  labs(subtitle = paste("Past", range_reg, "days with Linear Regression"))
 
 ```
 
@@ -760,10 +917,10 @@ for (i in country_select) {
                        filter(Country == i & Case_Type != "Recovered" & 
                                 Cases >= 10 &
                                 Date >= last_date - 28 + 1)) +
-    labs(title = paste("w/ linear regression of past", reg_range, "days"))  +
+    labs(title = paste("w/ linear regression of past", range_reg, "days"))  +
     geom_smooth(data = corona_country %>% 
                   filter(Country == i & Case_Type != "Recovered" & 
-                           Date >= last_date + 1 - reg_range), 
+                           Date >= last_date + 1 - range_reg), 
                 method="lm", 
                 col = "black", size = 1, se = FALSE) +
     scale_y_log10() +
@@ -791,9 +948,12 @@ The dark shaded regions are indicating the $80\%$ rsp. $95\%$  prediction
 intervals. These prediction intervals are displaying the "pure" statistical 
 uncertainty in forecasts based on the regression models.
 
-For doubling periods in the order of infectivity (RKI assumption: $\sim9-10$
-days, with great uncertainty),
-https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Modellierung_Deutschland.pdf?__blob=publicationFile), we no longer have exponential growth. The "old" infected cases are at the end of the doubling period no longer infectious (active). This results in a constant infection rate with  basic reproduction number $R_0 \sim 1$ or even $<1$.
+For doubling periods in the order of period of infectivity
+(RKI assumption: $\sim9-10$ days, with great uncertainty, 
+see [[@RKI2020b]](#bib), we no longer have exponential growth. 
+The "old" infected cases are at the end of the doubling period no longer infectious (active). This results in a constant infection rate with basic reproduction number $R_0 \sim 1$ or even $<1$.
+
+Note: for case numbers of German federal states see [[@RKI2020]](#bib).
 
 
 Column
@@ -802,24 +962,24 @@ Column
 
 ```{r cumulated forecast exp growth, fig.asp = fig_asp_trend}
 
-fit_cum_corona <- corona_tsbl_reg_range %>% ungroup() %>% 
+fit_cum_corona <- corona_tsbl_range_reg %>% ungroup() %>% 
   group_by(Case_Type) %>% 
   model(Exp_Growth = TSLM(log(Cases) ~ Date),
         Linear_Growth = TSLM(Cases ~ Date)) 
 
 fc_cum_corona <- fit_cum_corona %>% fabletools::forecast(h = "7 days") 
 
-corona_cum_daily_reg_range_tsbl <- corona_tsbl %>% 
+corona_cum_range_daily_reg_tsbl <- corona_tsbl %>% 
   ungroup() %>% 
   group_by(Case_Type) %>% 
   filter(Country %in% c("World", compare_countries) & 
-           Date >= last_date - daily_reg_range + 1 &
+           Date >= last_date - range_daily_reg + 1 &
            Case_Type != "Recovered" & Cases >= 10) %>% 
   dplyr::select(Date, Country, Case_Type, Cases)
 
 fc_cum_corona %>%  
   filter(Country == country_select) %>% 
-  autoplot(corona_cum_daily_reg_range_tsbl) +
+  autoplot(corona_cum_range_daily_reg_tsbl) +
   labs(x = "Days",
        title = paste(
          country_select, 
@@ -836,7 +996,7 @@ fc_cum_corona %>%
 
 ```{r daily forecast linear model, fig.asp = fig_asp_trend}
 
-fit_daily_corona <- corona_daily_reg_range_tsbl %>% ungroup() %>% 
+fit_daily_corona <- corona_range_daily_reg_tsbl %>% ungroup() %>% 
   group_by(Case_Type) %>% 
     model(Exp_Growth = TSLM(log(Daily_Cases) ~ Date),
         Linear_Growth = TSLM(Daily_Cases ~ Date)) 
@@ -845,7 +1005,7 @@ fc_daily_corona <- fit_daily_corona %>% fabletools::forecast(h = "7 days")
 
 fc_daily_corona %>%  
   filter(Country == country_select) %>% 
-  autoplot(corona_daily_reg_range_tsbl) +
+  autoplot(corona_range_daily_reg_tsbl) +
     labs(x = "Days",
        title = paste(
          country_select, 
@@ -860,7 +1020,7 @@ fc_daily_corona %>%
 
 
 
-Doubling Time / Forecast {data-navmenu="Forecast"}
+Doubling Time / Forecast {data-navmenu="Forecast" #doubling}
 =====================================
 
 ***
@@ -869,8 +1029,7 @@ Doubling Time / Forecast {data-navmenu="Forecast"}
 Column {data-width=500}
 -------------------------------------
 
-**Doubling Time and Forecast**
-
+**Doubling Time and Forecast** 
 The forecasted cases for the next 14 days are calculated 'only' from the
 linear regression of the logarithmic data and are not considering any effects of 
 measures in place. In addition data inaccuracies are not taken into account, 
@@ -893,7 +1052,7 @@ forecast_country <- coefs %>%
          beta_1 = Date) %>% 
   mutate(T_doubling = (log(2) / beta_1),
          FC_next_day = exp(beta_0 + unclass(last_date + 1) * beta_1),
-         FC_14days = exp(beta_0 + unclass(last_date + 1 + forcast_range-1) 
+         FC_14days = exp(beta_0 + unclass(last_date + 1 + range_forcast-1) 
                               * beta_1)) 
 
 forecast_table <- forecast_country %>%
@@ -940,8 +1099,7 @@ The comparison is also an early indicator if the *exponential growth* is declini
 (in particular the proportion confirmed / actually infected) requires careful interpretation.
 
 For doubling periods in the order of infectivity (RKI assumption: $\sim9-10$
-days, with great uncertainty),
-https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Modellierung_Deutschland.pdf?__blob=publicationFile), we no longer have exponential growth. Since the "old" infected cases are 
+days, with great uncertainty, [[see @RKI2020b]](#bib), we no longer have exponential growth. Since the "old" infected cases are 
 no longer infectious after these periods and we then have a constant infection rate with  basic reproduction number $R_0 \sim 1$.
 
 Instead, we have "only" linear growth of the cumulative *Confimred Cases* and 
@@ -949,7 +1107,7 @@ the *Daily Confirmed Cases* remain more or less constant or even decrease.
 
 However, the basic reproduction number $R_0$ is a product of the average number of contacts of an infectious person per day, the probability of transmission upon contacts and the average number of days infected people are infectious. 
 With the current uncertainty of the average duration of the infectivity duration, $R_0$ can therefore be estimated from the doubling time only to a very limited extent.
-See also: https://cmmid.github.io/topics/covid19/current-patterns-transmission/global-time-varying-transmission
+See also [[@CMMID2020]](#bib).
 
 ### Germany - Forecast Accuracy for past three days {data-height=300}
 
@@ -957,8 +1115,8 @@ See also: https://cmmid.github.io/topics/covid19/current-patterns-transmission/g
 # Note: as long as zero deaths are in this time range log(0) will go to infinity,
 # therefore still no linear regression possible.
 
-training_data_start <- 12 #reg_range + 3  # minus 12 days
-training_data_end   <- 3  #reg_range - 6  # minus  3 days
+training_data_start <- 12 #range_reg + 3  # minus 12 days
+training_data_end   <- 3  #range_reg - 6  # minus  3 days
 # total = training + test_data => 
 #    Date >= last_date + 1 - training_data_start = last 3 days
 
@@ -1011,23 +1169,26 @@ Column {data-width=400}
 
 ### Forecasting with lagged Predictors
 
+The number of confirmed cases is an early predictor of the number of deaths.
+The number of today's deaths is already determined by the infections about by 
+$\sim19$ days ago or respectively by the confirmed cases about by $\sim11$ days
+ago [see Bar Chart - CFR](#cfr).
 
-The number of confirmed cases can be used as a time delayed predictor of the 
-number of deaths. This will allow comclusions on the time period confirmed to 
-death. More inportant the country specific case fatality rate (CFR, proportion 
-of deaths from confirmed cases) indicates the country specific testing. 
+The country specific case fatality rate (CFR, proportion of deaths from 
+confirmed cases) indicates the country specific testing rate and may depend on quality/capacity of hospitals. 
 
-Overall a rough conclusion on the country specific proportion of infected to 
-confirmed cases is feasible if the infection fatality rate (IFR, 
-confiremd cases plus all asymptomatic and undiagnosed infections) is assumed to 
-be country independent and the IFR is known (bottom of existing estimates $\sim0.56\%$,
-assumption by RKI see 
-https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Modellierung_Deutschland.pdf?__blob=publicationFile ).
+Overall a rough conclusion on the country specific **underreporting rate** 
+(lack of diagnostic confirmation; proportion of all infected to confirmed cases)
+is feasible if the infection fatality rate (IFR, confiremd cases plus all 
+asymptomatic and undiagnosed infections) is assumed to be country independent 
+and the IFR is known (bottom of existing estimates $\sim0.56\%$, assumption by 
+RKI see [[@RKI2020b]](#bib).
 
-Therefore an estimation of the CFR of $0.06$ $(6\%)$ indicates an
-underreporting or lack of diagnostic confirmation by a by a factor of $\sim10$. 
+In this case an estimation of the CFR of $0.06$ $(6\%)$ indicates an
+underreporting by a by a factor of $\sim10$. 
 A CFR of $0.20$ $(20\%)$ indicates an underreporting by a by a factor of $\sim30$.
-This corresponds to RKI assumption of a underreporting by a factor of $11-20$ (https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Steckbrief.html).
+This corresponds to RKI assumption of a underreporting by a factor of $11-20$ [[@RKI2020a]](#bib). Unfortunately, the IFR or lethality is still far too 
+imprecise for concrete conlusions.
 
 
 In the model paper RKI assumes for the
@@ -1047,7 +1208,7 @@ is about $11-13$ days.
 Note: these methods are also used for example for advertising campaigns. The
 campaign impact on sales will be some time beyond the end of the campaign, and 
 sales in one month will depend on the advertising expenditure in each of the 
-past few months (see https://otexts.com/fpp3/lagged-predictors.html).
+past few months [[see @Hyndman2020]](#bib).
 
 
 Column {data-width=600}
@@ -1059,7 +1220,6 @@ Column {data-width=600}
 
 # avg_days_to_confirmed  # Incubation period ~ 5-6 days; Hospitalisation + 4 days
 # avg_days_to_death      # death     ~ after 21 days
-# lag_n                  # avg_days_to_death - (period infected to confirmed)
 # case_fatality_rate     # proportion of deaths / number of people diagnosed
 #                                                                   (Confirmed)
 
@@ -1157,7 +1317,7 @@ no_values <- nrow(corona_tsbl_lag_range_wide %>% filter(Country == country))
 ```
 
 
-```{r caluclate lag confirmed country dependent, fig.width = 6, fig.asp = 0.618}
+```{r caluclate lag confirmed country dependent}
 
 lm_term <- c("lag(Confirmed, lag_days - 2)",
              "lag(Confirmed, lag_days - 1)",
@@ -1212,36 +1372,37 @@ for (country in countries_to_forecast) {
 ```
 
 
-### Lag days and Case Fatality Rate (CFR)  {data-height=150}
+### Lag days and Case Fatality Rate (CFR)  {data-height=100}
 
-```{r }
+```{r CFR Table - for compare_countries}
 
-knitr::kable(country_table,
-             digits = 2, caption =
-               "Lag days and CFR (proportion of deaths from confirmed cases)")
+title <- paste("Case Fatality Rate in % (CFR, proportion of deaths from confirmed cases)", "lagged by", lag_n, "days; total and for period of past", range_cfr, "days")
+knitr::kable(cfr_table %>% filter(Country %in% countries_to_forecast),
+             digits = 2, caption = title)
 
+
+
+# knitr::kable(country_table,
+#              digits = 2, caption =
+#                "Lag days and CFR (proportion of deaths from confirmed cases)")
 
 
 # knitr::kable(coef(fit_best) %>% 
 #                group_by(Country) %>% filter(term %in% lm_term) %>%  
 #                summarise(CFR = sum(estimate) ), 
-#              digits = 2, caption = 
-#                "Case Fatality Fate (CFR, proportion of deaths from confirmed cases)")
+#              digits = 2, caption = paste(
+#                "Case Fatality Fate in % (CFR, proportion of deaths from confirmed cases)", "lagged by", lag_n, "total and for period of past ", lag_n, "days")
 ```
 
-Forecast residuals indicate quality of fit with Arima model:
-
-`r coef(fit_best)$.model[1]` .
 
 
-
-Column
+Column {data-width=600}
 -------------------------------------
 
 ### Daily Deaths depending on lagged Daily Confirmed Cases
 
 
-```{r plot lag confirmed country dependent, fig.width = 6, fig.asp = 0.618}
+```{r plot lag confirmed country dependent, fig.asp = 0.4}
 
 save_plot_fit$Germany
 
@@ -1252,11 +1413,14 @@ save_plot_fit$Spain
 ```
 
 
-
 ### Exampla Germany - White Noise of Forecast Residuals  {data-height=150}
+
+Forecast residuals indicate quality of fit with Arima model:
+
 
 ```{r corona ARIMA tsresiduals, fig.width = 5, fig.asp = 0.618}
 
+# `r coef(fit_best)$.model[1]`
 
 fit_best_germany  %>% 
   gg_tsresiduals() +
@@ -1270,13 +1434,13 @@ fit_best_germany  %>%
 
 
 
-References
+References {#bib}
 =====================================
 
 ***
 ***
   
-### Data Source
+### Data Source {data-height=400}
 
 **Data Source**
 
@@ -1293,28 +1457,9 @@ The data are visualized on their excellent Dashboard
 <https://coronavirus.jhu.edu/map.html>
 
 
-### Links
-
-**Further links**
-
-**WHO Dashboard**  
-<https://experience.arcgis.com/experience/685d0ace521648f8a5beeeee1b9125cd>
-
-**Robert Koch Institut, Germany**  
-<https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Fallzahlen.html?nn=13490888>
-
-**Wikipedia - Exponential Growth**  
-<https://en.wikipedia.org/wiki/Exponential_growth>
-
-**World Population - CIA The World Factbook**
-<https://www.cia.gov/library/publications/resources/the-world-factbook/fields/335rank.html>
-<https://www.cia.gov/library/publications/resources/the-world-factbook/fields/rawdata_335.txt>
-
-**Centre for the Mathematical Modelling of Infectious Diseases (CMMID) at the London School of Hygiene & Tropical Medicine (LSHTM)**  
-**Temporal variation in transmission during the COVID-19 outbreak**  
-<https://cmmid.github.io/topics/covid19/current-patterns-transmission/global-time-varying-transmission>
-
 **Code Source**
 
-Code is based on ideas from 
-<https://rpubs.com/TimoBoll/583802>
+Code is based on ideas from <https://rpubs.com/TimoBoll/583802>
+
+### Bibliography
+
