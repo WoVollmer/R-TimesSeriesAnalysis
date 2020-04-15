@@ -26,8 +26,8 @@ library(flexdashboard)
 ## Corona Virus -                                                             ##
 ##       Analyze Time Series of Confirmed, Death and Recovered Cases          ##
 ##                                                                            ##
-##                                              Wolfgang Vollmer, March 2020  ##
-##                                                                            ##
+##                                          Wolfgang Vollmer, April 15, 2020  ##
+##                                              First Version: March 12, 2020 ##
 ################################################################################
 
 ######  variables clean up, library() and	source() statements
