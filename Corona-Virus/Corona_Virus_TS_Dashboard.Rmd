@@ -27,7 +27,8 @@ library(flexdashboard)
 ##       Analyze Time Series of Confirmed, Death and Recovered Cases          ##
 ##                                                                            ##
 ##                                          Wolfgang Vollmer, April 15, 2020  ##
-##                                              First Version: March 12, 2020 ##
+## URL:                                         First Version: March 12, 2020 ##
+## https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Corona-Virus##              
 ################################################################################
 
 ######  variables clean up, library() and	source() statements
