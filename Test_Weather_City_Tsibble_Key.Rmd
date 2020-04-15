@@ -1,0 +1,397 @@
+
+```{r}
+city_list <- c("Cottbus", "Giessen", "Hohenpeissenberg", "Potsdam",
+               "Basel", "Davos", "England", "Mauna Loa", "Basel_Giessen")
+# city <- city_list[1]   # city/country of data setting
+city <- c("Mauna Loa")
+
+slice(data_monthly, 1:6)
+slice(data_yearly, 1:6)
+
+# saveRDS(data_monthly, paste0("test_data_monthly_", city, ".rds"))
+# saveRDS(data_yearly, paste0("test_data_yearly_", city, ".rds"))
+
+data_monthly <- readRDS(paste0("test_data_monthly_", city, ".rds"))
+data_yearly <- readRDS(paste0("test_data_yearly_", city, ".rds"))
+
+
+```
+
+
+```{r}
+
+
+
+```
+
+```{r}
+
+## !! for data with more than one time series
+## => filter to get single time series needed for
+##    - decomposition with stlplus() 
+##    - usage of  e.g. gg_lag(), gg_tsdisplay()
+##
+## => will be ensured that in "dataset" always to keys exist (City, Measure)
+##
+
+# so far:   key <- c("Measure", "City") => to be changed c("City", "Measure")
+# if ordering needed
+# City_A Measure_A
+#             City_A Measure_B
+#             City_B Measure_A
+#
+# enssure right ordering rsp. change if needed
+data_monthly %<>% as_tsibble(index = Year_Month, key = c("City", "Measure"))
+
+
+key_data(data_monthly) # tibble with key name(s) and subnames
+key(data_monthly)      # provides "group" key name;
+key_vars(data_monthly) # provides the names of the keys
+n_keys(data_monthly)   # number of separate time series
+
+if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) {  
+  for (i in unique(key_data(data_monthly)[[1]])) {
+    for (j in unique(key_data(data_monthly)[[2]])) {
+      print(paste("First Key:", names(key_data(data_monthly)[1])))
+      print(paste("Second Key:", names(key_data(data_monthly)[2])))
+      print(paste(i, "Time Series of", j))
+    }
+  }
+} else {
+  abort(paste("nothing implemented for n_keys/key_data/key(data_monthly) =", 
+              n_keys(data_monthly), key_data(data_monthly), (key(data_monthly))))
+}
+
+```
+
+
+
+# Analysis
+
+
+
+
+## Forecasting with ETS models
+
+```{r Forecasting with ETS models, eval = TRUE, fig.width= 7, fig.height= 4}
+
+fit <- filter(data_monthly, year(Year_Month) <= 2000) %>%  
+  model(ETS(count))
+fit <- filter(data_monthly, year(Year_Month) <= 2000) %>%  
+  model(ETS(count ~ season("A")))
+
+glance(fit)
+report(fit)
+fit$"ETS(count)"
+model_ets <- fit[[3]] #  fit$"ETS(count)"
+model_ets <- as.character(format(model_ets))
+
+fit <- data_monthly %>%
+  model(ETS_ANA = ETS(count ~ error("A") + trend("N") + season("A")),
+        ETS_AAA = ETS(count ~ error("A") + trend("A") + season("A")),
+        ETS_AAdA = ETS(count ~ error("A") + trend("Ad") + season("A")),
+        ETS_AMA = ETS(count ~ error("A") + trend("M") + season("A")),
+        ETS_MNA = ETS(count ~ error("M") + trend("N") + season("A")),
+        ETS_MAA = ETS(count ~ error("M") + trend("A") + season("A")),
+        ETS_MAdA = ETS(count ~ error("M") + trend("Ad") + season("A")),
+        ETS_MMA = ETS(count ~ error("M") + trend("M") + season("A")))
+# model_ets <- fit$ETS_AAA
+# model_ets <- as.character(format(model_ets))
+
+glance(fit)
+glance(fit) %>% summarise(min(AIC), min(AICc), min(BIC))
+# report(fit) # only working for single modles !
+print("For best model choose model with lowest AIC, AICc, BIC")
+
+fc <- fit %>% fabletools::forecast(h = "10 years")
+
+# fc_filter <- filter(fc, .model == "ETS_AAA" & .model == "ETS_MAA")
+# w/ filter scale easily min of xlim
+data <- filter(data_monthly, year(Year_Month) >= 2010) 
+fc_filter %>%
+  autoplot(data, level = 95, alpha = 0.5) +
+  # autoplot: data + forecast AAA & forecast MAA w/ or w/o signif. level 
+  #           (prediction interval);  level = NULL rsp level = 95 (=95%))
+  labs( x = "Year", y = y_label,
+        title = "Forecasts from ETS models", subtitle = model_ets) +
+  guides(colour = guide_legend(title = "Forecast"))
+
+
+
+# print(getAnywhere(report.ETS))  # method.class => provides source code
+report(filter(fit, Temp_Precip == "Temperature" & City == "Basel"))
+report(filter(fit, Temp_Precip == "Precipitation" & City == "Basel"))
+
+tidy(fit)    # summarizes a model's statistical findings such as coefficients
+augment(fit) # adds columns to the original data such as predictions, residuals 
+             #                     and cluster assignments
+glance(fit)  # provides a one-row summary of model-level statistics.
+
+components(fit)
+
+# plot of ETS components
+components(fit) %>%
+  autoplot() +
+  ggtitle(paste(model_ets, "Model - Components"))
+
+residuals(fit)
+residuals(fit, type = "response")
+
+# plot forecast next "4 years"
+fit %>% fabletools::forecast(h = "4 years") %>%
+  autoplot() +
+  ylab(y_label) +
+  ggtitle("Forecast next 4 years", subtitle = topic)
+
+# plot forecast next "4 years" with previous data
+fit %>% fabletools::forecast(h = "4 years") %>%
+  autoplot(data_monthly) +  # adding previous data = data_monthly, before forecast
+  ylab(y_label) +
+  ggtitle("Measured Data with Forecast next 4 years", subtitle = topic)
+
+fit %>% fabletools::forecast(h = "30 years") %>%
+  autoplot(data_monthly) +  # adding measured data before forecast
+  ylab(y_label) +
+  ggtitle("Measured Data with Forecast next 30 years", subtitle = topic)
+
+
+# -  a correlogram of the forecast errors 
+# acf(rainseriesforecasts2$residuals, lag.max=20)
+
+acf(residuals(fit), lag.max=48)
+pacf(residuals(fit), lag.max=48)
+
+# - test significant evidence for non-zero correlations at lags 1-20
+# => carry out a Ljung-Box test
+# Box.test(rainseriesforecasts2$residuals, lag=20, type="Ljung-Box")
+  #   Box-Ljung test
+  # data:  rainseriesforecasts2$residuals
+  # X-squared = 17.4008, df = 20, p-value = 0.6268
+Box.test(residuals(fit)$.resid, lag=48,, type="Ljung-Box")
+cat("Null Hypothesis of independence in a given time series - for p < 0.05: reject H_0")
+# - plot residuals
+# plot.ts(rainseriesforecasts2$residuals)
+# 
+# - check whether the forecast errors are normally distributed with mean zero
+# plot a histogram of the forecast errors, with an overlaid normal curve with 
+# same mean zero and standard deviation
+ggts_histo_forecast_resid(residuals(fit)) # make a histogram
+# shows the plot that the distribution of forecast errors is roughly
+# centred on zero, and is more or less normally ?
+
+# same results with Holt_Winter Verahren und forecast::ets() Verfahren
+# siehe data Test_Holt_Winter_verfahren
+# library(forecast)
+# data_ets <- ets(data_ts)
+# plot(data_ets)
+# plot(forecast::forecast(data_ets))
+# plot(forecast::forecast(data_ets, h = 30*12))  # predict 360 data points = 30 years
+# predict(data_ets, n.ahead = 2, prediction.interval = TRUE)
+# 
+# acf(data_ets$residuals, lag.max=48)
+# pacf(data_ets$residuals, lag.max=48)
+# 
+# Box.test(data_ets$residuals, lag=48,, type="Ljung-Box")
+# plot.ts(data_ets$residuals)
+# plotForecastErrors(data_ets$residuals)
+# 
+# 
+```
+
+
+# Backup Alternative Plots
+
+
+
+```{r covered tsibble plots, eval = FALSE}
+
+data <- data_monthly   # %>% dplyr::select(Year_Month, count) 
+
+## taken over #####################
+data_monthly %>% gg_season(count, labels = "none") +
+  labs(x = "Year",   y = y_label, 
+       title =expression(paste("Mauna Loa - Yearly ", CO[2], 
+                               "Time Plots over Months")))
+
+data_monthly %>% gg_season(count, labels = "none", period = "6*year") +
+  labs( x = "Year", y = "CO2 / ppm") +
+  ggtitle("Seasonal plot: CO2 Concentration from Mauna Loa")
+
+
+
+data %>% gg_season(count, period = "15*year", labels = "right") +
+  labs( x = "Year", y = "CO2 / ppm") +
+  ggtitle("Seasonal plot: CO2 Concentration from Mauna Loa")
+
+data %>% gg_subseries(count) +
+  labs( x = "Year", y = "CO2 / ppm") +
+  ggtitle("Seasonal subseries plot: CO2 Concentration from Mauna Loa")
+
+data %>% gg_tsdisplay(count) +  
+  labs( x = "Year", y = "CO2 / ppm") +
+ggtitle("CO2 Concentration - Time Series, ACF and Season Plot")
+
+
+
+```
+
+
+
+## Stationary Process Test
+
+Strict-sense stationarity / Weak (wide-sense) stationarity
+
+Trend Stationary - underlying trend (function solely of time) can be removed, 
+leaving a stationary process
+
+```{r eval = TRUE}
+## Stationarity Test
+library(aTSA)     # for stationary.test(data_ts) and adf.test(data_ts) - same
+library(fractal)  # for stationaryty()
+library(LaplacesDemon)
+
+freq <- 12
+data <- data_monthly_stlplus  # w/ numeric "Time"
+# as.numeric(as.Date("2018-09-24") - as.Date("2017-10-24"))
+# update data_ts with replaced NAs, e.g. adf.test() does not allow NAs
+data_ts <- ts(data$count, start=c(first_year, 1), frequency = freq)
+
+stationary.test(data_ts)
+adf.test(data_ts)
+
+statio <-
+  stationarity(data_monthly$count, n.taper = 6,
+               n.block = max(c(12, floor(logb(length(data_ts), base = 12)))),
+               significance = 0.05, center = TRUE, recenter = FALSE)
+summary(statio)
+
+is.stationary(data_monthly$count)
+# statcheck() from Schlittgen
+source("./Data_Schlittgen/tsutil.R")
+aspectratio(data_ts)  # für plot, Breite zu Höhe 
+statcheck(data$count, 5) #Berechnung der deskriptiven Maßzahlen ist elementar. 
+     # Um die Kovarianzstationarität zu überprüfen, wird die Funktion eingesetzt
+
+vartable(data_ts,12) # variate Differenzen weisen darauf hin, dass einmal 
+                     # einfache und einmal saisonale Differenzen zu bilden sind
+                     # sind, um Stationarität zu erreichen.
+
+test <- FALSE
+if (test) {
+  data_monthly_wide <- 
+    readRDS(paste0("../R-WeatherAnalysis/WeatherData_", "Cottbus", ".rds"))
+  weather <- filter(data_monthly_wide, Temp_Precip == "Temperature")
+  test_monthly_wide <- filter(weather, Year >= 1940 & Year <= 1954)
+  # note:   & Year & Year != 1949 not feasible, otherwise ts() indexing wrong
+  test_monthly_wide[1, 9:11] <- NA
+  test_monthly_wide[2, 6:7] <- NA
+  test_monthly_wide[2, 12] <- NA
+  test_monthly_wide
+  rm(data_monthly)
+  rm(data_ts)
+  data_monthly <- test_monthly_wide %>% 
+    pivot_longer(cols = Jan:Dec,
+                 names_to = c("Month"),
+                 values_to = "count") %>% 
+    dplyr::select(Year, Month, count)
+  first_year <- min(data_monthly$Year)
+  data_ts <- ts(data_monthly$count, start=c(first_year, 1), frequency = freq)
+  
+  missar(data_ts, p=3, 1) 
+  # AR method: missing values in a time series by conditional exspectations of AR(p)
+  data_ts <- missls(data_ts, p=3, 1) 
+  # KQ method: Minimum Mean Square Error Interpolator to ﬁll missings using LS approach
+}
+
+
+# bandfilt(data_ts, 7, 12, 24)
+# View(data_ts)
+# 
+# (model_lm_1 <- lm(count ~ Year_Month, data))
+# summary(model_lm_1)
+# plot(model_lm_1)
+# 
+# model_lm_2 <- lm(count ~ Year_Month + Year_Month^2, data)
+# summary(model_lm_2)
+# plot(model_lm_2)
+
+
+```
+
+
+```{r Beispiel 10.10, eval = FALSE}
+library(dlm)                                                                                 
+# co2 <- scan("./Data_Schlittgen/schauinsland.dat")  
+co2 <- data_ts  # co2 <- ts(co2,start = 2005,frequency=12)
+dlmco <- dlmModPoly(2) + dlmModSeas(12)
+m1 <- c(382,0.1,rep(0,11))  
+c1 <- diag(c( 0.1, 0.1, rep(100,11)))
+
+buildFun <- function(x) { 
+  W(dlmco)[1:3,1:3] <- diag(exp(x[1:3]))
+  V(dlmco) <- exp(x[4]) 
+  C0(dlmco) <- c1
+  m0(dlmco) <- m1 
+  return(dlmco)
+}              
+
+fit <- dlmMLE(co2, parm=rep(1,4), build=buildFun)
+fit$conv
+dlm.co2 <- buildFun(fit$par)                                              
+coFilter <- dlmFilter(co2, mod=dlm.co2)
+coSmooth <- dlmSmooth(coFilter) 
+
+plot(co2,type="o") 
+lines(dropFirst(coFilter$m[,1]))
+lines(dropFirst(coSmooth$s[,1]))
+plot(dropFirst(coSmooth$s[,3]))
+
+fut1 <- dlmForecast(coFilter, n=12)
+x <- cbind(co2,fut1$f,fut1$f-1.96*sqrt(unlist(fut1$Q)),
+           fut1$f+1.96*sqrt(unlist(fut1$Q)))                                
+plot.ts(x,plot.type="s",lty=c(1,1,2,2)) 
+points(2005+28/12,co2[29])
+
+
+
+
+```
+
+
+
+
+
+# Backup
+
+## `r title_rmd` - Data Source 
+
+**National Oceanic & Atmospheric Administration - Earth System Research Laboratory**
+
+*NOAA ESRL *<https://www.esrl.noaa.gov/gmd/ccgg/trends/global.html>
+
+Data file: Mauna Loa CO2 monthly mean data
+
+<https://www.esrl.noaa.gov/gmd/ccgg/trends/data.html>
+
+
+## `r topic` - Average Yearly and Seasonal Data
+
+```{r data print, eval = TRUE}
+
+caption_CO2 <- y_label
+knitr::kable(data_yearly, digits = 1,
+             caption = paste("Yearly", caption_CO2))
+
+
+# knitr::kable(yearly_data_period_wide, digits = 1, 
+#              caption = paste(span, "-years Periods (last period year given) Data -  ", 
+#                              caption_CO2 ))
+
+```
+
+```{r end, echo = FALSE}
+###########################################################################
+Prog.End <- Sys.time()
+run.time <- round((Prog.End - Prog.Start), digits = 2)
+message("Program executed on: ", Prog.End, "\t Program run time: ", run.time, " secs")
+```
