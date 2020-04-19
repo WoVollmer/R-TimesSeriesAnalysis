@@ -33,7 +33,7 @@ library(flexdashboard)
 # link-citations: yes
 ```
 
-Here we are [see @expgrowth]
+
 
 ```{r initialization, eval = TRUE, include = FALSE}
 
@@ -164,7 +164,11 @@ World Map
 ***
 ***
 
-**World Map with Confirmed and Death Cases**    
+**World Map with Confirmed and Death Cases**  
+
+Here we are [see @Wikipedia2019] and [see @CIA2020] otherwise [@JHU2020a] or 
+[@JHU2020]
+
 
 ### Total Confirmed for each Country
 
@@ -503,6 +507,11 @@ Column {data-width=500}
 -------------------------------------
 
 **Doubling Time and Forecast**
+
+Here we are [see @Wikipedia2020] and [see @CIA2020] otherwise [@JHU2020a] or 
+[@JHU2020] 
+
+Also [@RKI2020a] or [@RKI2020]
 
 The forecasted cases for the next 14 days are calculated 'only' from the
 linear regression of the logarithmic data and are not considering any effects of 
@@ -1389,6 +1398,19 @@ The data are visualized on their excellent Dashboard
 
 ### Links
 
+
+[see @CIA2020], [see @CIA2020a]
+
+[@CMMID2020]
+
+[@JHU2020] or [@JHU2020a]
+
+otherwise [@RKI2020] or [@RKI2020a] or [@RKI2020b]
+
+[@WHO2020]
+
+[@Wikipedia2020] or [@Wikipedia2020a] or [@Wikipedia2020b]
+
 **Further links**
 
 **WHO Dashboard**  
@@ -1415,3 +1437,4 @@ The data are visualized on their excellent Dashboard
 Code is based on ideas from 
 <https://rpubs.com/TimoBoll/583802>
 
+### Bibliography {#bib}

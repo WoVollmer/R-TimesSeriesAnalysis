@@ -91,25 +91,12 @@ lag_n <- 11  # average confirmed lag - for all countries
 
 ```{r read data bind rows and chanfge to long format}
 
-# source data file: covid_19_data.csv from
-# <https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/>
-
 corona_confirmed <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv") %>%
   mutate(Case_Type = "Confirmed")
 corona_deaths <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv")  %>%
   mutate(Case_Type = "Deaths")
 corona_recovered <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv") %>%
   mutate(Case_Type = "Recovered")
-
-# corona_confirmed <- read_csv(
-#   "./csse_covid_19_time_series/time_series_covid19_confirmed_global.csv") %>%
-#   mutate(Case_Type = "Confirmed")
-# corona_deaths <- read_csv(
-#   "./csse_covid_19_time_series/time_series_covid19_deaths_global.csv") %>%
-#   mutate(Case_Type = "Deaths")
-# corona_recovered <- read_csv(
-#   "./csse_covid_19_time_series/time_series_covid19_recovered_global.csv")  %>%
-#   mutate(Case_Type = "Recovered")
 
 
 corona_wide <- bind_rows(corona_confirmed, corona_deaths, corona_recovered)
@@ -136,15 +123,18 @@ corona %<>% mutate(
   Country = case_when(
   Country == "Burma" ~ "Myanmar",
   Country == "Mainland China" ~ "China",
+  Country == "Guinea-Bissau" ~ "Guinea Bissau",
   Country == "Hong Kong SAR" ~ "Hong Kong",
   Country == "Holy See" ~ "Holy See (Vatican City)",
   Country == "Iran (Islamic Republic of)" ~ "Iran",
   Country == "Macao SAR" ~ "Macao",
   Country == "occupied Palestinian territory" ~ "Palestine",
   Country == "Republic of Korea" ~ "South Korea",
-  Country == "Congo (Brazzaville)" ~ "Republic of the Congo",
+  Country == "Cote d'Ivoire" ~ "Ivory Coast",
+  Country == "Congo (Brazzaville)" ~ "Republic of Congo",
   Country == "Congo (Kinshasa)" ~ "Democratic Republic of the Congo",
   Country == "Korea, South" ~ "South Korea",
+  Country == "Eswatini" ~ "Swaziland",
   Country == "Taiwan*" ~ "Taiwan",
   Country == "Tanzania" ~ "United Republic of Tanzania",
   Country == "US" ~ "United States of America",
@@ -199,7 +189,6 @@ corona_country %<>% filter(Case_Type != "Recovered")
 
 
 ```{r add population per country to data}
-
 
 # add world population and normalize Confirmed and Deaths per 100k inhabitants
 population_countries <- readRDS("./World_Population/world_population.RDS")
@@ -521,8 +510,6 @@ title <- paste("Case Fatality Rate in %", "- CFR_total and CFR_past_period (peri
 DT::datatable(cfr_table, 
               options = list(pageLength = 10))
 ```
-```
-
 
 ### Case Fatality Rate (in %) - selected countries {data-height=200}
 
@@ -1459,6 +1446,9 @@ The data are visualized on their excellent Dashboard
 
 
 **Code Source**
+
+Directory with all R Sources is replicated in GitHub repository:  
+<https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Corona-Virus>
 
 Code is based on ideas from <https://rpubs.com/TimoBoll/583802>
 

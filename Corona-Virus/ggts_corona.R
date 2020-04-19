@@ -23,14 +23,16 @@ ggts_trend_daily <- function(data, i) {
   
   # for Daily_Cases calculate rolling mean
   span <- 7 # rolling mean over 7 days
+  weeks <- 6
   data %<>% mutate(rol_mean = 
                      stats::filter(Daily_Cases, 
                                    filter = rep(1 / span, span)))
-  plot_daily_cases <- ggts_cases_facet(filter(data, Date >= last_date - 27), y = Daily_Cases) +
+  plot_daily_cases <- ggts_cases_facet(
+    filter(data, Date >= last_date - weeks * 7 + 1), y = Daily_Cases) +
     geom_line(aes(y = rol_mean, col = "Rolling Mean"), size = 1, na.rm = TRUE) +
     scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
-    labs(title = paste(i, "- Daily Cases (past 4 weeks"),
-         subtitle = paste("with", span, "-day Rolling Mean"))
+    labs(title = paste(i, "- Daily Cases (past", weeks, "weeks"),
+         subtitle = paste0("with ", span, "-day Rolling Mean"))
   gridExtra::grid.arrange(plot_cases, plot_daily_cases, ncol = 2)
 }
 

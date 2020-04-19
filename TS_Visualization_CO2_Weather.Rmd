@@ -33,8 +33,7 @@ knitr::opts_chunk$set(
 ```
 
 
-```{r initialization, eval = TRUE, include = FALSE}
-#           fig.width=12, fig.height=6 ## old: fig.width=14.4, fig.height=7.2
+```{r initialization, include = FALSE}
 ################################################################################
 ## Plot and Analyze                                                           ##
 ## Yearly/Monthly CO2 or Weather Temperature / Precipitation Data             ##
@@ -105,7 +104,8 @@ y_label <- expression(paste(CO[2], " Concentration / ppm"))
 season_window <- 7     # Temperature:  s.window=31, t.window=19
 trend_window  <- 41
 
-key <- c("City", "Measure")   # all data have to have "City" & "Measure" column
+# key <- c("City", "Measure")   # all data have to have "City" & "Measure" column
+key <- c("Measure") # w/o City reduces "strip" naming w/ facet_wrap/grid
 
 # params checked only for city != "Mauna Loa"              
 temp_and_precip <- TRUE # if both, Temperature & Precipitation to be analyzed
@@ -243,10 +243,14 @@ weather_test_w_na <- FALSE  # for test purposes only - filter data from 1940 - 1
                             # with missing year 1949 and lot of NAs
 
 if (city != "Mauna Loa" & city != "Basel_Giessen") {
-  data_monthly_wide <- 
-    readRDS(paste0("../R-WeatherAnalysis/WeatherData_", city, ".rds")) # %>% 
-    # mutate(City = city) %>% 
-    # rename(Measure = Temp_Precip)
+  # data_monthly_wide <- 
+  #   readRDS(paste0("../R-WeatherAnalysis/WeatherData_", city, ".rds")) # %>% 
+  # # read txt file with csv data format
+  file <- paste0("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis",
+                 "/R-WeatherAnalysis/Data_Weather/Weather-Data-Input_", 
+                 city, ".csv")
+  data_monthly_wide <- read_csv(file, col_names = TRUE, skip = 0)
+
   if (!temp_and_precip) {
     # Measure <- NULL
     data_monthly_wide %<>% filter(Measure == measure)
@@ -305,8 +309,9 @@ if (n_na != 0) {
                 n_na, "out of", n_row))
   data_monthly_new <- tibble()   
   for (i in unique(key_data(data_monthly)[[1]])) {    
-    for (j in unique(key_data(data_monthly)[[2]])) {
-      data <- filter(data_monthly, City == i & Measure == j)
+   # for (j in unique(key_data(data_monthly)[[2]])) {
+      # data <- filter(data_monthly, City == i & Measure == j)
+      data <- filter(data_monthly, Measure == i)
       data_interpolate <- as_tibble(uts_interpolate_na(data, freq))
       data_monthly_new <- bind_rows(data_interpolate, data_monthly_new)
     }
@@ -319,7 +324,7 @@ if (n_na != 0) {
   data_monthly <- data_monthly_new %>% 
     mutate(Year_Month = yearmonth(Year_Month)) %>%  
     as_tsibble(index = Year_Month, key = key)
-} 
+# } 
 
 data_monthly %<>%  group_by(City, Measure) 
 data_monthly$Month <- factor(data_monthly$Month, levels = month.abb)
@@ -418,15 +423,16 @@ plot_monthly <-
 plot_monthly 
 
 
-years <- 10
+years <- 15
 
-last_ten_years <- TRUE
-if (last_ten_years) {
- x_min <- data_plot %$% max(Year_Month) - freq*years + 1 # yearmonth(last_year - years + 1)
+past_years <- TRUE  # tricky, since roll mean for early years to be kept
+if (past_years) {
+ x_min <- data_plot %$% max(Year_Month) - freq * years + 1 
+                                            # yearmonth(last_year - years + 1)
  x_max <- data_plot %$% max(Year_Month)         # max(data_monthly$Year_Month)
 } else {     # take first ten years
   x_min <- data_plot %$% min(Year_Month) # yearmonth(first_year)              
-  x_max <- data_plot %$% min(Year_Month) + freq*years - 1 # data_monthly$Year_Month[years*12]
+  x_max <- data_plot %$% min(Year_Month) + freq * years - 1 # data_monthly$Year_Month[years*12]
 }
 
 # y_min/y_max same value for Temeperature & Percipitation => not useful to be taken
@@ -438,7 +444,7 @@ y_max <- data_plot %$%  max(count, na.rm = TRUE)
 data_plot %<>% filter(Year_Month >= x_min &  Year_Month <= x_max)
 plot_monthly <-  # ggplot_w_rol_mean( , x = "")
   ggts_w_rol_mean(data_plot, Year_Month, count, span = span_m) +
-  geom_point() +
+  # geom_point() +
   labs(y = y_label,
        title = paste(topic, " - Time Plot of Monthly Data")) +
       facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free",
@@ -450,7 +456,7 @@ plot_monthly + geom_line(aes(y = rol_mean_long), col = "red", size = 1, na.rm = 
 
 ## Seasonal Plots - Monthly `r topic`
 
-```{r monthly plot, eval = TRUE, fig.width= 7, fig.height= 4}
+```{r monthly plot, eval = TRUE, fig.width= 7, fig.height= 7}
 
 ##  Plot Monthly data with smooth per month over Years
 ggts_season_w_smooth(data = data_monthly) + 
@@ -458,8 +464,7 @@ ggts_season_w_smooth(data = data_monthly) +
              strip.position = "left") +
   # theme(legend.position = "bottom") +
   labs(y = y_label, 
-       subtitle = paste(min(data_monthly$Year_Month), " - ", 
-                        max(data_monthly$Year_Month)))
+       subtitle = paste(city, first_year, " - ", last_year))
 
 ```
 
@@ -528,17 +533,16 @@ plot_monthly
 #   facet_wrap(vars(!!!key(data_monthly)), ncol = 1) 
 
 # !!  coord_polar doesn't support free scales => generate separate plots
-if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) { 
+# if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) { 
+if (length(key(data_monthly)) == 1) { 
   for (i in unique(key_data(data_monthly)[[1]])) {     # City
-    for (j in unique(key_data(data_monthly)[[2]])) {   # Measure
-      
-      data_filter <- filter(data_monthly_over_period, City == i, Measure == j)
+      data_filter <- filter(data_monthly_over_period, Measure == i)
       plot_monthly <- ggts_year_over_month(data_filter, period = Period) +
-        labs(y = y_label, title = paste(title, "-", i, j), subtitle = subtitle)
+        labs(y = y_label, title = paste(title, "-", i), subtitle = subtitle)
 
       print(plot_monthly + coord_polar("x", start = pi))  # pi => rotate by 180 degrees
     }
-  }
+  # }
 } else {
   abort(paste("nothing implemented for n_keys/key_data/key(data_monthly) =", 
               n_keys(data_monthly), key_data(data_monthly), (key(data_monthly))))
@@ -560,11 +564,10 @@ plot_monthly <- ggts_year_over_month(data_monthly_over_period, period = Period,
 plot_monthly
 
 # !!  coord_polar doesn't support free scales => generate separate plots
-if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) { 
+# if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) { 
+if (length(key(data_monthly)) == 1) { 
   for (i in unique(key_data(data_monthly)[[1]])) {     # City
-    for (j in unique(key_data(data_monthly)[[2]])) {   # Measure
-      
-      data_filter <- filter(data_monthly_over_period, City == i, Measure == j)
+      data_filter <- filter(data_monthly_over_period, Measure == i)
       plot_monthly <- ggts_year_over_month(data_filter, period = Period,
                                            y = count_minus_first) +
         labs(y = "Delta to First Period", title = title, subtitle = subtitle) +
@@ -574,7 +577,7 @@ if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) {
       
       print(plot_monthly + coord_polar("x", start = pi))  # pi => rotate by 180 degrees
     }
-  }
+#  }
 } else {
   abort(paste("nothing implemented for n_keys/key_data/key(data_monthly) =", 
               n_keys(data_monthly), key_data(data_monthly), (key(data_monthly))))
@@ -727,31 +730,32 @@ the data.
 #   #                        min = 19 da ceiling(1.5*12)=18 => nextodd = 19
    
 
-if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) { 
-  for (i in unique(key_data(data_monthly)[[1]])) {
+# if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) { 
+if (length(key(data_monthly)) == 1) { 
+  for (i in unique(key_data(data_monthly)[[1]])) {     # City
+      data_filter <- filter(data_monthly_over_period, Measure == i)
     data_monthly_new <- tibble()  
-    for (j in unique(key_data(data_monthly)[[2]])) {
-      data_ts <- filter(data_monthly, City == i & Measure == j) %$% 
+      data_ts <- filter(data_monthly, Measure == i) %$% 
         ts(count, start=c(first_year, 1), frequency = freq)
       stlplus_data <- stlplus(data_ts, s.window=season_window, t.window=trend_window)
       
       data_monthly_stlplus <- uts_stlplus_as_tibble(stlplus_data)  %>% 
-        mutate(Measure = j)
+        mutate(Measure = i)
       # data_monthly_new <- bind_rows(data_monthly_stlplus, data_monthly_new) 
       
       decomp_plot <- ggts_decomp(data_monthly_stlplus)
       print(decomp_plot + 
-              labs(title =  paste("Seasonal Decomposition by Loess - ", i, j),
+              labs(title =  paste("Seasonal Decomposition by Loess - ", i),
                    subtitle = paste("by stlplus(); Data = Trend + Seasonal + Remainder; ",
                                     "Horiz. Lines: Mean values"),
-                   y = y_label_measure[j]))
+                   y = y_label_measure[i]))
     } 
     ## 'count' now NAs are replaced by values of Interpolated !!  #################
     # data_monthly <- data_monthly_new %>% 
     #   mutate(Year_Month = yearmonth(Year_Month),  # lost yearmonth() class by bind_row
     #          City = city) %>%  # lost yearmonth() by bind_rows
     #   as_tsibble(index = Year_Month, key = key)
-  }  
+#  }  
 } else {
   abort(paste("nothing implemented for n_keys/key_data/key(data_monthly) =", 
               n_keys(data_monthly), key_data(data_monthly), (key(data_monthly))))
@@ -798,20 +802,21 @@ data_monthly %>%
 
 year_filter <- 2000
 
-if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) { 
+# if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) { 
+if (length(key(data_monthly)) == 1) { 
   for (i in unique(key_data(data_monthly)[[1]])) {     # City
-    for (j in unique(key_data(data_monthly)[[2]])) {   # Measure
+  #  for (j in unique(key_data(data_monthly)[[2]])) {   # Measure
       
       plot_lag <- filter(data_monthly, year(Year_Month) >= year_filter & 
-                           City == i, Measure == j) %>% 
+                           Measure == i) %>%   # City == i &Measure == j
         gg_lag(count, lags = 1:12, geom = "path", arrow = TRUE) +
-        labs(x = y_label_measure[j], y = "lag(x, n)",
+        labs(x = y_label_measure[i], y = "lag(x, n)",
              col = "Month",
              title ="Lag by n months - y(t) plotted against y(t-n)",
-             subtitle = paste(i, j, " - as of year", year_filter)) 
+             subtitle = paste(i, " - as of year", year_filter)) 
 print(plot_lag)
     }
-  }
+#  }
 } else {
   abort(paste("nothing implemented for n_keys/key_data/key(data_monthly) =", 
               n_keys(data_monthly), key_data(data_monthly), (key(data_monthly))))
@@ -866,26 +871,27 @@ The remaining peaks are random and therefore cannot be assigned significantly.
 
 year_filter <- 2000
 
-if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) {    
+# if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) {
+if (length(key(data_monthly)) == 1) { 
   for (i in unique(key_data(data_monthly)[[1]])) {
-    for (j in unique(key_data(data_monthly)[[2]])) {
+   # for (j in unique(key_data(data_monthly)[[2]])) {
       plot_ts_spec <- data_monthly %>% 
-        filter(year(Year_Month) >= year_filter & City == i & Measure == j) %>%  
-        gg_tsdisplay(count, plot_type = "spectrum", lag_max = 24) + 
-        labs( x = "Year", y = y_label_measure[j], 
+        filter(year(Year_Month) >= year_filter & Measure == i) %>%  
+        gg_tsdisplay(count,  lag_max = 24) +  # plot_type = "spectrum",
+        labs( x = "Year", y = y_label_measure[i], 
               title = "Time series plot with ACF and Spectrum",
-              subtitle = paste(i, j, " - as of year", year_filter))
+              subtitle = paste(i, " - as of year", year_filter))
       print(plot_ts_spec)
       
       plot_ts_pacf <- data_monthly %>% 
-        filter(year(Year_Month) >= year_filter & City == i & Measure == j) %>%  
+        filter(year(Year_Month) >= year_filter & Measure == i) %>%  
         gg_tsdisplay(count, plot_type = "partial", lag_max = 24) + 
-        labs( x = "Year", y = y_label_measure[j], 
+        labs( x = "Year", y = y_label_measure[i], 
               title = "Time series plot with ACF and PACF",
-              subtitle = paste(i, j, " - as of year", year_filter))
+              subtitle = paste(i, " - as of year", year_filter))
       print(plot_ts_pacf)
     }
-  } 
+#  } 
 } else {
   abort(paste("nothing implemented for n_keys/key_data/key(data_monthly) =", 
               n_keys(data_monthly), key_data(data_monthly), (key(data_monthly))))
@@ -953,19 +959,6 @@ data_monthly %>% features(count, feat_spectral)
 
 ```
 
-```{r eval = FALSE}
-## Stationarity and Differencing
-
-## Stationary Process Test
-
-Strict-sense stationarity / Weak (wide-sense) stationarity
-
-Augmented Dickey-Fuller test => type3, a linear model with both drift and linear trend
-
-Trend Stationary - underlying trend (function solely of time) can be removed, 
-leaving a stationary process
-
-```
 
 ## Stationary Process Test
 
@@ -1109,7 +1102,8 @@ Data file: Mauna Loa CO2 monthly mean data
 
 ```{r data print, eval = TRUE}
 
-caption_table <- y_label
+# caption_table <- y_label
+caption_table <- "Temperature / degree Celsius rsp. Precipitation / mm/Month"
 # print all Data or only slices of them
 # knitr::kable(data_yearly, digits = 1,
 #              caption = paste("Yearly", caption_table))

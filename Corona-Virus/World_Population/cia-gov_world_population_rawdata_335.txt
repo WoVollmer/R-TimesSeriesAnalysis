@@ -121,7 +121,7 @@ Country Comparison :: Population
 118     Lebanon                                                      5,469,612        July 2020 est.
 119     Norway                                                       5,467,439        July 2020 est.
 120     Slovakia                                                     5,440,602        July 2020 est.
-121     Congo, Republic of the                                       5,293,070        July 2020 est.
+121     Congo, Republic of                                           5,293,070        July 2020 est.
 122     Ireland                                                      5,176,569        July 2020 est.
 123     Costa Rica                                                   5,097,988        July 2020 est.
 124     Liberia                                                      5,073,296        July 2020 est.

@@ -40,7 +40,7 @@ Chile,Chile,18186770
 China,China,1394015977
 Colombia,Colombia,49084841
 Costa Rica,Costa Rica,5097988
-Cote d'Ivoire,Cote d'Ivoire,27481086
+Ivory Coast,Cote d'Ivoire,27481086
 Croatia,Croatia,4227746
 Cuba,Cuba,11059062
 Cyprus,Cyprus,1266676
@@ -57,10 +57,10 @@ El Salvador,El,6481102
 Equatorial Guinea,Equatorial,836178
 Eritrea,Eritrea,6081196
 Estonia,Estonia,1228624
-Eswatini,Eswatini,1104479
+Swaziland,Eswatini,1104479
 Ethiopia,Ethiopia,108113150
 Fiji,Fiji,935974
-Finland,Finland,5571665
+Finland,Finland,5571665s
 France,France,67848156
 Gabon,Gabon,2230908
 Gambia,Gambia,2173999
@@ -71,7 +71,7 @@ Greece,Greece,10607051
 Grenada,Grenada,113094
 Guatemala,Guatemala,17153288
 Guinea,Guinea,12527440
-Guinea-Bissau,Guinea-Bissau,1927104
+Guinea Bissau,Guinea-Bissau,1927104
 Guyana,Guyana,750204
 Haiti,Haiti,11067777
 Holy See (Vatican City),Holy See,1000
@@ -135,7 +135,7 @@ Philippines,Philippines,109180815
 Poland,Poland,38282325
 Portugal,Portugal,10302674
 Qatar,Qatar,2444174
-Republic of the Congo,Republic of the Congo,5293070
+Republic of Congo,Republic of Congo,5293070
 Romania,Romania,21302893
 Russia,Russia,141722205
 Rwanda,Rwanda,12712431

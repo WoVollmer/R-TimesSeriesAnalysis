@@ -28,9 +28,7 @@ uts_gen_yearly_seasonal_avg <- function(data, season = TRUE) {
   #     three monthly values
   # 2)  Seasons are Dec-Feb (DJF), Mar-May (MAM), June-Aug (JJA), Sept-Nov (SON).
   # 3)  Winter: year refers to January (realized by lag())  
-  require(tidyverse)
-  require(magrittr)
-   
+
 # mean of year for all years grouped by (City, Measure, Year)
   data_yearly <- data %>%
     index_by(Year = ~ year(.)) %>%

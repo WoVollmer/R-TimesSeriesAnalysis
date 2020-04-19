@@ -21,7 +21,7 @@ world_population <-
              skip = 3) %>%
   dplyr::select("Country", "Population")
 world_population %<>% filter(!is.na(Country)) 
-
+world_population$Population <- as.numeric(world_population$Population)
 saveRDS(world_population, "./World_Population/world_population.RDS")
 
 
@@ -30,10 +30,11 @@ saveRDS(world_population, "./World_Population/world_population.RDS")
 
 world_population <- readRDS("./World_Population/world_population.RDS")
 
-f_join <- full_join(filter(corona_country_last, Case_Type == "Confirmed"), 
+# f_join <- full_join(filter(corona_country_last, Case_Type == "Confirmed"), 
                     world_population)
-View(f_join)
-
-View(full_join(corona_country_last, world_population) %>% arrange(Country))
-
-filter(full_join(corona_country_last, world_population), Country == "Bosnia and Herzegovina")  
+# View(f_join)
+# 
+# 
+# View(full_join(corona_country_last, world_population) %>% arrange(Country))
+# 
+# filter(full_join(corona_country_last, world_population), Country == "Bosnia and Herzegovina")  
