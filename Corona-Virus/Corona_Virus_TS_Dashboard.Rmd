@@ -41,12 +41,11 @@ library(tidyverse)
 library(magrittr)
 library(lubridate)
 library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages & some tidyverse
-library(stlplus) # Enhanced Seasonal Decomposition of Time Series by Loess
 library(DT)      # R interface to the JavaScript library DataTables
-library(rlang)
+# library(rlang)
 library(gridExtra)
 
-library(janitor)
+# library(janitor)
 library(highcharter)
 
 library(dygraphs)  # R interface to the dygraphs JavaScript charting library
@@ -123,6 +122,7 @@ corona %<>% mutate(
   Country = case_when(
   Country == "Burma" ~ "Myanmar",
   Country == "Mainland China" ~ "China",
+  Country == "Czechia" ~ "Czech Republic",
   Country == "Guinea-Bissau" ~ "Guinea Bissau",
   Country == "Hong Kong SAR" ~ "Hong Kong",
   Country == "Holy See" ~ "Holy See (Vatican City)",
@@ -191,7 +191,7 @@ corona_country %<>% filter(Case_Type != "Recovered")
 ```{r add population per country to data}
 
 # add world population and normalize Confirmed and Deaths per 100k inhabitants
-population_countries <- readRDS("./World_Population/world_population.RDS")
+population_countries <- readRDS("./world_population.RDS")
 population_total <- sum(population_countries$Population, na.rm = TRUE)
 population_world <- tibble(Country = "World", Population = population_total)
 population_countries <- bind_rows(population_countries, population_world)
@@ -208,8 +208,8 @@ corona_population %<>%
 
 ```{r complete data}
 
-saveRDS(corona_country, "corona_country.RDS")
-saveRDS(corona_population, "corona_population.RDS")
+# saveRDS(corona_country, "corona_country.RDS")
+# saveRDS(corona_population, "corona_population.RDS")
 
 corona_country_wide <- corona_country %>% 
   pivot_wider(names_from = Case_Type, 
@@ -1095,7 +1095,7 @@ the *Daily Confirmed Cases* remain more or less constant or even decrease.
 
 However, the basic reproduction number $R_0$ is a product of the average number of contacts of an infectious person per day, the probability of transmission upon contacts and the average number of days infected people are infectious. 
 With the current uncertainty of the average duration of the infectivity duration, $R_0$ can therefore be estimated from the doubling time only to a very limited extent.
-See also [[@CMMID2020]](#bib).
+See also [[@CMMID2020]](#bib) and [[@RKI2020c]](#bib).
 
 ### Germany - Forecast Accuracy for past three days {data-height=300}
 

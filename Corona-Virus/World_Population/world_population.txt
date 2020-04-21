@@ -44,7 +44,7 @@ Ivory Coast,Cote d'Ivoire,27481086
 Croatia,Croatia,4227746
 Cuba,Cuba,11059062
 Cyprus,Cyprus,1266676
-Czechia,Czechia,10702498
+Czech Republic,Czech Republic,10702498
 Democratic Republic of the Congo,Democratic Republic of the Congo,101780263
 Denmark,Denmark,5869410
 Diamond Princess,Diamond Princess,NA
@@ -60,7 +60,7 @@ Estonia,Estonia,1228624
 Swaziland,Eswatini,1104479
 Ethiopia,Ethiopia,108113150
 Fiji,Fiji,935974
-Finland,Finland,5571665s
+Finland,Finland,5571665
 France,France,67848156
 Gabon,Gabon,2230908
 Gambia,Gambia,2173999
@@ -139,6 +139,7 @@ Republic of Congo,Republic of Congo,5293070
 Romania,Romania,21302893
 Russia,Russia,141722205
 Rwanda,Rwanda,12712431
+Sao Tome and Principe,Sao Tome and Principe,211122  
 Saint Kitts and Nevis,Saint Kitts and Nevis,53821
 Saint Lucia,Saint Lucia,166487
 Saint Vincent and the Grenadines,Saint Vincent and the Grenadines,10139
@@ -154,7 +155,7 @@ Slovenia,Slovenia,2102678
 Somalia,Somalia,11757124
 South Africa,South Africa,56463617
 South Korea,South Korea,51835110
-NA, South Sudan,10561244
+South Sudan, South Sudan,10561244
 Spain,Spain,50015792
 Sri Lanka,Sri Lanka,22889201
 Sudan,Sudan,45561556
@@ -198,7 +199,7 @@ NA,Kiribati,111796
 NA,North Korea,25643466
 NA,Lesotho,1969334
 NA,Macau,614458
-NA,Malawi,21196629
+Malawi,Malawi,21196629
 NA,Marshall,77917
 NA,Micronesia,102436
 NA,Montserrat,5373
@@ -217,5 +218,5 @@ NA,Tuvalu,11342
 NA,Vanuatu,298333
 NA,Virgin Islands,106235
 NA,Wallis and Futuna,15854
-NA,Western Sahara,652271
-NA,Yemen,29884405
+Western Sahara,Western Sahara,652271
+Yemen,Yemen,29884405

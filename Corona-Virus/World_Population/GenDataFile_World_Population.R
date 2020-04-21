@@ -1,12 +1,7 @@
 # Read data from data file and process them for further analysis
 
-
-
-library(lubridate)
 suppressMessages(library(tidyverse))
 suppressMessages(library(magrittr))
-
-source("../../R-TimeSeriesAnalysis/uts_TimeSeries.R")
 
 input_file <- "D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus/World_Population/world_population.txt"
 
@@ -20,21 +15,20 @@ world_population <-
              col_names = c("Country", "Country_CIA", "Population"), 
              skip = 3) %>%
   dplyr::select("Country", "Population")
-world_population %<>% filter(!is.na(Country)) 
+world_population %<>% filter(!is.na(Country)) %>% 
+  arrange(Country)
 world_population$Population <- as.numeric(world_population$Population)
-saveRDS(world_population, "./World_Population/world_population.RDS")
+saveRDS(world_population, "./Corona-Virus/world_population.RDS")
 
+check <- FALSE
+if (check) {
+  world_population <- readRDS("./Corona-Virus/world_population.RDS")
+  corona_country_last <- readRDS("./Corona-Virus/corona_country.RDS")
+  
+  last_date_last <- max(corona_country_last$Date)
+  f_join <- full_join(filter(corona_country_last, Case_Type == "Confirmed"),
+                      world_population)
+  View(filter(f_join, Date == last_date_last))
+  
+}
 
-
-
-
-world_population <- readRDS("./World_Population/world_population.RDS")
-
-# f_join <- full_join(filter(corona_country_last, Case_Type == "Confirmed"), 
-                    world_population)
-# View(f_join)
-# 
-# 
-# View(full_join(corona_country_last, world_population) %>% arrange(Country))
-# 
-# filter(full_join(corona_country_last, world_population), Country == "Bosnia and Herzegovina")  

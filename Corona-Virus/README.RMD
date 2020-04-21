@@ -1,0 +1,53 @@
+---
+output:
+  github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+# Corona Virus Dashboard
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "##",
+  fig.width = 8, 
+  fig.height = 5.5,
+  out.width = "90%"
+)
+
+```
+
+The **`Corona Virus Dashboard`** provides analysis of the time series data provided by the **Johns Hopkins University** on GitHub. For links and references see the Dashboard-file *Corona_Virus_TS_Dashboard.html* rsp. RMD-file *Corona_Virus_TS_Dashboard.Rmd*.
+
+## Installation
+
+Following data/files are required to run R Markdown file
+**Corona_Virus_TS_Dashboard.Rmd**
+
+* **Data files**:  
+    + *time_series_covid19_confirmed_global.csv* 
+    + *time_series_covid19_deaths_global*
+    + *time_series_covid19_recovered_global.csv*
+
+* **ggts_corona.R** R file providing the functions to create the plots
+* **world_population.RDS** R data file providing the population numbers of the different countries 
+* **References_Corona.bib** Bibtex file providing the references with the Bibtexkeys
+
+
+## Overview
+
+The **`Corona_Virus_TS_Dashboard`** provides an interactive dashboard with 
+multiple pages and page navigation. 
+
+The R Markdown file **`Corona_Virus_TS_Dashboard.Rmd`** creates the 
+dashboard with the R package
+
+- [flexdashboard](https://rmarkdown.rstudio.com/flexdashboard/) *flexdashboard: Easy interactive dashboards for R*
+
+
+----------------------
+
+Any remarks?    
+Please let me know or provide some hints.
