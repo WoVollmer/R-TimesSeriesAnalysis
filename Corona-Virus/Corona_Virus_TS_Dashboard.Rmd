@@ -15,6 +15,17 @@ knitr::opts_chunk$set(eval = TRUE, echo = FALSE, warning = FALSE,
                       message = FALSE, fig.width = 7, fig.asp = 0.618)
 
 library(flexdashboard)
+library(tidyverse)
+library(magrittr)
+library(lubridate)
+library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages & some tidyverse
+library(DT)      # R interface to the JavaScript library DataTables
+library(patchwork) # package for composing plots
+          # https://www.data-imaginist.com/2019/patch-it-up-and-send-it-out/
+library(gridExtra)
+# library(janitor)
+library(highcharter)
+library(dygraphs)  # R interface to the dygraphs JavaScript charting library
 
 ```
 
@@ -36,19 +47,6 @@ library(flexdashboard)
 setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
 rm(list=ls()) # deletes all existing objects / variables !!
 # Prog.Start <- Sys.time()
-
-library(tidyverse)
-library(magrittr)
-library(lubridate)
-library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages & some tidyverse
-library(DT)      # R interface to the JavaScript library DataTables
-# library(rlang)
-library(gridExtra)
-
-# library(janitor)
-library(highcharter)
-
-library(dygraphs)  # R interface to the dygraphs JavaScript charting library
 
 ######  Plot and util functions
 ######  ######  Plot and util functions
@@ -247,6 +245,8 @@ World Map
 ***
 ***
 
+<center>**Spread of Coronavirus SARS-CoV-2**</center>
+
 **World Map with Confirmed and Death Cases** (Data source [[@JHU2020a]](#bib), see also [[@JHU2020]](#bib))  
 
 ### Total Confirmed for each Country
@@ -255,7 +255,7 @@ World Map
 
 # plot total confirmed in world
 i <- "Confirmed"
-world_map_plot(filter(corona_country_last, Case_Type == i), i)
+world_map_plot(filter(corona_country_last, Case_Type == i & Country != "World"), i)
 
 ```
 
@@ -266,7 +266,7 @@ world_map_plot(filter(corona_country_last, Case_Type == i), i)
 
 # plot total deaths in world
 i <- "Deaths"
-world_map_plot(filter(corona_country_last, Case_Type == i), i)
+world_map_plot(filter(corona_country_last, Case_Type == i & Country != "World"), i)
 
 ```
 
@@ -646,7 +646,7 @@ i <- i + 1
 
 ### Germany - Confirmed and Deaths
 
-```{r  dygraph_plot all, eval = TRUE}
+```{r dygraph_plot prepare, eval = TRUE}
 
 # https://rstudio.github.io/dygraphs/gallery-series-highlighting.html
 # dygraph interactive plot for time series data:
@@ -670,19 +670,64 @@ plot_dygraph_all <- function(data_xts, country_select, last_date) {
                       c(as.character(last_date - 28), as.character(last_date)))
 }
 
+
+plot_dygraph_daily <- function(data_xts, country_select, last_date) {
+  
+  dygraph(data_xts, 
+          main = paste0(country_select, " - ",
+                       span, "-day Rolling Mean of Daily Cases")) %>% 
+    dyAxis("y", label = "Daily Confirmed Cases") %>%
+    dyAxis("y2", label = "Daily Death Cases", independentTicks = TRUE) %>%
+    dyLegend(width = 400) %>% 
+    dySeries("Daily_Conf_rol_mean", drawPoints = FALSE, pointShape = "square") %>% 
+    dySeries("Daily_Deaths_rol_mean", drawPoints = FALSE, pointShape = "square", 
+             axis = "y2") %>% 
+    dyRangeSelector(dateWindow = 
+                      c(as.character(last_date - 2 * 28), as.character(last_date)))
+}
+
 data <- corona_country_wide %>% 
   filter(Country == country_select) 
 
+# add roll_mean
+span <- 7 # rolling mean over 7 days
+weeks <- 6
+data %<>% mutate(Daily_Conf_rol_mean = round(
+                   stats::filter(Daily_Confirmed, 
+                                 filter = rep(1 / span, span)), digits = 0),
+                 Daily_Deaths_rol_mean = round( 
+                   stats::filter(Daily_Deaths, 
+                                 filter = rep(1 / span, span)), digits = 0)) 
+
+
 # change tibble in xts object
 index <- data$Date
-data %<>% select(-Country) 
-# data %<>% select(Confirmed, Deaths, 
-#                  Daily_Confirmed, Daily_Deaths)
-data_xts <- xts::xts(data, order.by = index)
+data  %<>% ungroup() %>% select(-Country, -Date) 
+
+```
+
+```{r dygraph_plot Cumulated and Daily, eval = TRUE}
+
+data_xts <- xts::xts(
+  data %>% dplyr::select(Confirmed, Deaths, Daily_Confirmed, Daily_Deaths), 
+  order.by = index)
 
 plot_dygraph_all(data_xts, country_select, last_date)
 
 ```
+
+### Germany - Daily Rolling Mean
+
+```{r dygraph_plot Daily Rolling Mean, eval = TRUE}
+
+data_xts <- xts::xts(
+  data %>% dplyr::select(Daily_Conf_rol_mean, Daily_Deaths_rol_mean), 
+  order.by = index)
+
+plot_dygraph_daily(data_xts, country_select, last_date)
+
+```
+
 
 
 Virus Spread on log10 scale {data-navmenu="Exp Linear Growth"}
@@ -692,7 +737,7 @@ Virus Spread on log10 scale {data-navmenu="Exp Linear Growth"}
 ***
 
 
-Column {data-width=200}
+Column {data-width=100}
 -------------------------------------
 
 ### Exponential Growth Evaluation
@@ -718,7 +763,7 @@ labels_scale <- c(10, 100, 1000, 5000, 10000, 50000, 100000, 500000)
 ```
 
 
-```{r plot log10scale w/o date filter, fig.width = 7, fig.asp = 1.5}
+```{r plot log10scale w/o date filter, fig.width = 14, fig.asp = 0.8}
 
 # logscale plot w/o date filter
 data <- corona_tsbl %>% ungroup() %>% group_by(Case_Type) %>% 
@@ -728,21 +773,45 @@ data <- corona_tsbl %>% ungroup() %>% group_by(Case_Type) %>%
 
 gg_plot <- gg_logscale(data)
   
-gg_plot + 
+plot_1 <- gg_plot + 
   scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
   geom_line(aes(col = Country), size = 0.5) +
-  labs(subtitle = paste("Since", first_date)) +
+  labs(title = "Cumulated Cases") +
   facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
              strip.position = "left") 
 
+##  plot per 100,000 inhabitants
+data <- corona_tsbl %>% ungroup() %>% group_by(Case_Type) %>% 
+  filter(Country %in%  c("World", "China", compare_countries) & 
+           Case_Type != "Recovered" & Cases >= 10) %>% 
+  dplyr::select(Date, Country, Case_Type, Cases_100k)
+
+gg_plot <- gg_logscale(data, x = Date, y = Cases_100k)
+  
+plot_2 <- gg_plot + 
+  scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
+  geom_line(aes(col = Country), size = 0.5) +
+  labs(title = "Cumulated Cases / 100k Inhabitants",
+       y = "Cumulated Cases / 100k Inhabitants") +
+  facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
+             strip.position = "left") 
+
+
+plot_1 + plot_2 + 
+  plot_annotation(
+    title = "Virus Spread (with log10 scale) - World and selected Countries") +
+  plot_layout(guides = 'collect') & theme(legend.position = 'bottom')
+
 ```
 
-Column
--------------------------------------
 
-### Virus Spread / Inhabitants with log10 scale (since mid of Jan)
 
-```{r plot per inhabitants with log10scale, fig.width = 7, fig.asp = 1.5}
+```{r plot per inhabitants with log10scale, eval = FALSE, fig.width = 7, fig.asp = 1.5}
+# Column
+# -------------------------------------
+# 
+# ### Virus Spread / Inhabitants with log10 scale (since mid of Jan)
+
 # Virus Spread / 100,000 Inhabitantson on log10 scale (since mid of Jan)
 
 data <- corona_tsbl %>% ungroup() %>% group_by(Case_Type) %>% 
@@ -913,7 +982,8 @@ for (i in country_select) {
                 col = "black", size = 1, se = FALSE) +
     scale_y_log10() +
     scale_x_date(date_labels = "%b %d", date_breaks = "7 days")
-  gridExtra::grid.arrange(plot_cases, plot_daily_cases, ncol = 2)
+    # gridExtra::grid.arrange(plot_cases, plot_daily_cases, ncol = 2)
+    print(plot_cases + plot_daily_cases) 
 }
 
 ```

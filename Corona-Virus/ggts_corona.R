@@ -12,9 +12,9 @@ ggts_cases_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
     # scale_colour_distiller(palette = col_scheme, direction = 1) +
     # scale_colour_brewer(palette = col_scheme, direction = 1) +
     # scale_color_discrete(c("blue",  "green", "red")) +
-    ggtitle("Confirmed and Death Cases")
+    ggtitle("Confirmed and Death Cases") +
+    theme(plot.title = element_text(size = 10))
 }
-
 
 # function to get grid plot with Cases trend and Daily_Cases
 ggts_trend_daily <- function(data, i) {
@@ -33,7 +33,9 @@ ggts_trend_daily <- function(data, i) {
     scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
     labs(title = paste(i, "- Daily Cases (past", weeks, "weeks"),
          subtitle = paste0("with ", span, "-day Rolling Mean"))
-  gridExtra::grid.arrange(plot_cases, plot_daily_cases, ncol = 2)
+  # gridExtra::grid.arrange(plot_cases, plot_daily_cases, ncol = 2)
+  plot_cases + plot_daily_cases 
+            # + plot_annotation(tag_levels = "A", title = "title annot")
 }
 
 
@@ -63,8 +65,8 @@ world_map_plot <- function(data, i) {
                       joinBy = c('name', 'Country'))  %>% 
     #hc_colors(c("darkorange", "darkgray")) %>% 
     hc_colorAxis(stops = color_stops()) %>% 
-    hc_title(text = "Spread of Coronavirus SARS-CoV-2") %>% 
-    hc_subtitle(text = paste(i, "- Cumulated Cases / Country - Actual Figures"))
+    # hc_title(text = "Spread of Coronavirus SARS-CoV-2") %>% 
+    hc_title(text = paste(i, "- Cumulated Cases / Country - Actual Figures"))
 }
 
 
