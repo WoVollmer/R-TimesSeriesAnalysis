@@ -31,12 +31,14 @@ ggts_trend_daily <- function(data, i) {
     filter(data, Date >= last_date - weeks * 7 + 1), y = Daily_Cases) +
     geom_line(aes(y = rol_mean, col = "Rolling Mean"), size = 1, na.rm = TRUE) +
     scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
-    labs(title = paste(i, "- Daily Cases (past", weeks, "weeks"),
+    labs(title = paste(i, "- Daily Cases (past", weeks, "weeks)"),
          subtitle = paste0("with ", span, "-day Rolling Mean"))
   # gridExtra::grid.arrange(plot_cases, plot_daily_cases, ncol = 2)
   plot_cases + plot_daily_cases 
             # + plot_annotation(tag_levels = "A", title = "title annot")
 }
+
+
 
 
 # grid plot Confirmed / Death for selected countries 
@@ -117,6 +119,52 @@ gg_logscale <- function(data, x = Date, y = Cases) {
                strip.position = "left") 
 }
 
+#### Reproduction number calculation - source from TU Ilmenau - GitHub 
+#
+repronum <- function(
+  new.cases, # I
+  profile, # w
+  window = 1, # H
+  delay = 0, # Delta
+  conf.level = 0.95, # 1-alpha
+  pad.zeros = FALSE,
+  min.denominator = 5,
+  min.numerator = 5
+) {
+  # pad zeros if desired
+  if (pad.zeros) new.cases <- c(rep(0, length(profile) - 1), new.cases)
+  
+  # compute convolutions over h, tau and both, respectively
+  sum.h.I <- as.numeric(stats::filter(new.cases, rep(1, window),
+                                      method = "convolution", sides = 1))
+  sum.tau.wI <- as.numeric(stats::filter(new.cases, c(0, profile),
+                                         method = "convolution", sides = 1))
+  sum.htau.wI <- as.numeric(stats::filter(sum.tau.wI, rep(1, window),
+                                          method = "convolution", sides = 1))
+  
+  # estimators
+  repronum <- ifelse(sum.h.I < min.numerator, NA, sum.h.I) / ifelse(sum.htau.wI < min.denominator, NA, sum.htau.wI)
+  
+  # standard errors
+  repronum.se <- sqrt(repronum / sum.htau.wI)
+  
+  # shift by delay
+  repronum <- c(repronum, rep(NA, delay))[(1:length(repronum)) + delay]
+  repronum.se <- c(repronum.se,
+                   rep(NA, delay))[(1:length(repronum.se)) + delay]
+  
+  # standard normal qunatile
+  q <- qnorm(1 - (1 - conf.level) / 2)
+  
+  # return data.frame with as many rows as new.cases
+  ret <- data.frame(
+    repronum = repronum,
+    repronum.se = repronum.se,
+    ci.lower = repronum - q * repronum.se,
+    ci.upper = repronum + q * repronum.se
+  )
+  if (pad.zeros) ret[-(1:(length(profile) - 1)),] else ret
+}
 
 # source("./ggts_corona.R") # ggplot2 functions for time series plots
  
