@@ -14,6 +14,11 @@ output:
 knitr::opts_chunk$set(eval = TRUE, echo = FALSE, warning = FALSE,      
                       message = FALSE, fig.width = 7, fig.asp = 0.618)
 
+# csl: "./../Bibliography/bluebook-law-review.csl"
+# csl: bluebook-law-review.csl
+# csl: harvard1.csl
+# csl: ieee.csl
+
 library(flexdashboard)
 library(tidyverse)
 library(magrittr)
@@ -22,8 +27,11 @@ library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages & some tidyver
 library(DT)      # R interface to the JavaScript library DataTables
 library(patchwork) # package for composing plots
           # https://www.data-imaginist.com/2019/patch-it-up-and-send-it-out/
-library(gridExtra)
+library(gghighlight) 
+# https://cran.r-project.org/web/packages/gghighlight/vignettes/gghighlight.html
+# library(gridExtra)
 # library(janitor)
+library(plotly)
 library(highcharter)
 library(dygraphs)  # R interface to the dygraphs JavaScript charting library
 
@@ -522,7 +530,8 @@ knitr::kable(filter(cfr_table, Country %in% compare_countries),
 ```
 
 
-Cumulated and Daily Trend {data-orientation=rows}
+
+Cumulated and Daily Trend {data-orientation=rows data-navmenu="Cumulated and Daily Trend" }
 =====================================
 
 ***
@@ -532,8 +541,8 @@ Cumulated and Daily Trend {data-orientation=rows}
 ```{r}
 
 country <- "World"
+fig_width_trend <- 10 # fig.width = fig_width_trend 7
 fig_asp_trend <- 0.35
-
 ```
 
 
@@ -545,7 +554,7 @@ Row {data-height=400}
 ### `r country`
 
 
-```{r  Time Series Diagram Worldwide, fig.asp = fig_asp_trend}
+```{r  Time Series Diagram Worldwide, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 
 ggts_trend_daily(corona_country %>% filter(Country == country), country)
 
@@ -561,7 +570,7 @@ Row {.tabset .tabset-fade}
 
 ### `r countries[i]` 
 
-```{r  Time Series Diagram countries 1, fig.asp = fig_asp_trend}
+```{r  Time Series Diagram countries 1, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
 ggts_trend_daily(corona_country %>% filter(Country == country), country)
 
@@ -570,17 +579,7 @@ i <- i + 1
 
 ### `r countries[i]`
 
-```{r  Time Series Diagram countries 2, fig.asp = fig_asp_trend}
-country <- countries[i]
-ggts_trend_daily(corona_country %>% filter(Country == country), country)
-
-i <- i + 1
-```
-
-### `r countries[i]`
-
-
-```{r  Time Series Diagram countries 3, fig.asp = fig_asp_trend}
+```{r  Time Series Diagram countries 2, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
 ggts_trend_daily(corona_country %>% filter(Country == country), country)
 
@@ -590,7 +589,17 @@ i <- i + 1
 ### `r countries[i]`
 
 
-```{r  Time Series Diagram countries 4, fig.asp = fig_asp_trend}
+```{r  Time Series Diagram countries 3, fig.width = fig_width_trend,  fig.asp = fig_asp_trend}
+country <- countries[i]
+ggts_trend_daily(corona_country %>% filter(Country == country), country)
+
+i <- i + 1
+```
+
+### `r countries[i]`
+
+
+```{r  Time Series Diagram countries 4, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
 ggts_trend_daily(corona_country %>% filter(Country == country), country)
 
@@ -601,7 +610,7 @@ i <- i + 1
 ### `r countries[i]`
 
 
-```{r  Time Series Diagram countries 5, fig.asp = fig_asp_trend}
+```{r  Time Series Diagram countries 5, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
 ggts_trend_daily(corona_country %>% filter(Country == country), country)
 
@@ -610,7 +619,7 @@ i <- i + 1
 
 ### `r countries[i]`
 
-```{r  Time Series Diagram countries 6, fig.asp = fig_asp_trend}
+```{r  Time Series Diagram countries 6, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
 ggts_trend_daily(corona_country %>% filter(Country == country), country)
 
@@ -619,7 +628,7 @@ i <- i + 1
 
 ### `r countries[i]`
 
-```{r  Time Series Diagram countries 7, fig.asp = fig_asp_trend}
+```{r  Time Series Diagram countries 7, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
 ggts_trend_daily(corona_country %>% filter(Country == country), country)
 
@@ -628,7 +637,7 @@ i <- i + 1
 
 ### `r countries[i]`
 
-```{r  Time Series Diagram countries 8, fig.asp = fig_asp_trend}
+```{r  Time Series Diagram countries 8, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
 ggts_trend_daily(corona_country %>% filter(Country == country), country)
 
@@ -637,7 +646,7 @@ i <- i + 1
 
 ### `r countries[i]`
 
-```{r  Time Series Diagram countries 9, fig.asp = fig_asp_trend}
+```{r  Time Series Diagram countries 9, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
 ggts_trend_daily(corona_country %>% filter(Country == country), country)
 
@@ -686,6 +695,25 @@ plot_dygraph_daily <- function(data_xts, country_select, last_date) {
                       c(as.character(last_date - 2 * 28), as.character(last_date)))
 }
 
+plot_dygraph_daily_repro <- function(data_xts, country_select, last_date) {
+  dygraph(data_xts, 
+          main = paste0(country_select, " - ",
+                        span, 
+                        "-day window Reproduction Number based on Daily Confimred Cases")) %>% 
+    dyAxis("y", label = "Reproduction Number W/ Confidence Interval", 
+           independentTicks = TRUE) %>%
+    dyAxis("y2", label = "Daily Confirmed Cases") %>%
+    dyLegend(width = 400) %>%    
+    dySeries(c("ci.lower","Repro_number", "ci.upper")) %>% 
+    dyLimit(1, "Repro_number = 1",
+            strokePattern = "dashed", color = "red") %>%
+    dySeries("Daily_Confirmed", drawPoints = FALSE,
+             pointShape = "square", axis = "y2") %>%
+    dySeries("Daily_Conf_rol_mean", axis = "y2") %>%
+    dyRangeSelector(dateWindow =
+                      c(as.character(last_date - 2 * 28), as.character(last_date)))
+}
+
 data <- corona_country_wide %>% 
   filter(Country == country_select) 
 
@@ -716,9 +744,20 @@ plot_dygraph_all(data_xts, country_select, last_date)
 
 ```
 
-### Germany - Daily Rolling Mean
+Reproduction Number {data-orientation=rows data-navmenu="Cumulated and Daily Trend"}
+=====================================
 
-```{r dygraph_plot Daily Rolling Mean, eval = TRUE}
+***
+***
+
+**`r country_select` - Rolling Mean and Reproduction Number**  
+
+Row {data-height=400}
+------------------------------------
+
+### `r country_select` Rolling Mean of Daily Cases  
+
+```{r dygraph_plot Daily Rolling Mean}
 
 data_xts <- xts::xts(
   data %>% dplyr::select(Daily_Conf_rol_mean, Daily_Deaths_rol_mean), 
@@ -728,6 +767,103 @@ plot_dygraph_daily(data_xts, country_select, last_date)
 
 ```
 
+### Rolling Mean of Daily Cases {data-width=300} 
+
+The *7-day Rolling Mean/Moving Average* of the Daily Confirmed and Death Cases 
+smooths out the short-term weekly fluctuations (weekend).
+
+The daily confirmed cases are related to the left y-axes, the daily death cases 
+are related to the right y-axes. This clearly outlines the 12 days delay relation between daily confirmed and death cases and also  the roughly the factor 
+of ~1/25 (~4%).
+
+
+
+
+
+
+Row {data-height=400}
+------------------------------------
+
+### `r country_select` Calculated Reproduction Number  
+
+
+```{r dygraph_plot Reproduction Number Rolling Mean, eval = TRUE}
+
+
+# infectivity profile w(t) w/ w(t= day_1 & day>=11)=0:
+infectivity <- c((0:3)/3, 1, (5:0)/5)
+names(infectivity) <- seq_along(infectivity)
+infectivity <- infectivity / sum(infectivity)
+
+width <- 7         #  => window (rolling mean one sided) in repronum() 
+report.delay <- 7  #  => delay (reporting delay) in repronum() 
+alpha <- 0.05      # => default conf.level in repronum() 
+
+
+# add roll_mean
+span <- 7 # rolling mean over 7 days
+weeks <- 6
+
+data_repronum <- corona_country_wide %>% 
+  filter(Country == country_select) %>% 
+  dplyr::select(Country, Date, Daily_Confirmed) %>% 
+  mutate(Daily_Conf_rol_mean = round(
+    stats::filter(Daily_Confirmed, 
+                  filter = rep(1 / span, span)), digits = 0)) 
+
+# repronum_output <- repronum(new.cases = data_repronum$Daily_Conf_rol_mean, 
+repronum_output <- repronum(new.cases = data_repronum$Daily_Confirmed, 
+                            profile = infectivity, 
+                            window = width,
+                            delay = report.delay)
+
+
+data_repronum  <- bind_cols(data_repronum, repronum_output) %>% 
+  rename(Repro_number = repronum)
+
+
+# change tibble in xts object
+index <- data_repronum$Date
+data_repronum  %<>% ungroup() %>% select(-Country, -Date, -repronum.se) 
+
+
+data_xts <- xts::xts(data_repronum,
+  # data %>% dplyr::select(Daily_Conf_rol_mean, Daily_Deaths_rol_mean), 
+  order.by = index)
+
+plot_dygraph_daily_repro(data_xts, country_select, last_date)
+
+
+```
+
+
+### Calculated Reproduction Number {data-width=300} 
+
+The calculation of the  **reproduction number** $R(t)$ uses 
+a R function provided by [[@Hotz2020]](#bib) on GitHub. 
+
+The (effective) **reproduction number** $R(t)$ at day $t$, 
+i.e. the average number of people someone infected at time $t$ would infect 
+if conditions remained the same. 
+
+For further 
+German federal states figures (based on the data provided by Robert Koch Institut) see [[@Hotz2020a]](#bib) and for
+worldwide figures  (based on the data provided by Johns Hopkins University) see [[@Hotz2020b]](#bib).
+
+
+For the calculation the assumption of 7-days reporting delay 
+(confirmed is reported 7-days after 'real' infection) is unchanged and the same
+modelled infectivity profile *w* is used.
+The lower and upper confidence interval lines provide the (approximate, pointwise) 
+**95% confidence interval** (only based on statistical numbers, possible changes 
+in e.g. counting measures can not be considered). 
+
+This is the reason why [[@Hotz2020]](#bib) "do not compute an average over a 
+sliding window of seven days so the viewer immediately recognizes the size of such
+artefacts, warning her to be overly confident in the results. In fact, these artefacts are much larger than the statistical uncertainty due to the stochastic nature of the epidemic which is reflected in the confidence intervals."
+
+Nevertheless, here the calculation is based on the 7-days rolling mean and therefore
+the figure smooths over the the weekly rhythm.
 
 
 Virus Spread on log10 scale {data-navmenu="Exp Linear Growth"}
@@ -778,7 +914,7 @@ plot_1 <- gg_plot +
   geom_line(aes(col = Country), size = 0.5) +
   labs(title = "Cumulated Cases") +
   facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
-             strip.position = "left") 
+             strip.position = "left")
 
 ##  plot per 100,000 inhabitants
 data <- corona_tsbl %>% ungroup() %>% group_by(Case_Type) %>% 
@@ -1319,13 +1455,13 @@ fc_corona_sel %<>% as_tibble(fc_corona_sel) %>%
 corona_country_sel <- bind_rows(corona_country_sel, fc_corona_sel)
 ```
 
-```{r Daily Confirmed lagged, fig.width = 6, fig.asp = 1.2}
+```{r Daily Confirmed lagged, fig.width = 5, fig.asp = 1.2}
 
 data <- corona_country %>%  filter(Country %in% countries_to_forecast &
            Date >= last_date - 21)
 
-ggts_conf_deaths_facet(data, y = Daily_Cases, col = Country)
-
+p <- ggts_conf_deaths_facet(data, y = Daily_Cases, col = Country)
+p # ggplotly(p)
 ```
 
 
@@ -1460,7 +1596,7 @@ Column {data-width=600}
 ### Daily Deaths depending on lagged Daily Confirmed Cases
 
 
-```{r plot lag confirmed country dependent, fig.asp = 0.4}
+```{r plot lag confirmed country dependent, fig.width = 5, fig.asp = 0.4}
 
 save_plot_fit$Germany
 
