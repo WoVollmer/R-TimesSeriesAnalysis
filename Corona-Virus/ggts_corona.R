@@ -1,7 +1,7 @@
 
 ggts_cases_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
   # col_scheme <- "Set1" # "RdYlGn" #"YlOrRd" #"Oranges" # "YlGnBu" # 
-  ggplot(data, aes_(substitute(x), substitute(y), col = substitute(Case_Type))) +
+  p <- ggplot(data, aes_(substitute(x), substitute(y), col = substitute(Case_Type))) +
     facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
                strip.position = "left") +
     geom_point(size = 1, na.rm = TRUE) +
@@ -14,6 +14,7 @@ ggts_cases_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
     # scale_color_discrete(c("blue",  "green", "red")) +
     ggtitle("Confirmed and Death Cases") +
     theme(plot.title = element_text(size = 10))
+  p # ggplotly(p)
 }
 
 # function to get grid plot with Cases trend and Daily_Cases
