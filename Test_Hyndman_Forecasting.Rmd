@@ -337,25 +337,42 @@ aus_exports <- global_economy %>%   # slide_db => rolling mean
     `5-MA` = slide_dbl(Exports, mean, .size = 5, .align = "center")
   )
 
+library(plotly)
+library(slider)
+q <- 2
 aus_exports <- global_economy %>%  # slide_db => rolling mean, same result
   filter(Country == "Australia") %>%
   mutate(
-    `5-MA` = slide_dbl(Exports,  ~ mean(.), .size = 5),
+    `5-MA` = tsibble::slide_dbl(Exports,  ~ mean(.), .size = 5),
+    q_ma_middle =  slider::slide_dbl(Exports,  ~ mean(.), 
+                                     .before = q, .after = q, .complete = TRUE),
+    q_ma_left =  slider::slide_dbl(Exports,  ~ mean(.), 
+                                   .before = 2*q, .after = 0, .complete = TRUE),
+    q_ma_right =  slider::slide_dbl(Exports,  ~ mean(.), 
+                                    .before = 0, .after = 2*q, .complete = TRUE),
     stretch = stretch_dbl(Exports,  ~ mean(.), .init = 5) # up to mean overall
   )
 
-aus_exports_tile <- global_economy %>%  # tile_db => slot by slot => only few data
-  filter(Country == "Australia") %$%
-  tile_dbl(Exports,  ~ mean(.), .size = 5)
+# aus_exports_tile <- global_economy %>%  # tile_db => slot by slot => only few data
+#   filter(Country == "Australia") %$%
+#   tile_dbl(Exports,  ~ mean(.), .size = 5)
+# 
+# aus_exports_tile <- global_economy %>%  # tile_db => slot by slot => only few data
+#   filter(Country == "Australia") %$%
+#   slider::slide_dbl(Exports,  ~ mean(.), .before = q, .after = q)
 
-aus_exports %>%
+p <- aus_exports %>%
   autoplot(Exports) +
   autolayer(aus_exports, `5-MA`, color='red') +
+  autolayer(aus_exports, q_ma_middle, color='cyan') +
+    autolayer(aus_exports, q_ma_left, color='cyan1') +
+    autolayer(aus_exports, q_ma_right, color='cyan2') +
   autolayer(aus_exports, stretch, color='blue') +
   xlab("Year") + ylab("Exports (% of GDP)") +
   ggtitle("Total Australian exports") +
   guides(colour=guide_legend(title="series"))
-
+p
+# ggplotly(p)
 
 beer <- aus_production %>%
   filter(year(Quarter) >= 1992) %>%

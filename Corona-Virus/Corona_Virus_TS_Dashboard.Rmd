@@ -663,16 +663,15 @@ i <- i + 1
 # provides x-axis values and all subsequent elements/columns provide one or more
 # series of y-values.
 plot_dygraph_all <- function(data_xts, country_select, last_date) {
-  
   dygraph(data_xts, 
           main = paste(country_select, "- Cumulated and Daily Cases")) %>% 
-    dyAxis("y", label = "Confirmed Cases") %>%
-    dyAxis("y2", label = "Death Cases", independentTicks = TRUE) %>%
+    dyAxis("y", label = "Cumulated Cases") %>%
+    dyAxis("y2", label = "Daily Cases", independentTicks = TRUE) %>%
     dyLegend(width = 400) %>% 
     dySeries("Confirmed", drawPoints = TRUE, pointShape = "square") %>% 
-    dySeries("Deaths", drawPoints = TRUE, pointShape = "square", 
+    dySeries("Deaths", drawPoints = TRUE, pointShape = "square") %>% 
+    dySeries("Daily_Confirmed", drawPoints = TRUE, pointShape = "square",
              axis = "y2") %>% 
-    dySeries("Daily_Confirmed", drawPoints = TRUE, pointShape = "square") %>% 
     dySeries("Daily_Deaths", drawPoints = TRUE, pointShape = "square", 
              axis = "y2") %>% 
     dyRangeSelector(dateWindow = 
@@ -681,16 +680,17 @@ plot_dygraph_all <- function(data_xts, country_select, last_date) {
 
 
 plot_dygraph_daily <- function(data_xts, country_select, last_date) {
-  
   dygraph(data_xts, 
           main = paste0(country_select, " - ",
-                       span, "-day Rolling Mean of Daily Cases")) %>% 
+                        span, "-day Rolling Mean of Daily Cases")) %>% 
     dyAxis("y", label = "Daily Confirmed Cases") %>%
     dyAxis("y2", label = "Daily Death Cases", independentTicks = TRUE) %>%
     dyLegend(width = 400) %>% 
-    dySeries("Daily_Conf_rol_mean", drawPoints = FALSE, pointShape = "square") %>% 
-    dySeries("Daily_Deaths_rol_mean", drawPoints = FALSE, pointShape = "square", 
-             axis = "y2") %>% 
+    # dySeries("Daily_Confirmed", drawPoints = TRUE, pointShape = "square") %>% 
+    dySeries("Daily_Conf_rol_mean", drawPoints = FALSE) %>% 
+    # dySeries("Daily_Deaths", drawPoints = TRUE, pointShape = "square", 
+    #          axis = "y2") %>%     
+    dySeries("Daily_Deaths_rol_mean", drawPoints = FALSE, axis = "y2") %>% 
     dyRangeSelector(dateWindow = 
                       c(as.character(last_date - 2 * 28), as.character(last_date)))
 }
@@ -760,7 +760,8 @@ Row {data-height=400}
 ```{r dygraph_plot Daily Rolling Mean}
 
 data_xts <- xts::xts(
-  data %>% dplyr::select(Daily_Conf_rol_mean, Daily_Deaths_rol_mean), 
+  data %>% dplyr::select(Daily_Conf_rol_mean,    
+                         Daily_Deaths_rol_mean), 
   order.by = index)
 
 plot_dygraph_daily(data_xts, country_select, last_date)

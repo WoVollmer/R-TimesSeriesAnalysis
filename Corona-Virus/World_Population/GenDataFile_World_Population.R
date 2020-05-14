@@ -18,7 +18,7 @@ world_population <-
 world_population %<>% filter(!is.na(Country)) %>% 
   arrange(Country)
 world_population$Population <- as.numeric(world_population$Population)
-saveRDS(world_population, "./Corona-Virus/world_population.RDS")
+saveRDS(world_population, "./world_population.RDS")
 
 check <- FALSE
 if (check) {
