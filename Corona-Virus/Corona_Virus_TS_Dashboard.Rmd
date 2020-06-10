@@ -54,6 +54,7 @@ library(dygraphs)  # R interface to the dygraphs JavaScript charting library
 ######  variables clean up, library() and	source() statements
 # setwd("D:/Wolfgang/Programs-R/R-WeatherAnalysis")
 setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
+# setwd("C:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
 rm(list=ls()) # deletes all existing objects / variables !!
 # Prog.Start <- Sys.time()
 
@@ -92,6 +93,16 @@ range_daily_reg <- 21  # one week is to short, confidence level to large !!
 range_cfr <- 14  # 14days cfr past period length
 lag_n <- 11  # average confirmed lag - for all countries
 
+```
+
+```{r path on notebook, eval = FALSE}
+
+corona_confirmed <- read_csv("C:/Wolfgang/Programs-R/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv") %>%
+  mutate(Case_Type = "Confirmed")
+corona_deaths <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv")  %>%
+  mutate(Case_Type = "Deaths")
+corona_recovered <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv") %>%
+  mutate(Case_Type = "Recovered")
 ```
 
 
