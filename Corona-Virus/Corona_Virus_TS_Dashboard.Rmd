@@ -24,6 +24,7 @@ library(tidyverse)
 library(magrittr)
 library(lubridate)
 library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages & some tidyverse
+library(slider) # sliding window functions - rolling averages, cumulative sums
 library(DT)      # R interface to the JavaScript library DataTables
 library(patchwork) # package for composing plots
           # https://www.data-imaginist.com/2019/patch-it-up-and-send-it-out/
@@ -193,7 +194,6 @@ corona_country %<>% filter(Case_Type != "Recovered")
 
 ```
 
-
 ```{r add population per country to data}
 
 # add world population and normalize Confirmed and Deaths per 100k inhabitants
@@ -217,6 +217,9 @@ corona_population %<>%
 # saveRDS(corona_country, "corona_country.RDS")
 # saveRDS(corona_population, "corona_population.RDS")
 
+# corona_country <- readRDS("corona_country.RDS")
+# corona_population <- readRDS("corona_population.RDS")
+
 corona_country_wide <- corona_country %>% 
   pivot_wider(names_from = Case_Type, 
               values_from = c(Cases, Daily_Cases)) %>% 
@@ -234,6 +237,49 @@ corona_population_wide <- corona_population %>%
          Daily_Conf_100k = Daily_Cases_100k_Confirmed,
          Daily_Deaths_100k = Daily_Cases_100k_Deaths) 
 
+```
+
+```{r add mean past 7 days}
+# add one-sided roll_mean
+span <- 7 #  mean over 7 days
+
+corona_country_wide %<>% 
+  mutate(Conf_mp7d = round(
+    stats::filter(Daily_Confirmed, 
+                  filter = rep(1 / span, span), sides = 1), digits = 0),
+    Deaths_mp7d = round( 
+      stats::filter(Daily_Deaths, 
+                    filter = rep(1 / span, span), sides = 1), digits = 0)) 
+# corona_country_wide %>% filter(Country == "Germany" & Date >= (last_date-6)) %>% 
+#        select(Daily_Confirmed) %>% summarize(mean = mean(Daily_Confirmed))
+
+corona_population_wide %<>% 
+  mutate(Conf_100k_mp7d = round(
+    stats::filter(Daily_Conf_100k, 
+                  filter = rep(1 / span, span), sides = 1), digits = 2),
+    Deaths_100k_mp7d = round( 
+      stats::filter(Daily_Deaths_100k, 
+                    filter = rep(1 / span, span), sides = 1), digits = 2)) 
+# corona_population_wide %>% filter(Country == "Germany" & Date >= (last_date-6)) %>%
+#        select(Daily_Conf_100k) %>% summarize(mean = mean(Daily_Conf_100k))
+
+```
+
+```{r slider alternative rolling mean calculation, eval = FALSE}
+corona_country_wide %<>% 
+  mutate(Conf_mp7d_s = round(
+    slider::slide_dbl(Daily_Confirmed,  ~ mean(.), 
+                       .before = span - 1, .after = 0, .complete = TRUE), 
+    digits = 0),
+    Deaths_mp7d_s = round( 
+    slider::slide_dbl(Daily_Deaths,  ~ mean(.), 
+                       .before = span - 1, .after = 0, .complete = TRUE), 
+    digits = 0))
+
+
+```
+
+```{r}
 corona_country_last <- corona_country %>%  filter(Date == last_date)
 corona_population_last <- corona_population %>% filter(Date == last_date)
 
@@ -242,7 +288,6 @@ corona_population_last <- corona_population %>% filter(Date == last_date)
 
 corona_tsbl <- corona_population  %>%
   as_tsibble(index = Date, key = c(Country, Case_Type))
-
 ```
 
 
@@ -320,7 +365,8 @@ Column
 
 ### Table Confirmed and Deaths - Cumulated and Daily Cases
 
-Case numbers are taken from [[@JHU2020a]](#bib)
+Case numbers are taken from [[@JHU2020a]](#bib). In order to compensate for the 
+daily fluctuations, the mean case numbers for the past seven days (*_mp7d) were also added.
 
 ```{r print datatable in wide format}
 
@@ -371,7 +417,8 @@ Column
 
 ### Table Confirmed and Deaths - Cumulated and Daily Cases per 100,000 Inhabitants
 
-Population numbers are taken from [[@CIA2020]](#bib), [[@CIA2020a]](#bib)
+Population numbers are taken from [[@CIA2020]](#bib), [[@CIA2020a]](#bib).
+In order to compensate for the daily fluctuations, the mean case numbers for the past seven days (*_mp7d) were also added.
 
 ```{r print datatable 100k in wide format}
 
@@ -895,7 +942,8 @@ Column
 
 ```{r}
 
-labels_scale <- c(10, 100, 1000, 5000, 10000, 50000, 100000, 500000)
+labels_scale <- c(10, 100, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, 
+                  5000000, 10000000)
 
 ```
 
@@ -1522,7 +1570,10 @@ lm_term <- c("lag(Confirmed, lag_days - 2)",
 
 country_table <- tibble()
 save_plot_fit <- list()
-for (country in countries_to_forecast) {
+
+## issue testing ##
+countries_to_forecast <- "Germany"
+for (country in countries_to_forecast) {  
   lag_days <- (countries_fc_param %>% 
                  filter(Country == country))$confirmed_to_death
   # model ~ 0 + => w/o intercept
@@ -1539,7 +1590,7 @@ for (country in countries_to_forecast) {
     fit_best_germany <- fit_best
   }
 
-    corona_deaths_of_confirmed <- corona_tsbl_lag_range_wide %>%
+  corona_deaths_of_confirmed <- corona_tsbl_lag_range_wide  %>% ungroup() %>%
     new_data(lag_days, keep_all = TRUE)
   
   
@@ -1556,7 +1607,7 @@ for (country in countries_to_forecast) {
                          lag_Confirmed = lag_days, 
                          CFR = as.numeric(
                            round(coef(fit_best) %>%  
-                                   filter(term %in% lm_term) %>%
+                                   filter(term %in% term) %>%
                                    summarise(CFR = sum(estimate)), digits = 2))
   )
   country_table <- bind_rows(country_table, country_table_new)
