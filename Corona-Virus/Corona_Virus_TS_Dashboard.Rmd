@@ -52,19 +52,14 @@ library(dygraphs)  # R interface to the dygraphs JavaScript charting library
 ################################################################################
 
 ######  variables clean up, library() and	source() statements
-# setwd("D:/Wolfgang/Programs-R/R-WeatherAnalysis")
-setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
-# setwd("C:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
+# setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
+setwd("C:/Wolfgang/Programs-R/R-TimesSeriesAnalysis/Corona-Virus")
 rm(list=ls()) # deletes all existing objects / variables !!
 # Prog.Start <- Sys.time()
 
 ######  Plot and util functions
 ######  ######  Plot and util functions
-# source("./uts_corona.R")  # utility functions for time series
 source("./ggts_corona.R") # ggplot2 functions for time series plots
-
-# source("./../uts_TimeSeries.R")  # utility functions for time series
-# source("./../ggts_TimeSeries.R") # ggplot2 functions for time series plots
 
 theme_replace(
   plot.title = element_text(
@@ -95,25 +90,25 @@ lag_n <- 11  # average confirmed lag - for all countries
 
 ```
 
-```{r path on notebook, eval = FALSE}
+```{r path on notebook, eval = TRUE}
 
 corona_confirmed <- read_csv("C:/Wolfgang/Programs-R/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv") %>%
   mutate(Case_Type = "Confirmed")
-corona_deaths <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv")  %>%
+corona_deaths <- read_csv("C:/Wolfgang/Programs-R/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv")  %>%
   mutate(Case_Type = "Deaths")
-corona_recovered <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv") %>%
+corona_recovered <- read_csv("C:/Wolfgang/Programs-R/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv") %>%
   mutate(Case_Type = "Recovered")
 ```
 
 
 ```{r read data bind rows and chanfge to long format}
 
-corona_confirmed <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv") %>%
-  mutate(Case_Type = "Confirmed")
-corona_deaths <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv")  %>%
-  mutate(Case_Type = "Deaths")
-corona_recovered <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv") %>%
-  mutate(Case_Type = "Recovered")
+# corona_confirmed <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv") %>%
+#   mutate(Case_Type = "Confirmed")
+# corona_deaths <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv")  %>%
+#   mutate(Case_Type = "Deaths")
+# corona_recovered <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv") %>%
+#   mutate(Case_Type = "Recovered")
 
 
 corona_wide <- bind_rows(corona_confirmed, corona_deaths, corona_recovered)
@@ -295,10 +290,10 @@ corona_country_last <- corona_country %>%  filter(Date == last_date)
 corona_population_last <- corona_population %>% filter(Date == last_date)
 
 # corona_tsbl <- corona_country  %>%
-#   as_tsibble(index = Date, key = c(Country, Case_Type))
+#   tsibble::as_tsibble(index = Date, key = c(Country, Case_Type))
 
 corona_tsbl <- corona_population  %>%
-  as_tsibble(index = Date, key = c(Country, Case_Type))
+  tsibble::as_tsibble(index = Date, key = c(Country, Case_Type))
 ```
 
 
@@ -1564,7 +1559,7 @@ corona_tsbl_lag_range_wide <- corona_tsbl_lag_range %>%
   pivot_wider(id_cols = c(Country, Date), 
               names_from = Case_Type, 
               values_from = Daily_Cases) %>% 
-  as_tsibble(index = Date, key = c(Country))
+  tsibble::as_tsibble(index = Date, key = c(Country))
   
 no_values <- nrow(corona_tsbl_lag_range_wide %>% filter(Country == country)) 
 
@@ -1583,7 +1578,6 @@ country_table <- tibble()
 save_plot_fit <- list()
 
 ## issue testing ##
-countries_to_forecast <- "Germany"
 for (country in countries_to_forecast) {  
   lag_days <- (countries_fc_param %>% 
                  filter(Country == country))$confirmed_to_death
