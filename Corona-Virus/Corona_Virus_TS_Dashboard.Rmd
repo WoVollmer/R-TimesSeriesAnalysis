@@ -51,15 +51,10 @@ library(dygraphs)  # R interface to the dygraphs JavaScript charting library
 ## https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Corona-Virus##              
 ################################################################################
 
-######  variables clean up, library() and	source() statements
-setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
-# setwd("C:/Wolfgang/Programs-R/R-TimesSeriesAnalysis/Corona-Virus")
+######  variables clean up, library() and	source() statements 
 rm(list=ls()) # deletes all existing objects / variables !!
 # Prog.Start <- Sys.time()
 
-######  Plot and util functions
-######  ######  Plot and util functions
-source("./ggts_corona.R") # ggplot2 functions for time series plots
 
 theme_replace(
   plot.title = element_text(
@@ -72,6 +67,7 @@ x_axis_theme <- element_text(size = 14)
 
 
 ```{r settings}
+device <- "desktop" # "notebook"  # to define setwd() and data path
 
 compare_countries <- c("Austria", "France", "Germany", "Italy", "India",
                        "South Korea", "Spain",  "United States of America")
@@ -90,26 +86,47 @@ lag_n <- 11  # average confirmed lag - for all countries
 
 ```
 
-```{r path on notebook, eval = FALSE}
+```{r path on desktop vs. notebook, eval = TRUE}
+if (device == "desktop") {
+  setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
+  
+  data_path <- 
+    "D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
+  
+} else if (device == "notebook") {
+  # attention: here we have (whyever) TimesS.. (Time + s) instead of TimeS..
+  setwd("C:/Wolfgang/Programs-R/R-TimesSeriesAnalysis/Corona-Virus")
+  
+  data_path <- 
+    "C:/Wolfgang/Programs-R/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
+} else {
+  stop("no valid device outlined")
+}
 
-corona_confirmed <- read_csv("C:/Wolfgang/Programs-R/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv") %>%
+######  Plot and util functions
+######  ######  Plot and util functions
+source("./ggts_corona.R") # ggplot2 functions for time series plots
+
+# read world population for normalization per 100k inhabitants
+population_countries <- readRDS("./world_population.RDS")
+
+```
+
+```{r path on desktop PC, eval = TRUE}
+
+corona_confirmed <- 
+  read_csv(paste0(data_path, "/time_series_covid19_confirmed_global.csv")) %>%
   mutate(Case_Type = "Confirmed")
-corona_deaths <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv")  %>%
+corona_deaths <- 
+  read_csv(paste0(data_path, "/time_series_covid19_deaths_global.csv"))  %>%
   mutate(Case_Type = "Deaths")
-corona_recovered <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv") %>%
+corona_recovered <- 
+  read_csv(paste0(data_path, "/time_series_covid19_recovered_global.csv")) %>%
   mutate(Case_Type = "Recovered")
 ```
 
 
 ```{r read data bind rows and chanfge to long format}
-
-corona_confirmed <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv") %>%
-  mutate(Case_Type = "Confirmed")
-corona_deaths <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv")  %>%
-  mutate(Case_Type = "Deaths")
-corona_recovered <- read_csv("D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv") %>%
-  mutate(Case_Type = "Recovered")
-
 
 corona_wide <- bind_rows(corona_confirmed, corona_deaths, corona_recovered)
 
@@ -203,7 +220,6 @@ corona_country %<>% filter(Case_Type != "Recovered")
 ```{r add population per country to data}
 
 # add world population and normalize Confirmed and Deaths per 100k inhabitants
-population_countries <- readRDS("./world_population.RDS")
 population_total <- sum(population_countries$Population, na.rm = TRUE)
 population_world <- tibble(Country = "World", Population = population_total)
 population_countries <- bind_rows(population_countries, population_world)
