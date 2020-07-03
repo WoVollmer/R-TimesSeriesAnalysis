@@ -187,9 +187,9 @@ Comoros,Comoros,846281
 NA,Cook Islands,8574
 NA,Curacao,151345
 NA,Falkland,3198
-NA,Faroe,51628
+Faroe Islands,Faroe,51628
 NA,Gibraltar,29581
-NA,Greenland,57616
+Greenland,Greenland,57616
 NA,Guam,168485
 NA,Guernsey,67052
 NA,Hong Kong,7249907

@@ -160,6 +160,8 @@ corona %<>% mutate(
   Country == "Burma" ~ "Myanmar",
   Country == "Mainland China" ~ "China",
   Country == "Czechia" ~ "Czech Republic",
+  Country == "Denmark" & `Province/State` == "Greenland" ~ "Greenland",
+  Country == "Denmark" & `Province/State` == "Faroe Islands" ~ "Faroe Islands",
   Country == "Guinea-Bissau" ~ "Guinea Bissau",
   Country == "Hong Kong SAR" ~ "Hong Kong",
   Country == "Holy See" ~ "Holy See (Vatican City)",
@@ -191,6 +193,7 @@ corona %<>% mutate(
   arrange(Country, `Province/State`) %>% 
   group_by(Case_Type, Country, `Province/State`)
 
+# View(corona %>% filter(Date == last_date & Case_Type == "Confirmed"))
 ```
 
 
@@ -221,7 +224,7 @@ corona_country <- bind_rows(corona_country, corona_country_sum)
 
 # without Case_Type "Recovered"  - no real value add, no consistent data
 corona_country %<>% filter(Case_Type != "Recovered")
-
+# View(corona_country %>% filter(Date == last_date & Case_Type == "Confirmed"))
 ```
 
 ```{r add population per country to data}
@@ -334,6 +337,7 @@ World Map
 ### Total Confirmed for each Country
 
 ```{r World Map Confirmed}
+# see https://code.highcharts.com/mapdata/
 
 # plot total confirmed in world
 i <- "Confirmed"
