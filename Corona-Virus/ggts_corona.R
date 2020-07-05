@@ -72,6 +72,18 @@ world_map_plot <- function(data, i) {
     hc_title(text = paste(i, "- Cumulated Cases / Country - Actual Figures"))
 }
 
+world_map_plot_inh <- function(data, i) {
+  highchart() %>%
+    hc_add_series_map(worldgeojson, 
+                      data, 
+                      value = 'Cases_100k', 
+                      joinBy = c('name', 'Country'))  %>% 
+    #hc_colors(c("darkorange", "darkgray")) %>% 
+    hc_colorAxis(stops = color_stops()) %>% 
+    # hc_title(text = "Spread of Coronavirus SARS-CoV-2") %>% 
+    hc_title(text = paste(i, "- Cumulated Cases per 100k Inhabitants / Country - Actual Figures"))
+}
+
 
 # Visualization with top 10 country bar chart
 # https://rdrr.io/cran/highcharter/man/hc_xAxis.html

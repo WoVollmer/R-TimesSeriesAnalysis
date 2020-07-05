@@ -324,7 +324,7 @@ corona_tsbl <- corona_population  %>%
 
 
 
-World Map
+World Map {data-navmenu="World Map"}
 =====================================  
 
 ***
@@ -356,6 +356,35 @@ world_map_plot(filter(corona_country_last, Case_Type == i & Country != "World"),
 
 ```
 
+
+World Map / Inhabitants {data-navmenu="World Map"}
+=====================================
+
+<center>**Spread of Coronavirus SARS-CoV-2**</center>
+
+**World Map with Confirmed and Death Cases** (Data source [[@JHU2020a]](#bib), see also [[@JHU2020]](#bib))  
+
+### Total Confirmed for each Country per 100,000 Inhabitants
+
+```{r World Map Confirmed per 100k Inhabitants}
+# see https://code.highcharts.com/mapdata/
+
+# plot total confirmed in world
+i <- "Confirmed"
+world_map_plot_inh(filter(corona_population_last, Case_Type == i & Country != "World"), i)
+
+```
+
+
+### Total Deaths for each Country per 100,000 Inhabitants
+
+```{r World Map Deaths per 100k Inhabitants}
+
+# plot total deaths in world
+i <- "Deaths"
+world_map_plot_inh(filter(corona_population_last, Case_Type == i & Country != "World"), i)
+
+```
 
 
 Bar Chart {data-navmenu="Bar Chart"}
@@ -430,7 +459,7 @@ Column {data-width=400}
 
 # plot bar chart Confirmed / 100k for countries and + world
 i <- "Confirmed"
-bar_chart_countries_pop(filter(corona_population_last , Case_Type == i), i)
+bar_chart_countries_pop(filter(corona_population_last, Case_Type == i), i)
 
 ```
 
@@ -441,7 +470,7 @@ bar_chart_countries_pop(filter(corona_population_last , Case_Type == i), i)
 
 # plot bar chart deaths / country
 i <- "Deaths"
-bar_chart_countries_pop(filter(corona_population_last , Case_Type == i), i)
+bar_chart_countries_pop(filter(corona_population_last, Case_Type == i), i)
 
 ```
 
