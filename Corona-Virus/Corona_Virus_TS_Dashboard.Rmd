@@ -83,7 +83,9 @@ countries_exp_growth <- c("World", "China", "Austria", "France", "Germany", "Ita
                        "South Korea", "Spain",  "United States of America")
 country_select <- "Germany"
 
-range_reg <- 7   # important - no Cases value = 0 are llowed => log(0) = inf !
+span <- 7 #  for rolling mean over 7 days
+
+range_reg <- 7   # important - no Cases value = 0 are allowed => log(0) = inf !
 # changed from 9 -> 7 days, 
 # but whole week is necessary to get rid of weekly fluctuations
 range_forcast <- 14  # 14days forecast => unclass(last_date + 1 + range_forcast -1)
@@ -244,7 +246,7 @@ corona_population %<>%
 ```
 
 
-```{r complete data}
+```{r complete data old, eval = FALSE}
 
 # saveRDS(corona_country, "corona_country.RDS")
 # saveRDS(corona_population, "corona_population.RDS")
@@ -271,9 +273,48 @@ corona_population_wide <- corona_population %>%
 
 ```
 
-```{r add mean past 7 days}
-# add one-sided roll_mean
-span <- 7 #  mean over 7 days
+```{r complete data}
+corona_all_data_wide <- corona_population %>% 
+  pivot_wider(names_from = Case_Type, 
+              values_from = c(Cases, Daily_Cases, Cases_100k, Daily_Cases_100k)) %>% 
+  rename(Confirmed = Cases_Confirmed,
+         Deaths = Cases_Deaths,
+         Daily_Confirmed = Daily_Cases_Confirmed,
+         Daily_Deaths = Daily_Cases_Deaths,
+         Conf_100k = Cases_100k_Confirmed,
+         Deaths_100k = Cases_100k_Deaths,
+         Daily_Conf_100k = Daily_Cases_100k_Confirmed,
+         Daily_Deaths_100k = Daily_Cases_100k_Deaths) %>% 
+  mutate(Conf_mp7d = round(
+    stats::filter(Daily_Confirmed, 
+                  filter = rep(1 / span, span), sides = 1), digits = 0),
+    Deaths_mp7d = round( 
+      stats::filter(Daily_Deaths, 
+                    filter = rep(1 / span, span), sides = 1), digits = 0),
+    Conf_100k_mp7d = round(
+      stats::filter(Daily_Conf_100k, 
+                    filter = rep(1 / span, span), sides = 1), digits = 2),
+    Deaths_100k_mp7d = round( 
+      stats::filter(Daily_Deaths_100k, 
+                    filter = rep(1 / span, span), sides = 1), digits = 2)) %>% 
+  dplyr::select(Country, Population, Date, 
+               Confirmed, Daily_Confirmed, Conf_mp7d, Conf_100k, 
+               Daily_Conf_100k, Conf_100k_mp7d, 
+               Deaths, Daily_Deaths, Deaths_mp7d, Deaths_100k, 
+               Daily_Deaths_100k, Deaths_100k_mp7d)
+
+corona_country_wide <- corona_all_data_wide %>% 
+  dplyr::select(!contains("_100k"), -Population)
+
+corona_population_wide <- corona_all_data_wide %>% 
+    dplyr::select(Country, Date, contains("_100k"))
+
+# View(corona_all_data_wide %>% filter(Date == last_date))
+```
+
+
+```{r add mean past 7 days, eval = FALSE}
+# add one-sided roll_mean #  mean over span (=7 days)
 
 corona_country_wide %<>% 
   mutate(Conf_mp7d = round(
