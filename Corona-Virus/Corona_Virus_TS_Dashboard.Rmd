@@ -117,7 +117,8 @@ if (device == "desktop") {
 source("./ggts_corona.R") # ggplot2 functions for time series plots
 
 # read world population for normalization per 100k inhabitants
-population_countries <- readRDS("./world_population.RDS")
+# population_countries <- readRDS("./world_population.RDS") # data from CIA
+population_countries <- readRDS("./world_population_un.RDS")
 
 ```
 
@@ -175,6 +176,8 @@ corona %<>% mutate(
   Country == "Congo (Brazzaville)" ~ "Republic of Congo",
   Country == "Congo (Kinshasa)" ~ "Democratic Republic of the Congo",
   Country == "Korea, South" ~ "South Korea",
+  Country == "Serbia" ~ "Republic of Serbia",
+  Country == "North Macedonia" ~ "Macedonia",
   Country == "Eswatini" ~ "Swaziland",
   Country == "Taiwan*" ~ "Taiwan",
   Country == "Tanzania" ~ "United Republic of Tanzania",
@@ -229,47 +232,30 @@ corona_country %<>% filter(Case_Type != "Recovered")
 # View(corona_country %>% filter(Date == last_date & Case_Type == "Confirmed"))
 ```
 
-```{r add population per country to data}
+
+```{r un add population per country to data}
 
 # add world population and normalize Confirmed and Deaths per 100k inhabitants
-population_total <- sum(population_countries$Population, na.rm = TRUE)
-population_world <- tibble(Country = "World", Population = population_total)
-population_countries <- bind_rows(population_countries, population_world)
+
+population_countries <- population_countries %>%
+  dplyr::select(Country, Population)
           
-corona_population <- full_join(corona_country, population_countries)
+corona_population <- full_join(corona_country, population_countries) 
 # corona_population <- full_join(corona_country_last, population_countries)
 
-corona_population %<>% 
+corona_population %<>% filter(!is.na(Date)) %>% 
   mutate(Cases_100k = round(Cases/(Population/100000), digits = 1),
          Daily_Cases_100k = round(Daily_Cases/(Population/100000), digits = 2))
 
 ```
 
-
-```{r complete data old, eval = FALSE}
+```{r save read rds data, eval = FALSE}
 
 # saveRDS(corona_country, "corona_country.RDS")
 # saveRDS(corona_population, "corona_population.RDS")
 
 # corona_country <- readRDS("corona_country.RDS")
 # corona_population <- readRDS("corona_population.RDS")
-
-corona_country_wide <- corona_country %>% 
-  pivot_wider(names_from = Case_Type, 
-              values_from = c(Cases, Daily_Cases)) %>% 
-  rename(Confirmed = Cases_Confirmed,
-         Deaths = Cases_Deaths,
-         Daily_Confirmed = Daily_Cases_Confirmed,
-         Daily_Deaths = Daily_Cases_Deaths)
-
-corona_population_wide <- corona_population %>% 
-  select(-Cases, -Daily_Cases, -Population) %>% 
-  pivot_wider(names_from = Case_Type, 
-              values_from = c(Cases_100k, Daily_Cases_100k)) %>% 
-  rename(Conf_100k = Cases_100k_Confirmed,
-         Deaths_100k = Cases_100k_Deaths,
-         Daily_Conf_100k = Daily_Cases_100k_Confirmed,
-         Daily_Deaths_100k = Daily_Cases_100k_Deaths) 
 
 ```
 
@@ -312,45 +298,6 @@ corona_population_wide <- corona_all_data_wide %>%
 # View(corona_all_data_wide %>% filter(Date == last_date))
 ```
 
-
-```{r add mean past 7 days, eval = FALSE}
-# add one-sided roll_mean #  mean over span (=7 days)
-
-corona_country_wide %<>% 
-  mutate(Conf_mp7d = round(
-    stats::filter(Daily_Confirmed, 
-                  filter = rep(1 / span, span), sides = 1), digits = 0),
-    Deaths_mp7d = round( 
-      stats::filter(Daily_Deaths, 
-                    filter = rep(1 / span, span), sides = 1), digits = 0)) 
-# corona_country_wide %>% filter(Country == "Germany" & Date >= (last_date-6)) %>% 
-#        select(Daily_Confirmed) %>% summarize(mean = mean(Daily_Confirmed))
-
-corona_population_wide %<>% 
-  mutate(Conf_100k_mp7d = round(
-    stats::filter(Daily_Conf_100k, 
-                  filter = rep(1 / span, span), sides = 1), digits = 2),
-    Deaths_100k_mp7d = round( 
-      stats::filter(Daily_Deaths_100k, 
-                    filter = rep(1 / span, span), sides = 1), digits = 2)) 
-# corona_population_wide %>% filter(Country == "Germany" & Date >= (last_date-6)) %>%
-#        select(Daily_Conf_100k) %>% summarize(mean = mean(Daily_Conf_100k))
-
-```
-
-```{r slider alternative rolling mean calculation, eval = FALSE}
-corona_country_wide %<>% 
-  mutate(Conf_mp7d_s = round(
-    slider::slide_dbl(Daily_Confirmed,  ~ mean(.), 
-                       .before = span - 1, .after = 0, .complete = TRUE), 
-    digits = 0),
-    Deaths_mp7d_s = round( 
-    slider::slide_dbl(Daily_Deaths,  ~ mean(.), 
-                       .before = span - 1, .after = 0, .complete = TRUE), 
-    digits = 0))
-
-
-```
 
 ```{r}
 corona_country_last <- corona_country %>%  filter(Date == last_date)
@@ -520,7 +467,7 @@ Column
 
 ### Table Confirmed and Deaths - Cumulated and Daily Cases per 100,000 Inhabitants
 
-Population numbers are taken from [[@CIA2020]](#bib), [[@CIA2020a]](#bib).
+Population numbers are taken from [[@UNO2020]](#bib).
 In order to compensate for the daily fluctuations, the mean case numbers for the past seven days (*_mp7d) were also added.
 
 ```{r print datatable 100k in wide format}
