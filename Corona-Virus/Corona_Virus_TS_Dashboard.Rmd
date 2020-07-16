@@ -157,7 +157,11 @@ corona %<>% mutate(Date = as.Date(Date, format = "%m/%d/%y")) %>%
 # clean-up column names
 # corona %>% janitor::clean_names()
 
-# clean-up content of column Country
+# clean-up names of column Country / denmark "regions" to country 
+# same country names for covid-19 data and population_countries are needed
+# names have to fit to names used by
+# https://code.highcharts.com/mapdata/ => 
+# World with Palestine areas, high resolution Demo  => Highmaps basic demo
 corona %<>% mutate(
   Country = case_when(
   Country == "Burma" ~ "Myanmar",
@@ -590,8 +594,11 @@ For the assumed time periods see [[@RKI2020a]](#bib), [[@RKI2020b]](#bib), for C
 and Incubation Period in general see [[@Wikipedia2020a]](#bib),
 [[@Wikipedia2020b]](#bib).
 
-The simple calculation with unlagged cumulated confirmed cases divided by cumulated
-deaths results in a significant underestimation of the CFR in health systems with early disease detection.
+The simple calculation with unlagged cumulated confirmed cases divided by
+cumulated deaths results in a significant underestimation of the CFR in health systems with early disease detection. 
+If the number of cumulative cases is already large compared to the number of 
+active cases (~ cases from the past two weeks), the "lagged" rsp. "unlagged"
+values converge.
 
 The Infection Fatality Rate (IFR) is the fatality rate of all infection, that means
 detected confirmed cases and undetected cases (asymptomatic and not tested group).
@@ -976,9 +983,8 @@ Column {data-width=100}
 
 ### Exponential Growth Evaluation
 
-China and South Korea have slowed down significantly the exponential growth.
-Therefore, their lines in the chart with the log10 scale have no longer a 
-significant slope.
+China and South Korea slowed down exponential growth significantly at an early stage. Their lines in the diagram with the log10 scale have therefore no longer 
+had a significant slope.
  
 In early phases countries have a more or less unchecked exponential
 growth. 
@@ -1106,7 +1112,7 @@ and doubling time
 $T[days] = t[days] * log_{10}(2) \approx t[days] * 0.30$.
 </p>
 
-For Spain, Italy, Germany we have had a doubling time of only $T \approx 9days * 0.3 \approx 2.7 days$ !!. 
+For Spain, Italy, Germany we have had a doubling time of only $T \approx 9days * 0.3 \approx 2.7 days$ at the beginning of the pandemic!!. 
 
 The *doubling time $T$* and the *Forecast* is calculated for following
 selected countries: **`r compare_countries`** and **World** in total 
@@ -1244,7 +1250,7 @@ uncertainty in forecasts based on the regression models.
 For doubling periods in the order of period of infectivity
 (RKI assumption: $\sim9-10$ days, with great uncertainty, 
 see [[@RKI2020b]](#bib), we no longer have exponential growth. 
-The "old" infected cases are at the end of the doubling period no longer infectious (active). This results in a constant infection rate with basic reproduction number $R_0 \sim 1$ or even $<1$.
+The "old" infected cases are at the end of the doubling period no longer infectious (active). This results in a constant infection rate with basic reproduction number $R_t \sim 1$ or even $<1$.
 
 Note: for case numbers of German federal states see [[@RKI2020]](#bib).
 
@@ -1331,6 +1337,8 @@ especially relevant for the confirmed cases.
 Therefore the 14 days forecast is only an indication for the direction of an 
 unchecked exponentiell growth.
 
+The doubling rate is only a good indicator at the beginning of the pandemic. If the number of confirmed cases from the past two weeks is already small compared to the total number of confirmed cases, the number of infectious people is also small compared to the total cases.
+
 ```{r calculate forecast with beta_0 and beta_1, eval = TRUE}
 
 coefs <- tidy(fit_corona) %>% 
@@ -1393,12 +1401,12 @@ The comparison is also an early indicator if the *exponential growth* is declini
 
 For doubling periods in the order of infectivity (RKI assumption: $\sim9-10$
 days, with great uncertainty, [[see @RKI2020b]](#bib), we no longer have exponential growth. Since the "old" infected cases are 
-no longer infectious after these periods and we then have a constant infection rate with  basic reproduction number $R_0 \sim 1$.
+no longer infectious after these periods and we then have a constant infection rate with  basic reproduction number $R_t \sim 1$.
 
 Instead, we have "only" linear growth of the cumulative *Confimred Cases* and 
 the *Daily Confirmed Cases* remain more or less constant or even decrease.
 
-However, the basic reproduction number $R_0$ is a product of the average number of contacts of an infectious person per day, the probability of transmission upon contacts and the average number of days infected people are infectious. 
+However, the basic reproduction number $R_0 (\approx 2.2 - 3)$ is a product of the average number of contacts of an infectious person per day, the probability of transmission upon contacts and the average number of days infected people are infectious. 
 With the current uncertainty of the average duration of the infectivity duration, $R_0$ can therefore be estimated from the doubling time only to a very limited extent.
 See also [[@CMMID2020]](#bib) and [[@RKI2020c]](#bib).
 
