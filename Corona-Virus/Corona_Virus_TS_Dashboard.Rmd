@@ -634,6 +634,38 @@ knitr::kable(filter(cfr_table, Country %in% compare_countries),
 ```
 
 
+Country Table overview {data-navmenu="Bar Chart"}
+=====================================
+
+**Country Table overview**
+
+Column
+-------------------------------------
+
+### Table Confirmed and Deaths - Cumulated and mean daily Cases, overall and  per 100,000 Inhabitants
+
+
+Population numbers are taken from [[@UNO2020]](#bib).
+In order to compensate for daily fluctuations, the mean number of cases for the 
+past seven days (*_mp7d) is used instead of the daily cases.
+
+```{r print datatable all with 100k in wide format}
+
+# DT::datatable(corona_country_last %>% filter(Case_Type != "Recovered"),
+#               options=list(pageLength=25))
+
+DT::datatable(corona_all_data_wide %>% 
+                filter(Date == last_date) %>% 
+                mutate("Population /m" = round(Population / 1000000, digits = 3)) %>% 
+               # dplyr::select(!contains("Daily"), -Population), 
+               dplyr::select(Country, `Population /m`, Date, 
+                             Confirmed, Conf_mp7d, Conf_100k, Conf_100k_mp7d,
+                             Deaths, Deaths_mp7d, Deaths_100k, Deaths_100k_mp7d), 
+              options = list(pageLength = 50))
+
+```
+
+
 
 Cumulated and Daily Trend {data-orientation=rows data-navmenu="Cumulated and Daily Trend" }
 =====================================
