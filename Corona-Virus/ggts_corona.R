@@ -179,5 +179,70 @@ repronum <- function(
   if (pad.zeros) ret[-(1:(length(profile) - 1)),] else ret
 }
 
+# https://rstudio.github.io/dygraphs/gallery-series-highlighting.html
+# dygraph interactive plot for time series data:
+# input must be a named list or data frame, where the first element/column
+# provides x-axis values and all subsequent elements/columns provide one or more
+# series of y-values.
+plot_dygraph_all <- function(data_xts, country_select, last_date) {
+  dygraph(data_xts, 
+          main = paste(country_select, "- Cumulated and Daily Cases")) %>% 
+    dyAxis("y", label = "Cumulated Cases") %>%
+    dyAxis("y2", label = "Daily Cases", independentTicks = TRUE) %>%
+    dyLegend(width = 400) %>% 
+    dySeries("Confirmed", drawPoints = TRUE, pointShape = "square") %>% 
+    dySeries("Deaths", drawPoints = TRUE, pointShape = "square") %>% 
+    dySeries("Daily_Confirmed", drawPoints = TRUE, pointShape = "square",
+             axis = "y2") %>% 
+    dySeries("Daily_Deaths", drawPoints = TRUE, pointShape = "square", 
+             axis = "y2") %>% 
+    dyRangeSelector(dateWindow = 
+                      c(as.character(last_date - 28), as.character(last_date)))
+}
+
+
+plot_dygraph_daily <- function(data_xts, country_select, last_date) {
+  dygraph(data_xts, 
+          main = paste0(country_select, " - ",
+                        span, "-day Rolling Mean of Daily Cases")) %>% 
+    dyAxis("y", label = "Daily Confirmed Cases") %>%
+    dyAxis("y2", label = "Daily Death Cases",  independentTicks = TRUE) %>%
+    dyLegend(width = 400) %>% 
+    dySeries("Daily_Confirmed", 
+             drawPoints = TRUE, pointSize = 5, pointShape = "triangle", 
+             color = "coral") %>%  
+    dySeries("Daily_Conf_rol_mean", drawPoints = FALSE,  color = "brown") %>% 
+    dySeries("Daily_Deaths", 
+             drawPoints = TRUE, pointSize = 5, pointShape = "triangle", 
+             color = "lightgreen", axis = "y2") %>%     
+    dySeries("Daily_Deaths_rol_mean", drawPoints = FALSE, color = "green",
+             axis = "y2") %>% 
+    dyRangeSelector(dateWindow = 
+                      c(as.character(last_date - 2 * 28), as.character(last_date)))
+}
+
+plot_dygraph_daily_repro <- function(data_xts, country_select, last_date) {
+  dygraph(data_xts, 
+          main = 
+            paste0(country_select, " - ",
+                   span, 
+                   "-day window Reproduction Number based on Daily Confimred Cases")) %>% 
+    dyAxis("y", label = "Reproduction Number w/ Confidence Interval") %>%
+    dyAxis("y2", label = "Daily Confirmed Cases",
+           independentTicks = TRUE) %>%
+    dyLegend(width = 400) %>%    
+    dySeries(c("ci.lower","Repro_number", "ci.upper"), 
+             color = "black") %>% 
+    dyLimit(1, "Repro_number = 1",
+            strokePattern = "dashed", color = "black") %>%
+    dySeries("Daily_Confirmed", 
+             drawPoints = TRUE, pointSize = 5, pointShape = "triangle", 
+             color = "coral", axis = "y2") %>%
+    dySeries("Daily_Conf_rol_mean", drawPoints = FALSE,  color = "brown",
+             axis = "y2") %>%
+    dyRangeSelector(dateWindow =
+                      c(as.character(last_date - 2 * 28), as.character(last_date)))
+}
+
 # source("./ggts_corona.R") # ggplot2 functions for time series plots
  
