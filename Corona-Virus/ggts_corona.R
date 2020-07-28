@@ -18,19 +18,15 @@ ggts_cases_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
 }
 
 # function to get grid plot with Cases trend and Daily_Cases
-ggts_trend_daily <- function(data, i) {
+ggts_trend_daily <- function(data, i, span = 7, weeks = 6) {
   plot_cases <- ggts_cases_facet(data, y = Cases) +
     labs(title = paste(i, "- Cumulated Cases (all)"))
   
-  # for Daily_Cases calculate rolling mean
-  span <- 7 # rolling mean over 7 days
-  weeks <- 6
-  data %<>% mutate(rol_mean = 
-                     stats::filter(Daily_Cases, 
-                                   filter = rep(1 / span, span)))
+  last_date <- max(data$Date)
   plot_daily_cases <- ggts_cases_facet(
     filter(data, Date >= last_date - weeks * 7 + 1), y = Daily_Cases) +
-    geom_line(aes(y = rol_mean, col = "Rolling Mean"), size = 1, na.rm = TRUE) +
+    geom_line(aes(y = Cases_rol_mean, col = "Rolling Mean"), 
+              size = 1, na.rm = TRUE) +
     scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
     labs(title = paste(i, "- Daily Cases (past", weeks, "weeks)"),
          subtitle = paste0("with ", span, "-day Rolling Mean"))
@@ -38,8 +34,6 @@ ggts_trend_daily <- function(data, i) {
   plot_cases + plot_daily_cases 
             # + plot_annotation(tag_levels = "A", title = "title annot")
 }
-
-
 
 
 # grid plot Confirmed / Death for selected countries 
@@ -58,32 +52,22 @@ ggts_conf_deaths_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
     ggtitle("Confirmed and Death - Daily Cases (past 3 weeks)")
 }
 
+### highchart #############################
+
 # https://api.highcharts.com/highcharts/title
 # https://rdrr.io/cran/highcharter/man/hc_xAxis.html
-world_map_plot <- function(data, i) {
+world_map_plot <- function(data, i, value, title) {
   highchart() %>%
     hc_add_series_map(worldgeojson, 
                       data, 
-                      value = 'Cases', 
+                      value = value, 
                       joinBy = c('name', 'Country'))  %>% 
     #hc_colors(c("darkorange", "darkgray")) %>% 
     hc_colorAxis(stops = color_stops()) %>% 
-    # hc_title(text = "Spread of Coronavirus SARS-CoV-2") %>% 
-    hc_title(text = paste(i, "- Cumulated Cases / Country - Actual Figures"))
+    hc_title(text = title)
 }
 
-world_map_plot_inh <- function(data, i) {
-  highchart() %>%
-    hc_add_series_map(worldgeojson, 
-                      data, 
-                      value = 'Cases_100k', 
-                      joinBy = c('name', 'Country'))  %>% 
-    #hc_colors(c("darkorange", "darkgray")) %>% 
-    hc_colorAxis(stops = color_stops()) %>% 
-    # hc_title(text = "Spread of Coronavirus SARS-CoV-2") %>% 
-    hc_title(text = paste(i, "- Cumulated Cases per 100k Inhabitants / Country - Actual Figures"))
-}
-
+### bar chart #############################
 
 # Visualization with top 10 country bar chart
 # https://rdrr.io/cran/highcharter/man/hc_xAxis.html
@@ -108,7 +92,6 @@ bar_chart_countries_pop <- function(data, i) {
   
   data %>%
     arrange(desc(Cases_100k)) %>% 
-    head(20) %>%
     hchart("bar",hcaes(x = Country,  y = Cases_100k)) %>%
     hc_title(
       text = paste(i, "- Cases per 100k Inhabitants (Descending Order)")) %>% 
@@ -116,6 +99,7 @@ bar_chart_countries_pop <- function(data, i) {
     hc_add_theme(hc_theme_sandsignika())
 }
 
+### log scale #############################
 
 # plot countries on log10scale
 gg_logscale <- function(data, x = Date, y = Cases) {
@@ -184,24 +168,7 @@ repronum <- function(
 # input must be a named list or data frame, where the first element/column
 # provides x-axis values and all subsequent elements/columns provide one or more
 # series of y-values.
-plot_dygraph_all <- function(data_xts, country_select, last_date) {
-  dygraph(data_xts, 
-          main = paste(country_select, "- Cumulated and Daily Cases")) %>% 
-    dyAxis("y", label = "Cumulated Cases") %>%
-    dyAxis("y2", label = "Daily Cases", independentTicks = TRUE) %>%
-    dyLegend(width = 400) %>% 
-    dySeries("Confirmed", drawPoints = TRUE, pointShape = "square") %>% 
-    dySeries("Deaths", drawPoints = TRUE, pointShape = "square") %>% 
-    dySeries("Daily_Confirmed", drawPoints = TRUE, pointShape = "square",
-             axis = "y2") %>% 
-    dySeries("Daily_Deaths", drawPoints = TRUE, pointShape = "square", 
-             axis = "y2") %>% 
-    dyRangeSelector(dateWindow = 
-                      c(as.character(last_date - 28), as.character(last_date)))
-}
-
-
-plot_dygraph_daily <- function(data_xts, country_select, last_date) {
+plot_dygraph_daily <- function(data_xts, country_select, last_date, span = 7) {
   dygraph(data_xts, 
           main = paste0(country_select, " - ",
                         span, "-day Rolling Mean of Daily Cases")) %>% 
@@ -209,40 +176,40 @@ plot_dygraph_daily <- function(data_xts, country_select, last_date) {
     dyAxis("y2", label = "Daily Death Cases",  independentTicks = TRUE) %>%
     dyLegend(width = 400) %>% 
     dySeries("Daily_Confirmed", 
-             drawPoints = TRUE, pointSize = 5, pointShape = "triangle", 
-             color = "coral") %>%  
-    dySeries("Daily_Conf_rol_mean", drawPoints = FALSE,  color = "brown") %>% 
+             drawPoints = TRUE, pointSize = 3, pointShape = "circle", 
+             color = "tomato") %>%  
+    dySeries("Conf_rol_mean", drawPoints = FALSE,  color = "red") %>% 
     dySeries("Daily_Deaths", 
-             drawPoints = TRUE, pointSize = 5, pointShape = "triangle", 
-             color = "lightgreen", axis = "y2") %>%     
-    dySeries("Daily_Deaths_rol_mean", drawPoints = FALSE, color = "green",
-             axis = "y2") %>% 
+             drawPoints = TRUE, pointSize = 3, pointShape = "triangle", 
+             color = "turquoise", axis = "y2") %>%     
+    dySeries("Deaths_rol_mean", drawPoints = FALSE, 
+             color = "blue", axis = "y2") %>% 
     dyRangeSelector(dateWindow = 
                       c(as.character(last_date - 2 * 28), as.character(last_date)))
 }
 
-plot_dygraph_daily_repro <- function(data_xts, country_select, last_date) {
-  dygraph(data_xts, 
-          main = 
-            paste0(country_select, " - ",
-                   span, 
-                   "-day window Reproduction Number based on Daily Confimred Cases")) %>% 
-    dyAxis("y", label = "Reproduction Number w/ Confidence Interval") %>%
-    dyAxis("y2", label = "Daily Confirmed Cases",
-           independentTicks = TRUE) %>%
-    dyLegend(width = 400) %>%    
-    dySeries(c("ci.lower","Repro_number", "ci.upper"), 
-             color = "black") %>% 
-    dyLimit(1, "Repro_number = 1",
-            strokePattern = "dashed", color = "black") %>%
-    dySeries("Daily_Confirmed", 
-             drawPoints = TRUE, pointSize = 5, pointShape = "triangle", 
-             color = "coral", axis = "y2") %>%
-    dySeries("Daily_Conf_rol_mean", drawPoints = FALSE,  color = "brown",
-             axis = "y2") %>%
-    dyRangeSelector(dateWindow =
-                      c(as.character(last_date - 2 * 28), as.character(last_date)))
-}
+plot_dygraph_daily_repro <- 
+  function(data_xts, country_select, last_date, span = 7) {
+    dygraph(data_xts, 
+            main =  paste0(country_select, " - ",
+                           span, 
+                           "-day window Reproduction Number based on Daily Confimred Cases")) %>% 
+      dyAxis("y", label = "Reproduction Number w/ Confidence Interval") %>%
+      dyAxis("y2", label = "Daily Confirmed Cases",
+             independentTicks = TRUE) %>%
+      dyLegend(width = 400) %>%    
+      dySeries(c("ci.lower","Repro_number", "ci.upper"), 
+               color = "black") %>% 
+      dyLimit(1, "Repro_number = 1",
+              strokePattern = "dashed", color = "black") %>%
+      dySeries("Daily_Confirmed", 
+               drawPoints = TRUE, pointSize = 3, pointShape = "triangle", 
+               color = "tomato", axis = "y2") %>%
+      dySeries("Conf_rol_mean", drawPoints = FALSE,  
+               color = "red", axis = "y2") %>%
+      dyRangeSelector(dateWindow =
+                        c(as.character(last_date - 2 * 28), as.character(last_date)))
+  }
 
 # source("./ggts_corona.R") # ggplot2 functions for time series plots
  
