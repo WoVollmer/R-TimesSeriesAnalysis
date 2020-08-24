@@ -262,7 +262,7 @@ corona_population %<>%
   mutate(Cases_rol_mean =  round(
     slider::slide_dbl(Daily_Cases,  ~ mean(.),
                       .before = q, .after = q, .complete = TRUE),
-    digits = 2),
+    digits = 1),
     Cases_100k_rol_mean = round(
       slider::slide_dbl(Daily_Cases_100k,  ~ mean(.), 
                         .before = q, .after = q, .complete = TRUE),
@@ -386,7 +386,7 @@ World Map {data-navmenu="World Map"}
 
 # plot total confirmed in world
 i <- "Confirmed"
-title <- paste(i, "- Cumulated Cases / Country - Actual Figures")
+title <- paste(i, "- Cumulated Cases / Country")
 world_map_plot(
   filter(corona_population_last, Case_Type == i & Country != "World"), 
   i, value = "Cases", title)
@@ -400,7 +400,7 @@ world_map_plot(
 
 # plot total deaths in world
 i <- "Deaths"
-title <- paste(i, "- Cumulated Cases / Country - Actual Figures")
+title <- paste(i, "- Cumulated Cases / Country")
 world_map_plot(
   filter(corona_population_last, Case_Type == i & Country != "World"), 
   i, value = "Cases", title)
@@ -436,7 +436,7 @@ world_map_plot(
 
 # plot total deaths in world
 i <- "Deaths"
-title <- paste(i, "- Cumulated Cases / Country - Actual Figures")
+title <- paste(i, "- Cumulated Cases per 100k Inhabitants / Country")
 world_map_plot(
   filter(corona_population_last, Case_Type == i & Country != "World"), 
   i, value = "Cases_100k", title)
@@ -461,7 +461,7 @@ World Map / Hot Spots {data-navmenu="World Map"}
 i <- "Confirmed"
 title <- 
   paste(i, 
-        "- Mean Cases per 100k Inhabitants / Country over the past seven days")
+        "- Mean Daily Cases per 100k Inhabitants / Country over the past seven days")
 world_map_plot(
   filter(corona_population_last, Case_Type == i & Country != "World"), 
   i, value = "Cases_100k_rol_mean", title)
@@ -477,7 +477,7 @@ world_map_plot(
 i <- "Deaths"
 title <- 
   paste(i, 
-        "- Mean Cases per 100k Inhabitants / Country over the past seven days")
+        "- Mean Daily Cases per 100k Inhabitants / Country over the past seven days")
 world_map_plot(
   filter(corona_population_last, Case_Type == i & Country != "World"), 
   i, value = "Cases_100k_rol_mean", title)
@@ -497,7 +497,7 @@ Bar Chart {data-navmenu="Bar Chart"}
 Column {data-width=300}
 -------------------------------------
 
-### Bar Chart Confirmed
+### Bar Chart Cumulated Confirmed
 
 ```{r Top Ten Bar Chart Confirmed}
 
@@ -508,7 +508,7 @@ bar_chart_countries(filter(corona_population_last,
 
 ```
 
-### Bar Chart Table Deaths
+### Bar Chart Cumulated Deaths
 
 ```{r Top Ten Bar Chart Deaths}
 
@@ -524,7 +524,7 @@ bar_chart_countries(filter(corona_population_last,
 Column
 -------------------------------------
 
-### Table Confirmed and Deaths - Cumulated and Daily Cases
+### Confirmed and Deaths - Cumulated and Daily Cases (absolute date)
 
 Case numbers are taken from [[@JHU2020a]](#bib). In order to compensate for the 
 daily fluctuations, the mean case numbers for the past seven days (*_rol_mean) were also added.
@@ -551,7 +551,7 @@ Bar Chart / Inhabitants {data-navmenu="Bar Chart"}
 Column {data-width=300}
 -------------------------------------
 
-### Bar Chart Confirmed per 100,000 Inhabitants
+### Bar Chart Cumulated Confirmed per 100,000 Inhabitants
 
 ```{r Top 20 Bar Chart Population Confirmed}
 
@@ -562,7 +562,7 @@ bar_chart_countries_pop(filter(corona_population_last, Case_Type == i), i)
 ```
 
 
-### Bar Chart Deaths per 100,000 Inhabitants
+### Bar Chart Cumulated Deaths per 100,000 Inhabitants
 
 ```{r Top 20 Bar Chart Population Deaths}
 
@@ -575,7 +575,7 @@ bar_chart_countries_pop(filter(corona_population_last, Case_Type == i), i)
 Column
 -------------------------------------
 
-### Table Confirmed and Deaths - Cumulated and Daily Cases per 100,000 Inhabitants
+### Confirmed and Deaths - Cumulated and Daily Cases per 100,000 Inhabitants (relative date)
 
 Population numbers are taken from [[@UNO2020]](#bib).
 In order to compensate for the daily fluctuations, the mean case numbers for the past seven days (*_rol_mean) were also added.
@@ -587,6 +587,54 @@ DT::datatable(corona_last_rel_wide,
 
 ```
 
+Bar Chart / Hot Spots {data-navmenu="Bar Chart"}
+=====================================
+
+***
+***
+  
+**Bar Charts with descending order**
+
+Column {data-width=300}
+-------------------------------------
+
+### Bar Chart Mean Confirmed per 100,000 Inhabitants over past seven days
+
+```{r Top 20 Mean Bar Chart Population Confirmed}
+
+# plot bar chart mean Confirmed / 100k for countries and + world
+i <- "Confirmed"
+bar_chart_countries_hot_spots(filter(corona_population_last, Case_Type == i), i) 
+                      #  value = "Cases_100k_rol_mean")
+
+```
+
+
+### Bar Chart Mean Deaths per 100,000 Inhabitants over past seven days
+
+```{r Top 20 Mean Bar Chart Population Deaths}
+
+# plot bar chart deaths / country
+i <- "Deaths"
+bar_chart_countries_hot_spots(filter(corona_population_last, Case_Type == i), i)
+                        # value = "Cases_100k_rol_mean")
+
+```
+
+Column
+-------------------------------------
+
+### Confirmed and Deaths - Cumulated and Daily Cases per 100,000 Inhabitants (relative date)
+
+Population numbers are taken from [[@UNO2020]](#bib).
+In order to compensate for the daily fluctuations, the mean case numbers for the past seven days (*_rol_mean) were also added.
+
+```{r print mean datatable 100k in wide format}
+
+DT::datatable(corona_last_rel_wide, 
+              options = list(pageLength = 50))
+
+```
 
 Bar Chart - CFR {data-navmenu="Bar Chart" #cfr}
 =====================================
@@ -743,8 +791,7 @@ Country Table overview {data-navmenu="Bar Chart"}
 Column
 -------------------------------------
 
-### Table Confirmed and Deaths - Cumulated and mean daily Cases, overall and  per 100,000 Inhabitants
-
+### Confirmed and Deaths - Cumulated and mean daily Cases, overall and per 100,000 Inhabitants (absolute and relative date)
 
 Population numbers are taken from [[@UNO2020]](#bib).
 In order to compensate for daily fluctuations, the mean number of cases for the 
@@ -780,7 +827,7 @@ country <- "World"
 fig_width_trend <- 10 # fig.width = fig_width_trend 7
 fig_asp_trend <- 0.35
 
-weeks <- 6
+weeks <- 12
 
 ```
 
@@ -833,7 +880,8 @@ i <- i + 1
 
 ```{r  Time Series Diagram countries 3, fig.width = fig_width_trend,  fig.asp = fig_asp_trend}
 country <- countries[i]
-ggts_trend_daily(corona_population %>% filter(Country == country), country, weeks)
+ggts_trend_daily(corona_population %>% filter(Country == country), 
+                 country, weeks = weeks)
 
 i <- i + 1
 ```
@@ -843,7 +891,8 @@ i <- i + 1
 
 ```{r  Time Series Diagram countries 4, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
-ggts_trend_daily(corona_population %>% filter(Country == country), country, weeks)
+ggts_trend_daily(corona_population %>% filter(Country == country), 
+                 country, weeks = weeks)
 
 i <- i + 1
 ```
@@ -854,7 +903,8 @@ i <- i + 1
 
 ```{r  Time Series Diagram countries 5, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
-ggts_trend_daily(corona_population %>% filter(Country == country), country, weeks)
+ggts_trend_daily(corona_population %>% filter(Country == country), 
+                 country, weeks = weeks)
 
 i <- i + 1
 ```
@@ -863,7 +913,8 @@ i <- i + 1
 
 ```{r  Time Series Diagram countries 6, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
-ggts_trend_daily(corona_population %>% filter(Country == country), country, weeks)
+ggts_trend_daily(corona_population %>% filter(Country == country), 
+                 country, weeks = weeks)
 
 i <- i + 1
 ```
@@ -872,7 +923,8 @@ i <- i + 1
 
 ```{r  Time Series Diagram countries 7, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
-ggts_trend_daily(corona_population %>% filter(Country == country), country, weeks)
+ggts_trend_daily(corona_population %>% filter(Country == country), 
+                 country, weeks = weeks)
 
 i <- i + 1
 ```
@@ -881,7 +933,8 @@ i <- i + 1
 
 ```{r  Time Series Diagram countries 8, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
-ggts_trend_daily(corona_population %>% filter(Country == country), country, weeks)
+ggts_trend_daily(corona_population %>% filter(Country == country), 
+                 country, weeks = weeks)
 
 i <- i + 1
 ```
@@ -890,7 +943,8 @@ i <- i + 1
 
 ```{r  Time Series Diagram countries 9, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 country <- countries[i]
-ggts_trend_daily(corona_population %>% filter(Country == country), country, weeks)
+ggts_trend_daily(corona_population %>% filter(Country == country), 
+                 country, weeks = weeks)
 
 i <- i + 1
 ```
@@ -942,7 +996,7 @@ data_xts <- xts::xts(
   data %>% dplyr::select(Daily_Confirmed, Conf_rol_mean, 
                          Daily_Deaths, Deaths_rol_mean),
   order.by = index)
-plot_dygraph_daily(data_xts, country_select, last_date)
+plot_dygraph_daily(data_xts, country_select, last_date, weeks = weeks)
 
 
 ```
@@ -1006,7 +1060,7 @@ data_xts <- xts::xts(data_repronum,
   # data %>% dplyr::select(Daily_Conf_rol_mean, Daily_Deaths_rol_mean), 
   order.by = index)
 
-plot_dygraph_daily_repro(data_xts, country_select, last_date)
+plot_dygraph_daily_repro(data_xts, country_select, last_date, weeks = weeks)
 
 
 ```

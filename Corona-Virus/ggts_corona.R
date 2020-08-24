@@ -64,12 +64,13 @@ world_map_plot <- function(data, i, value, title) {
                       joinBy = c('name', 'Country'))  %>% 
     #hc_colors(c("darkorange", "darkgray")) %>% 
     hc_colorAxis(stops = color_stops()) %>% 
-    hc_title(text = title)
+    hc_title(text = title) %>% 
+    hc_yAxis(title = list(text = ("Cumulated Cases")))  
 }
 
 ### bar chart #############################
 
-# Visualization with top 10 country bar chart
+# Visualization with top x country bar chart
 # https://rdrr.io/cran/highcharter/man/hc_xAxis.html
 bar_chart_countries <- function(data, i) {
   data %>%
@@ -77,11 +78,12 @@ bar_chart_countries <- function(data, i) {
     head(15) %>%
     hchart("bar",hcaes(x = Country,  y = Cases)) %>%
     hc_title(text = paste(i, "- Cumulated Cases (Descending Order)")) %>% 
+    hc_yAxis(title = list(text = ("Cumulated Cases per 100k Inhabitants"))) %>% 
     hc_add_theme(hc_theme_sandsignika())
 }
 
 
-# Visualization with top 10 country/100k bar chart
+# Visualization with top x country/100k bar chart
 bar_chart_countries_pop <- function(data, i) {
   data <- bind_rows(
     data %>% 
@@ -92,10 +94,31 @@ bar_chart_countries_pop <- function(data, i) {
   
   data %>%
     arrange(desc(Cases_100k)) %>% 
+    # to get world data in the right order
     hchart("bar",hcaes(x = Country,  y = Cases_100k)) %>%
     hc_title(
-      text = paste(i, "- Cases per 100k Inhabitants (Descending Order)")) %>% 
-    hc_yAxis(title = list(text = ("Cases per 100k Inhabitants"))) %>% 
+      text = paste(i, "- Cumulated Cases per 100k Inhabitants (Descending Order)")) %>% 
+    hc_yAxis(title = list(text = ("Cumulated Cases per 100k Inhabitants"))) %>% 
+    hc_add_theme(hc_theme_sandsignika())
+}
+
+
+# Visualization with top x hot spots country/mean bar chart
+bar_chart_countries_hot_spots <- function(data, i) {
+  data <- bind_rows(
+    data %>% 
+      filter(Case_Type == i, Country != "World") %>% 
+      arrange(desc(Cases_100k_rol_mean)) %>% head(14), 
+    data %>%
+      filter(Case_Type == i, Country == "World"))
+  
+  data %>%
+    arrange(desc(Cases_100k_rol_mean)) %>% 
+    # to get world data in the right order
+    hchart("bar",hcaes(x = Country,  y = Cases_100k_rol_mean)) %>%
+    hc_title(
+      text = paste(i, "- Mean Daily Cases per 100k Inhabitants (Descending Order)")) %>% 
+    hc_yAxis(title = list(text = ("Mean Cases per 100k Inhabitants"))) %>% 
     hc_add_theme(hc_theme_sandsignika())
 }
 
@@ -168,28 +191,29 @@ repronum <- function(
 # input must be a named list or data frame, where the first element/column
 # provides x-axis values and all subsequent elements/columns provide one or more
 # series of y-values.
-plot_dygraph_daily <- function(data_xts, country_select, last_date, span = 7) {
-  dygraph(data_xts, 
-          main = paste0(country_select, " - ",
-                        span, "-day Rolling Mean of Daily Cases")) %>% 
-    dyAxis("y", label = "Daily Confirmed Cases") %>%
-    dyAxis("y2", label = "Daily Death Cases",  independentTicks = TRUE) %>%
-    dyLegend(width = 400) %>% 
-    dySeries("Daily_Confirmed", 
-             drawPoints = TRUE, pointSize = 3, pointShape = "circle", 
-             color = "tomato") %>%  
-    dySeries("Conf_rol_mean", drawPoints = FALSE,  color = "red") %>% 
-    dySeries("Daily_Deaths", 
-             drawPoints = TRUE, pointSize = 3, pointShape = "triangle", 
-             color = "turquoise", axis = "y2") %>%     
-    dySeries("Deaths_rol_mean", drawPoints = FALSE, 
-             color = "blue", axis = "y2") %>% 
-    dyRangeSelector(dateWindow = 
-                      c(as.character(last_date - 2 * 28), as.character(last_date)))
-}
+plot_dygraph_daily <- 
+  function(data_xts, country_select, last_date, span = 7, weeks = 12) {
+    dygraph(data_xts, 
+            main = paste0(country_select, " - ",
+                          span, "-day Rolling Mean of Daily Cases")) %>% 
+      dyAxis("y", label = "Daily Confirmed Cases") %>%
+      dyAxis("y2", label = "Daily Death Cases",  independentTicks = TRUE) %>%
+      dyLegend(width = 400) %>% 
+      dySeries("Daily_Confirmed", 
+               drawPoints = TRUE, pointSize = 3, pointShape = "circle", 
+               color = "tomato") %>%  
+      dySeries("Conf_rol_mean", drawPoints = FALSE,  color = "red") %>% 
+      dySeries("Daily_Deaths", 
+               drawPoints = TRUE, pointSize = 3, pointShape = "triangle", 
+               color = "turquoise", axis = "y2") %>%     
+      dySeries("Deaths_rol_mean", drawPoints = FALSE, 
+               color = "blue", axis = "y2") %>% 
+      dyRangeSelector(dateWindow = 
+                        c(as.character(last_date - weeks * 7), as.character(last_date)))
+  }
 
 plot_dygraph_daily_repro <- 
-  function(data_xts, country_select, last_date, span = 7) {
+  function(data_xts, country_select, last_date, span = 7, weeks = 12) {
     dygraph(data_xts, 
             main =  paste0(country_select, " - ",
                            span, 
@@ -208,7 +232,7 @@ plot_dygraph_daily_repro <-
       dySeries("Conf_rol_mean", drawPoints = FALSE,  
                color = "red", axis = "y2") %>%
       dyRangeSelector(dateWindow =
-                        c(as.character(last_date - 2 * 28), as.character(last_date)))
+                        c(as.character(last_date - weeks * 7), as.character(last_date)))
   }
 
 # source("./ggts_corona.R") # ggplot2 functions for time series plots
