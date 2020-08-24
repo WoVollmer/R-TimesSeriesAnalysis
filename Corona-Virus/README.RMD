@@ -46,6 +46,11 @@ dashboard with the R package
 
 - [flexdashboard](https://rmarkdown.rstudio.com/flexdashboard/) *flexdashboard: Easy interactive dashboards for R*
 
+## Dashboard Web Site
+
+The [Corona Virus Dashboard](https://wovollmer.github.io/github.io/) 
+is published as **GitHub page**
+
 
 ----------------------
 
