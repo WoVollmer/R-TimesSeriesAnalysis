@@ -17,11 +17,12 @@ Following data/files are required to run R Markdown file
   - **Data files**:
       - *time\_series\_covid19\_confirmed\_global.csv*
       - *time\_series\_covid19\_deaths\_global*
-      - *time\_series\_covid19\_recovered\_global.csv*
+      - *time\_series\_covid19\_recovered\_global.csv* (note: not used
+        since w/o real value add)
   - **ggts\_corona.R** R file providing the functions to create the
     plots
-  - **world\_population.RDS** R data file providing the population
-    numbers of the different countries
+  - **world\_population\_un.RDS** R data file providing the population
+    numbers of the different countries (based on UN data)
   - **References\_Corona.bib** Bibtex file providing the references with
     the Bibtexkeys
 
