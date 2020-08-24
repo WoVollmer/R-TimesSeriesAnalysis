@@ -29,7 +29,7 @@ Following data/files are required to run R Markdown file
 * **Data files**:  
     + *time_series_covid19_confirmed_global.csv* 
     + *time_series_covid19_deaths_global*
-    + *time_series_covid19_recovered_global.csv* (note: not used since w/o real value add)
+    + *time_series_covid19_recovered_global.csv* (note: not used since data not consistend and w/o real value add)
 
 * **ggts_corona.R** R file providing the functions to create the plots
 * **world_population_un.RDS** R data file providing the population numbers of the different countries (based on UN data) 
