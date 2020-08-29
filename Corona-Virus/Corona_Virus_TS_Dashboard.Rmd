@@ -114,6 +114,10 @@ if (device == "desktop") {
   stop("no valid device outlined")
 }
 
+```
+
+```{r source function abd population data}
+
 ######  Plot and util functions
 ######  ######  Plot and util functions
 source("./ggts_corona.R") # ggplot2 functions for time series plots
@@ -1329,18 +1333,18 @@ gg_plot +
 # plot with linear regression on log scale
 for (i in country_select) { 
   plot_cases <- 
-    ggts_cases_facet(corona_country %>% 
+    ggts_cases_facet(corona_population %>% 
                        filter(Country == i & Case_Type != "Recovered" 
                               & Cases >= 10)) +
     labs(title = paste(i, "- Cumulated Cases")) +
     scale_y_log10()
   plot_daily_cases <- 
-    ggts_cases_facet(corona_country %>% 
+    ggts_cases_facet(corona_population %>% 
                        filter(Country == i & Case_Type != "Recovered" & 
                                 Cases >= 10 &
                                 Date >= last_date - 28 + 1)) +
     labs(title = paste("w/ linear regression of past", range_reg, "days"))  +
-    geom_smooth(data = corona_country %>% 
+    geom_smooth(data = corona_population %>% 
                   filter(Country == i & Case_Type != "Recovered" & 
                            Date >= last_date + 1 - range_reg), 
                 method="lm", 
@@ -1488,7 +1492,7 @@ forecast_table <- forecast_country %>%
             FC_14days = sum(FC_14days, na.rm = TRUE)) %>% 
   arrange(Case_Type)
 
-countries_last_day <- corona_country %>% 
+countries_last_day <- corona_population %>% 
   filter(Country %in% c(compare_countries, "World") & 
            Date == last_date &
            Case_Type != "Recovered") %>%
@@ -1667,7 +1671,7 @@ countries_fc_param <-
 
 ```{r eval = TRUE}
 
-corona_country_sel <- corona_country %>% 
+corona_country_sel <- corona_population %>% 
   filter(Country %in% countries_to_forecast & 
            Case_Type != "Recovered" &
            Date >= last_date - 28) %>%
@@ -1688,7 +1692,7 @@ corona_country_sel <- bind_rows(corona_country_sel, fc_corona_sel)
 
 ```{r Daily Confirmed lagged, fig.width = 5, fig.asp = 1.2}
 
-data <- corona_country %>%  filter(Country %in% countries_to_forecast &
+data <- corona_population %>%  filter(Country %in% countries_to_forecast &
            Date >= last_date - 21)
 
 p <- ggts_conf_deaths_facet(data, y = Daily_Cases, col = Country)
