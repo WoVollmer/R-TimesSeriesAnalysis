@@ -1,0 +1,12 @@
+name: Corona_Virus_TS_Shiny
+title: Corona_Virus_TS_Shiny
+username:
+account: wovoshiny
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2627797
+bundleId: 3601904
+url: https://wovoshiny.shinyapps.io/Corona_Virus_TS_Shiny/
+when: 1599475175.59253
+asMultiple: FALSE
+asStatic: FALSE

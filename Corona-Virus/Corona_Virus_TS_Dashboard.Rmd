@@ -98,18 +98,21 @@ lag_n <- 11  # average confirmed lag - for all countries
 ```
 
 ```{r path on desktop vs. notebook, eval = TRUE}
+
 if (device == "desktop") {
   setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
-  
   data_path <- 
     "D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
-  
 } else if (device == "notebook") {
   # attention: here we have (whyever) TimesS.. (Time + s) instead of TimeS..
   setwd("C:/Wolfgang/Programs-R/R-TimesSeriesAnalysis/Corona-Virus")
-  
   data_path <- 
     "C:/Wolfgang/Programs-R/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
+} else if (device == "linux") {
+  # attention: here we have (whyever) TimesS.. (Time + s) instead of TimeS..
+  setwd("/home/wolfgang-ubuntu/Programs-R/R-TimesSeriesAnalysis/Corona-Virus")
+  data_path <- 
+    "/home/wolfgang-ubuntu/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
 } else {
   stop("no valid device outlined")
 }
