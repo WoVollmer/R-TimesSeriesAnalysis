@@ -1,14 +1,14 @@
 
 ggts_cases_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
   # col_scheme <- "Set1" # "RdYlGn" #"YlOrRd" #"Oranges" # "YlGnBu" # 
-  p <- ggplot(data, aes_(substitute(x), substitute(y), col = substitute(Case_Type))) +
-    facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
+  p <- ggplot(data, aes({{ x }}, {{ y }}, col = {{  col }})) +
+    facet_wrap(vars({{ col }}), ncol = 1, scales = "free_y",
                strip.position = "left") +
     geom_point(size = 1, na.rm = TRUE) +
     geom_line(na.rm = TRUE) +  
     theme(legend.position = "none")  +
     labs(y = "") + 
-    scale_x_date(date_labels = "%b %d", date_breaks = "14 days") +
+    scale_x_date(date_labels = "%b %d", date_breaks = "28 days") +
     # scale_colour_distiller(palette = col_scheme, direction = 1) +
     # scale_colour_brewer(palette = col_scheme, direction = 1) +
     # scale_color_discrete(c("blue",  "green", "red")) +
@@ -27,9 +27,9 @@ ggts_trend_daily <- function(data, i, span = 7, weeks = 6) {
     filter(data, Date >= last_date - weeks * 7 + 1), y = Daily_Cases) +
     geom_line(aes(y = Cases_rol_mean, col = "Rolling Mean"), 
               size = 1, na.rm = TRUE) +
-    scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
+    scale_x_date(date_labels = "%b %d", date_breaks = "14 days") +
     labs(title = paste(i, "- Daily Cases (past", weeks, "weeks)"),
-         subtitle = paste0("with ", span, "-day Rolling Mean"))
+         subtitle = paste0("with Rolling Mean of past ", span, " days"))
   # gridExtra::grid.arrange(plot_cases, plot_daily_cases, ncol = 2)
   plot_cases + plot_daily_cases 
             # + plot_annotation(tag_levels = "A", title = "title annot")
@@ -37,10 +37,11 @@ ggts_trend_daily <- function(data, i, span = 7, weeks = 6) {
 
 
 # grid plot Confirmed / Death for selected countries 
-ggts_conf_deaths_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
+ggts_conf_deaths_facet <- function(data, x = Date, y = Cases, col = Case_Type,
+                                   vars_2 = Country) {
   # col_scheme <- "Set1" # "RdYlGn" #"YlOrRd" #"Oranges" # "YlGnBu" # 
-  ggplot(data, aes_(substitute(x), substitute(y), col = substitute(Case_Type))) +
-    facet_grid(vars(Country, Case_Type), scales = "free_y") +
+  ggplot(data, aes({{ x }}, {{ y }}, col = {{  col }})) +
+    facet_grid(vars({{ vars_2 }}, {{ col }}), scales = "free_y") +
     geom_point(size = 1.5, na.rm = TRUE) +
     geom_line(size = 1, na.rm = TRUE) +  
     theme(legend.position = "none")  +
@@ -125,17 +126,18 @@ bar_chart_countries_hot_spots <- function(data, i) {
 ### log scale #############################
 
 # plot countries on log10scale
-gg_logscale <- function(data, x = Date, y = Cases) {
+gg_logscale <- function(data, x = Date, y = Cases, col = Country, 
+                        vars_1 = Case_Type) {
   gg_plot <-  
-    ggplot(data, aes_(substitute(x), y= substitute(log10(y)))) +
-    labs(x = "Date", y = "Cumulated Cases",
+    ggplot(data, aes({{ x }}, y= log10({{ y }}), col = {{ col }})) +
+    labs(x = "Date", y = substitute(y),
          title = 
            "Virus Spread (with log10 scale) - World and selected Countries") + 
-    geom_point(aes(col = Country)) +
-    # geom_line(aes(col = Country), size = 1) +
-    # geom_smooth(method="lm", aes(col = Country), lty = "dashed", se=FALSE) +
+    geom_point() +
+    # geom_line(aes(col = {{ col }}), size = 1) +
+    # geom_smooth(method="loess", aes(col = {{ col }}), lty = "dashed", se=FALSE) +
     theme(legend.position = "bottom") +
-    facet_wrap(vars(Case_Type), ncol = 2, scales = "free_y",
+    facet_wrap(vars({{ vars_1 }}), ncol = 2, scales = "free_y",
                strip.position = "left") 
 }
 
@@ -194,8 +196,9 @@ repronum <- function(
 plot_dygraph_daily <- 
   function(data_xts, country_select, last_date, span = 7, weeks = 12) {
     dygraph(data_xts, 
-            main = paste0(country_select, " - ",
-                          span, "-day Rolling Mean of Daily Cases")) %>% 
+            main = paste0(country_select, 
+                          " - Daily Cases with Rolling Mean of past ", 
+                          span, " days")) %>% 
       dyAxis("y", label = "Daily Confirmed Cases") %>%
       dyAxis("y2", label = "Daily Death Cases",  independentTicks = TRUE) %>%
       dyLegend(width = 400) %>% 
@@ -215,9 +218,9 @@ plot_dygraph_daily <-
 plot_dygraph_daily_repro <- 
   function(data_xts, country_select, last_date, span = 7, weeks = 12) {
     dygraph(data_xts, 
-            main =  paste0(country_select, " - ",
-                           span, 
-                           "-day window Reproduction Number based on Daily Confimred Cases")) %>% 
+            main =  paste0(country_select, 
+            " - Reproduction Number based on Daily Confirmed Cases (",
+            span, "-day window)")) %>% 
       dyAxis("y", label = "Reproduction Number w/ Confidence Interval") %>%
       dyAxis("y2", label = "Daily Confirmed Cases",
              independentTicks = TRUE) %>%
@@ -234,6 +237,3 @@ plot_dygraph_daily_repro <-
       dyRangeSelector(dateWindow =
                         c(as.character(last_date - weeks * 7), as.character(last_date)))
   }
-
-# source("./ggts_corona.R") # ggplot2 functions for time series plots
- 

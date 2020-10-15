@@ -21,7 +21,17 @@ knitr::opts_chunk$set(eval = TRUE, echo = FALSE, warning = FALSE,
 # csl: harvard1.csl
 # csl: ieee.csl
 
-
+################################################################################
+##                                                                            ##
+## Corona Virus -                                                             ##
+##       Analyze Time Series of Confirmed, Death and Recovered Cases          ##
+##                                                                            ##
+##                                          Wolfgang Vollmer,   July  2, 2020 ##
+##                                              First Version: March 12, 2020 ##
+##                                                                            ##
+## URL:                                                                       ##
+## https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Corona-Virus##  
+################################################################################
 library(flexdashboard)
 library(tidyverse)
 library(magrittr)
@@ -42,62 +52,10 @@ library(dygraphs)  # R interface to the dygraphs JavaScript charting library
 
 ```
 
-
-```{r initialization, eval = TRUE, include = FALSE}
-
-################################################################################
-##                                                                            ##
-## Corona Virus -                                                             ##
-##       Analyze Time Series of Confirmed, Death and Recovered Cases          ##
-##                                                                            ##
-##                                          Wolfgang Vollmer,   July  2, 2020 ##
-##                                              First Version: March 12, 2020 ##
-##                                                                            ##
-## URL:                                                                       ##
-## https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Corona-Virus##  
-################################################################################
-
-######  variables clean up, library() and	source() statements 
-# rm(list=ls()) # deletes all existing objects / variables !!
-# Prog.Start <- Sys.time()
-
-
-theme_replace(
-  plot.title = element_text(
-    hjust = 0.5, face = "bold.italic", color = "darkcyan", size = 12),
-  plot.subtitle = element_text(
-    hjust = 0.5, face = "italic", color = "darkcyan")
-)
-x_axis_theme <- element_text(size = 14)
-```
-
-
-```{r settings}
+```{r path on desktop vs. notebook, eval = TRUE}
 # device <- "desktop" # "notebook"  # to define setwd() and data path
 # defined as params  metadata in YAML header
 device <- params$device
-
-compare_countries <- c("Austria", "France", "Germany", "Italy", "India",
-                       "South Korea", "Spain",  "United States of America")
-countries <- c("China", compare_countries)
-countries_exp_growth <- c("World", "China", "Austria", "France", "Germany", "Italy", 
-                       "South Korea", "Spain",  "United States of America")
-country_select <- "Germany"
-
-span <- 7 #  for rolling mean over 7 days
-q <- floor(span/2) # since 2q +1 = span !
-
-range_reg <- 7   # important - no Cases value = 0 are allowed => log(0) = inf !
-# changed from 9 -> 7 days, 
-# but whole week is necessary to get rid of weekly fluctuations
-range_forcast <- 14  # 14days forecast => unclass(last_date + 1 + range_forcast -1)
-range_daily_reg <- 21  # one week is to short, confidence level to large !!
-range_cfr <- 14  # 14days cfr past period length
-lag_n <- 11  # average confirmed lag - for all countries
-
-```
-
-```{r path on desktop vs. notebook, eval = TRUE}
 
 if (device == "desktop") {
   setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
@@ -119,17 +77,61 @@ if (device == "desktop") {
 
 ```
 
-```{r source function abd population data}
+```{r source function and population data}
 
-######  Plot and util functions
-######  ######  Plot and util functions
+# Plot and util functions - has to come after setwd()  ------------
 source("./ggts_corona.R") # ggplot2 functions for time series plots
 
 # read world population for normalization per 100k inhabitants
 # population_countries <- readRDS("./world_population.RDS") # data from CIA
-population_countries <- readRDS("./world_population_un.RDS")
+population_countries <- readRDS("./world_population_un.RDS") # data from UN
 
 ```
+
+
+```{r initialization, eval = TRUE, include = FALSE}
+
+# variables clean up, library() and	source() statements ----------------------
+# deletes params$device => not allowed
+# rm(list=ls()) # deletes all existing objects / variables !!
+
+# Prog.Start <- Sys.time()
+
+theme_replace(
+  plot.title = element_text(
+    hjust = 0.5, face = "bold.italic", color = "darkcyan", size = 12),
+  plot.subtitle = element_text(
+    hjust = 0.5, face = "italic", color = "darkcyan")
+)
+x_axis_theme <- element_text(size = 14)
+```
+
+
+```{r settings}
+
+
+compare_countries <- c("Austria", "France", "Germany", "Italy", "India",
+                       "South Korea", "Spain",  "United States of America")
+countries <- c("China", compare_countries)
+countries_exp_growth <- c("World", "China", "Austria", "France", "Germany", "Italy", 
+                       "South Korea", "Spain",  "United States of America")
+country_select <- "Germany"
+
+span <- 7 #  for rolling mean over 7 days
+q <- floor(span/2) # since 2q +1 = span !
+
+range_reg_short <- 7 # days; at least one week is necessary to get rid of weekly 
+    # fluctuations, important - no case values = 0 are allowed => log(0) = inf !
+range_reg_long <- 21 # days; 2 or 3 weeks if one week is to short
+                           # e.g. confidence levels to large !!
+# whole week is necessary to get rid of weekly fluctuations
+range_forcast <- 14  # 14days forecast => unclass(last_date + 1 + range_forcast -1)
+
+range_cfr <- 14  # 14days cfr past period length
+lag_n <- 11  # average confirmed lag - for all countries
+
+```
+
 
 ```{r path on desktop PC, eval = TRUE}
 
@@ -263,16 +265,18 @@ corona_population %<>% filter(!is.na(Date)) %>%
 
 ```{r add rolling mean  per country to data}
 
-# slide_dbl() => rolling mean double value, centered since .before = .after
+# slide_dbl() => rolling mean double value, changed to before only
+#                             no longer centered with .before = .after
+# note: for last date rolling mean before is needed, otherwise all are NA
 corona_population %<>% 
   group_by(Country, Case_Type) %>% 
   mutate(Cases_rol_mean =  round(
     slider::slide_dbl(Daily_Cases,  ~ mean(.),
-                      .before = q, .after = q, .complete = TRUE),
+                      .before = 2*q, .after = 0, .complete = TRUE),
     digits = 1),
     Cases_100k_rol_mean = round(
       slider::slide_dbl(Daily_Cases_100k,  ~ mean(.), 
-                        .before = q, .after = q, .complete = TRUE),
+                        .before = 2*q, .after = 0, .complete = TRUE),
       digits = 2))
 
 corona_tsbl <- corona_population  %>%
@@ -296,7 +300,10 @@ saveRDS(corona_population, "corona_population.RDS")
 ```
 
 ```{r complete data wide format}
-corona_all_data_wide <- corona_population %>% 
+# wide format: 
+#    Country Population Date  Confirmed Daily_Confirmed ... Death ...
+# for easy to read datatable outputs e.g.with filter for last date
+corona_all_wide <- corona_population %>% 
   pivot_wider(names_from = Case_Type, 
               values_from = c(Cases, Daily_Cases, 
                               Cases_100k, Daily_Cases_100k, 
@@ -319,29 +326,13 @@ corona_all_data_wide <- corona_population %>%
                 Deaths, Daily_Deaths, Deaths_rol_mean, Deaths_100k, 
                 Daily_Deaths_100k, Deaths_100k_rol_mean)
 
-corona_abs_wide <- corona_all_data_wide %>% 
-  dplyr::select(!contains("_100k"), -Population)
-
-corona_rel_wide <- corona_all_data_wide %>% 
-  dplyr::select(Country, Date, contains("_100k"))
-
-# View(corona_all_data_wide %>% filter(Date == last_date))
+# View(corona_all_wide %>% filter(Date == last_date))
 ```
 
 
 ```{r}
 # corona_country_last <- corona_country %>%  filter(Date == last_date)
-# for last date rolling mean before is needed, otherwise all are NA
 corona_population_last <- corona_population %>% 
-  group_by(Country, Case_Type) %>% 
-  mutate(Cases_rol_mean =  round(
-    slider::slide_dbl(Daily_Cases,  ~ mean(.),
-                      .before = 2*q, .after = 0, .complete = TRUE),
-    digits = 0),
-    Cases_100k_rol_mean = round(
-      slider::slide_dbl(Daily_Cases_100k,  ~ mean(.), 
-                        .before = 2*q, .after = 0, .complete = TRUE),
-      digits = 2)) %>% 
   filter(Date == last_date)
 
 corona_population_last_wide <- corona_population_last %>% 
@@ -658,10 +649,9 @@ Column {data-width=300}
 
 ```{r calculate lagged CFR}
 
-corona_confirmed_lag <- corona_abs_wide %>% 
-  # filter(Country %in% compare_countries) %>% 
-  # filter(Country == "Germany") %>% 
-  select(-Daily_Confirmed, -Daily_Deaths) %>% 
+corona_confirmed_lag <- corona_all_wide %>% 
+  dplyr::select(!contains("_100k"), -Population, 
+                -Daily_Confirmed, -Daily_Deaths) %>% 
   mutate(confirmed_lag = lag(Confirmed, lag_n),
          CFR_total = round(Deaths / confirmed_lag * 100, digits = 1),
          CFR_unlagged = round(Deaths / Confirmed * 100, digits = 1)) 
@@ -977,7 +967,8 @@ Row {data-height=400}
 
 ### Germany - Confirmed and Deaths
 
-data <- corona_abs_wide %>% 
+data <- corona_all_wide %>% 
+  dplyr::select(!contains("_100k"), -Population) %>% 
   filter(Country == country_select) 
 
 
@@ -1041,7 +1032,7 @@ report.delay <- 7  #  => delay (reporting delay) in repronum()
 alpha <- 0.05      # => default conf.level in repronum() 
 
 
-data_repronum <- corona_abs_wide %>% 
+data_repronum <- corona_all_wide %>% 
   filter(Country == country_select) %>% 
   dplyr::select(Country, Date, Daily_Confirmed, Conf_rol_mean) %>% 
   ungroup() 
@@ -1171,7 +1162,7 @@ plot_2 <- gg_plot +
 
 plot_1 + plot_2 + 
   plot_annotation(
-    title = "Virus Spread (with log10 scale) - World and selected Countries") +
+    title = "Virus Spread - World and selected Countries") +
   plot_layout(guides = 'collect') & theme(legend.position = 'bottom')
 
 ```
@@ -1253,87 +1244,94 @@ selected countries: **`r compare_countries`** and **World** in total
 ### `r country_select` - Trend with Forecast on a linear scale
 
 
-```{r corona tsibble range_reg}
+```{r corona tsibble range_reg_short}
 
 
-# provide tsb of range_reg/last 7 days for linear regression of log data
-corona_tsbl_range_reg <- corona_tsbl %>% 
-  ungroup() %>% 
+# provide tsbl of range_reg_short for linear regression of log data
+corona_range_reg_short_tsbl <- corona_tsbl %>% 
   group_by(Case_Type) %>% 
   filter(Country %in% c("World", compare_countries) & 
-           Date >= last_date - range_reg + 1 &
-           Case_Type != "Recovered" & Cases >= 10) %>% 
+           Date >= last_date - range_reg_short + 1) %>% 
+           # Case_Type != "Recovered" & Cases >= 10) %>% 
   dplyr::select(Date, Country, Case_Type, Cases)
 
 
 
 ```
 
-```{r corona daily tsibble range_reg}
+```{r corona tsibble range_reg_long}
 
-# provide tsb of range_reg/last 7 days for linear regression of daily data
-corona_range_daily_reg_tsbl <- corona_tsbl %>% 
-  ungroup() %>% 
+# provide tsbl of range_reg_long for linear regression of daily log data
+
+corona_range_reg_long_tsbl <- corona_tsbl %>% 
   group_by(Case_Type) %>% 
   filter(Country %in% c("World", compare_countries) & 
-           Date >= last_date - range_daily_reg + 1 &
-           Case_Type != "Recovered" & Cases >= 10) %>% 
-  dplyr::select(Date, Country, Case_Type, Daily_Cases)
-
+           Date >= last_date + 1 - range_reg_long) 
 
 ```
 
 
 ```{r example, fig.width = 10, fig.height = 5}
 
-fit_corona <- corona_tsbl_range_reg %>% ungroup() %>% 
-  group_by(Case_Type) %>% 
-  model(TSLM(log(Cases) ~ Date)) 
-fc_corona <- fit_corona %>% fabletools::forecast(h = "14 days") 
+
+fit_corona <- corona_range_reg_long_tsbl %>%  
+  model(TSLM(log(Cases_rol_mean) ~ Date)) 
+fc_corona <- fit_corona %>% 
+  fabletools::forecast(h = "14 days") 
 
 fc_corona %>%  
   filter(Country == country_select) %>% 
-  autoplot(corona_tsbl_range_reg) +
-  ggtitle(paste(country_select, "- Cases and 14-days Forecast on linear y-scale"),
-            subtitle = "Example shows the extreme fast increase on linear scale") +
+  autoplot(corona_range_reg_long_tsbl) +
+  ggtitle(paste(country_select, "- Cases and 14-days Forecast (linear y-scale)"),
+          subtitle = paste(
+            "Forecast is based on regression of past ",
+            range_reg_long, " days")) +
   labs(x = "Days") +
   # scale_y_log10() +
   scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
   facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
              strip.position = "left")
 
+
 ```
 
 
 ### Forecast Plot - next `r range_forcast` days {data-height=150}
 
-The plot shows the extreme forecast increase in case of unchecked exponentiell 
-growth. The dark shaded regions show 80% rsp. 95% prediction intervals. These prediction intervals are displaying the uncertainty in forecasts based on the 
-linear regression over the past `r range_reg` days.
+The plot shows the daily cases forecast increase in case of unchecked 
+exponential growth. 
+The dark shaded regions show the 80% rsp. 95% prediction intervals. 
+These prediction intervals are displaying the uncertainty in forecasts 
+based on the linear regression of the logarithmic data over the past
+`r range_reg_long` days.
 
 Column {data-width=600}
 ------------------------------------ 
 
-### Comparison Exponential Growth 
+### Comparison Exponential Growth (Daily rolling mean cases on log10 scale)
 
 
 ```{r plot log10scale selected Country}
 
-gg_plot <- gg_logscale(corona_tsbl_range_reg)  +
+# gg_plot <- gg_logscale(corona_tsbl_range_reg)  +
+#   geom_smooth(method="lm", aes(col = Country), lty = "dashed", se=FALSE)
+gg_plot <- gg_logscale(corona_range_reg_long_tsbl, y = Cases_rol_mean)  +
   geom_smooth(method="lm", aes(col = Country), lty = "dashed", se=FALSE)
   
 gg_plot +
   scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
-  labs(subtitle = paste("Past", range_reg, "days with Linear Regression"))
-
+  labs(subtitle = paste("Past", range_reg_long, "days with Linear Regression of log data"))
+                # changed from: range_reg
 ```
 
 
 
-### Germany - Example plot with ~linear slope on a log10 scale {data-height=400}
+### Germany - Cumulated cases with ~linear slope on a log10 scale {data-height=400}
 
 ```{r  Plot with Linear Regression}
 # plot with linear regression on log scale
+# linear regression of the logarithmic data for the past seven days
+# 
 for (i in country_select) { 
   plot_cases <- 
     ggts_cases_facet(corona_population %>% 
@@ -1346,10 +1344,11 @@ for (i in country_select) {
                        filter(Country == i & Case_Type != "Recovered" & 
                                 Cases >= 10 &
                                 Date >= last_date - 28 + 1)) +
-    labs(title = paste("w/ linear regression of past", range_reg, "days"))  +
+    labs(title = paste("w/ linear regression of log data for past", 
+                       range_reg_short, "days"))  +
     geom_smooth(data = corona_population %>% 
                   filter(Country == i & Case_Type != "Recovered" & 
-                           Date >= last_date + 1 - range_reg), 
+                           Date >= last_date + 1 - range_reg_short), 
                 method="lm", 
                 col = "black", size = 1, se = FALSE) +
     scale_y_log10() +
@@ -1372,7 +1371,9 @@ Column {data-width=150}
 
 ### Comparison Exponential vs. Linear Growth
 
-The charts compare the different forecasts for an exponential rsp. linear growth model. Due to the large fluctuations of the daily cases regression of three weeks is required. Otherwise the prediction levels are much too big.
+The charts compare the different forecasts for an exponential rsp. linear growth 
+model. Due to the large fluctuations of the daily cases regression of three 
+weeks is required. Otherwise the prediction levels are much too big.
 
 The dark shaded regions are indicating the $80\%$ rsp. $95\%$  prediction 
 intervals. These prediction intervals are displaying the "pure" statistical 
@@ -1381,67 +1382,70 @@ uncertainty in forecasts based on the regression models.
 For doubling periods in the order of period of infectivity
 (RKI assumption: $\sim9-10$ days, with great uncertainty, 
 see [[@RKI2020b]](#bib), we no longer have exponential growth. 
-The "old" infected cases are at the end of the doubling period no longer infectious (active). This results in a constant infection rate with basic reproduction number $R_t \sim 1$ or even $<1$.
+The "old" infected cases are at the end of the doubling period no longer 
+infectious (active). 
+This results in a constant infection rate with basic reproduction number
+$R_t \sim 1$ or even $<1$.
 
 Note: for case numbers of German federal states see [[@RKI2020]](#bib).
 
 
 Column
 -------------------------------------
+### Daily Rolling Mean Cases - Comparison Exponential and Linear Growth
+
+```{r daily forecast linear model, fig.asp = fig_asp_trend}
+
+forecast_range <- 7
+forecast_days <- paste(forecast_range, "days")
+
+fit_daily_corona <- corona_range_reg_long_tsbl %>%
+  group_by(Case_Type) %>% 
+  model(Exp_Growth = TSLM(log(Cases_rol_mean) ~ Date),
+        Linear_Growth = TSLM(Cases_rol_mean ~ Date)) 
+
+fc_daily_corona <- fit_daily_corona %>% 
+  fabletools::forecast(h = forecast_days) 
+
+fc_daily_corona %>%  
+  filter(Country == country_select) %>% 
+  autoplot(corona_range_reg_long_tsbl) +
+  labs(title = paste(
+    country_select, " - Forecast of Daily Rolling Mean Cases for the next ", 
+    forecast_range, "-days"),
+    subtitle = paste(
+      "Forecast is based on regression of past ",
+      range_reg_long, " days")) +
+  scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
+  facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
+             strip.position = "left")
+
+```
+
+
 ### Cumulated Cases - Comparison Exponential and Linear Growth
 
-```{r cumulated forecast exp growth, fig.asp = fig_asp_trend}
+```{r daily forecast exp growth, fig.asp = fig_asp_trend}
 
-fit_cum_corona <- corona_tsbl_range_reg %>% ungroup() %>% 
+fit_cum_corona <- corona_range_reg_long_tsbl %>%
   group_by(Case_Type) %>% 
   model(Exp_Growth = TSLM(log(Cases) ~ Date),
         Linear_Growth = TSLM(Cases ~ Date)) 
 
-fc_cum_corona <- fit_cum_corona %>% fabletools::forecast(h = "7 days") 
+fc_cum_corona <- fit_cum_corona %>% 
+  fabletools::forecast(h = forecast_days) 
 
-corona_cum_range_daily_reg_tsbl <- corona_tsbl %>% 
-  ungroup() %>% 
-  group_by(Case_Type) %>% 
-  filter(Country %in% c("World", compare_countries) & 
-           Date >= last_date - range_daily_reg + 1 &
-           Case_Type != "Recovered" & Cases >= 10) %>% 
-  dplyr::select(Date, Country, Case_Type, Cases)
 
 fc_cum_corona %>%  
+  
   filter(Country == country_select) %>% 
-  autoplot(corona_cum_range_daily_reg_tsbl) +
-  labs(x = "Days",
-       title = paste(
-         country_select, 
-         "- Cumulated Cases and 7-days Forecast"),
-       subtitle = 
-         "Forecasts with prediction intervals based on regression of past week") +
-  scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
-  facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
-             strip.position = "left")
-
-```
-
-### Daily Cases - Comparison Exponential and Linear Growth
-
-```{r daily forecast linear model, fig.asp = fig_asp_trend}
-
-fit_daily_corona <- corona_range_daily_reg_tsbl %>% ungroup() %>% 
-  group_by(Case_Type) %>% 
-    model(Exp_Growth = TSLM(log(Daily_Cases) ~ Date),
-        Linear_Growth = TSLM(Daily_Cases ~ Date)) 
-  # model(TSLM(Daily_Cases ~ Date)) 
-fc_daily_corona <- fit_daily_corona %>% fabletools::forecast(h = "7 days") 
-
-fc_daily_corona %>%  
-  filter(Country == country_select) %>% 
-  autoplot(corona_range_daily_reg_tsbl) +
-    labs(x = "Days",
-       title = paste(
-         country_select, 
-         "- Daily Cases and 7-days Forecast"),
-       subtitle = 
-         "Forecasts with prediction intervals based on regression of past 3 weeks") +
+  autoplot(corona_range_reg_long_tsbl) +
+  labs(title = paste(
+    country_select, " - Forecast of Cumulated Cases for the next ", 
+    forecast_range, "-days"),
+    subtitle = paste(
+      "Forecast is based on regression of past ",
+      range_reg_long, " days")) +
   scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
   facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
              strip.position = "left")
@@ -1450,7 +1454,7 @@ fc_daily_corona %>%
 
 
 
-Doubling Time / Forecast {data-navmenu="Forecast" #doubling}
+Doubling Time / Forecast Accuracy {data-navmenu="Forecast" #doubling}
 =====================================
 
 ***
@@ -1468,9 +1472,67 @@ especially relevant for the confirmed cases.
 Therefore the 14 days forecast is only an indication for the direction of an 
 unchecked exponentiell growth.
 
-The doubling rate is only a good indicator at the beginning of the pandemic. If the number of confirmed cases from the past two weeks is already small compared to the total number of confirmed cases, the number of infectious people is also small compared to the total cases.
+The cumulated cases doubling rate is only a good indicator at the beginning of 
+the pandemic. 
+If the number of confirmed cases from the past two weeks is already small 
+compared to the total number of confirmed cases, the number of infectious people 
+is also small compared to the total cases.
 
-```{r calculate forecast with beta_0 and beta_1, eval = TRUE}
+Therefore the table below provides the doubling time for the 
+daily rolling mean cases. The forecast is based on the linear regression of the 
+logarithmic data of past `r range_reg_long` days.
+
+```{r daily rolling mean cases forecast coef beta_0 and beta_1, eval = TRUE}
+
+fit_corona <- corona_range_reg_long_tsbl %>%  
+  model(TSLM(log(Cases_rol_mean) ~ Date)) 
+
+coefs <- tidy(fit_corona) %>% 
+  group_by(Country, Case_Type) %>% 
+  mutate(T_doubling = (log(2) /estimate))
+
+forecast_country <- coefs %>% 
+  pivot_wider(id_cols = c(Country, Case_Type), 
+              names_from = term, 
+              values_from = estimate) %>% 
+  rename(beta_0 = `(Intercept)`,
+         beta_1 = Date) %>% 
+  mutate(T_doubling = (log(2) / beta_1),
+         FC_next_day = exp(beta_0 + unclass(last_date + 1) * beta_1),
+         FC_14days = exp(beta_0 + unclass(last_date + 1 + range_forcast-1) 
+                              * beta_1)) 
+
+forecast_table <- forecast_country %>%
+  filter(Case_Type != "Recovered") %>% 
+  group_by(Country, Case_Type) %>%
+  summarise(T_doubling = sum(T_doubling, na.rm = TRUE),
+            FC_next_day = sum(FC_next_day, na.rm = TRUE),
+            FC_14days = sum(FC_14days, na.rm = TRUE)) %>% 
+  arrange(Case_Type)
+
+countries_last_day <- corona_population %>% 
+  filter(Country %in% c(compare_countries, "World") & 
+           Date == last_date) %>%
+  rename(last_day = Cases_rol_mean) %>% 
+  arrange(Case_Type) %>% 
+  select(Country, Case_Type, last_day)
+
+forecast_table <- left_join(forecast_table, countries_last_day) %>% 
+  select(Country, Case_Type, T_doubling, last_day, 
+         FC_next_day, FC_14days)
+
+knitr::kable(forecast_table,  digits = c(0, 0, 1, 0, 0),
+             format.args = list(big.mark = "'"),
+             caption = 
+             "Forecast (FC) Daily Rolling Mean Cases: Doubling Time (days), 
+             Forecasted cases next day/tomorrow and  Forecasted cases in 14 days")
+
+```
+
+```{r cumulated cases forecast coef beta_0 and beta_1, eval = FALSE}
+
+fit_corona <- corona_range_reg_long_tsbl %>%  
+  model(TSLM(log(Cases) ~ Date)) 
 
 coefs <- tidy(fit_corona) %>% 
   group_by(Country, Case_Type) %>% 
@@ -1510,66 +1572,92 @@ forecast_table <- left_join(forecast_table, countries_last_day) %>%
 knitr::kable(forecast_table,  digits = c(0, 0, 1, 0, 0),
              format.args = list(big.mark = "'"),
              caption = 
-             "Forecast (FC) with linear regression: Doubling Time (days), 
-             Forecasted cases tomorrow and  Forecasted cases in 14 days")
-
-# check
-# corona %>%  filter(Country %in% compare_countries, Date >= last_date + 1 - 1) 
+             "Forecast (FC) Cumulated Cases: Doubling Time (days), 
+             Forecasted cases next day/tomorrow and  Forecasted cases in 14 days")
 
 ```
 
 Column
 -----------------------------------------------------------------------  
 
-### Check of Forecast Accuracy {data-height=400}
+### Forecast of Daily  and Cumulated Cases and check of Accuracy {data-height=250}
 
-The forecast accuracy is checked by using the forecast method for the nine days
-before the past three days (*training data*). Subsequent forecasting of the 
-past three days enables comparison with the real data of these days (*test data*).
+The forecast accuracy is checked by using the forecast method for the past 
+three weeks before the past week (*training data*). Subsequent forecasting of the 
+past week enables comparison with the real data of these days (*test data*).
 
-The comparison is also an early indicator if the *exponential growth* is declining. However, possible changes in underreporting
-(in particular the proportion confirmed / actually infected) requires careful interpretation.
+The comparison is also an early indicator if the *exponential growth* is 
+declining. However, possible changes in underreporting
+(in particular the proportion confirmed / actually infected) requires careful 
+interpretation.
 
-For doubling periods in the order of infectivity (RKI assumption: $\sim9-10$
-days, with great uncertainty, [[see @RKI2020b]](#bib), we no longer have exponential growth. Since the "old" infected cases are 
-no longer infectious after these periods and we then have a constant infection rate with  basic reproduction number $R_t \sim 1$.
+For doubling periods of the total cumulated cases in the order of infectivity (RKI assumption: $\sim9-10$
+days, with great uncertainty, [[see @RKI2020b]](#bib), we have no  
+exponential growth for the total cumulated cases. Since the "old" infected cases are 
+no longer infectious after these periods and we then have a constant infection 
+rate with  basic reproduction number $R_t \sim 1$.
 
-Instead, we have "only" linear growth of the cumulative *Confimred Cases* and 
-the *Daily Confirmed Cases* remain more or less constant or even decrease.
+Instead, we have "only" linear growth of the cumulative *Confirmed Cases* and 
+the *Daily Confirmed Cases* remain more or less constant if $R_t \sim 1$.
 
-However, the basic reproduction number $R_0 (\approx 2.2 - 3)$ is a product of the average number of contacts of an infectious person per day, the probability of transmission upon contacts and the average number of days infected people are infectious. 
+However, the basic reproduction number 
+$R_0 (\approx 3.3 - 3.8)$ [[@RKI2020c]](#bib) is a product of the average number
+of contacts of an infectious person per day, the probability of transmission upon contacts and the average number of days infected people are infectious. 
 With the current uncertainty of the average duration of the infectivity duration, $R_0$ can therefore be estimated from the doubling time only to a very limited extent.
-See also [[@CMMID2020]](#bib) and [[@RKI2020c]](#bib).
+See also [[@CMMID2020]](#bib).
 
-### Germany - Forecast Accuracy for past three days {data-height=300}
+### Germany - Forecast Daily Rolling Mean Cases based on past `r range_reg_long` days {data-height=225}
 
-```{r forecasts accuracy, fig.width = 10, fig.height = 5}
-# Note: as long as zero deaths are in this time range log(0) will go to infinity,
-# therefore still no linear regression possible.
 
-training_data_start <- 12 #range_reg + 3  # minus 12 days
-training_data_end   <- 3  #range_reg - 6  # minus  3 days
+```{r forecast daily exp model, fig.asp = fig_asp_trend}
+
+fc_daily_corona %>%  
+  filter(Country == country_select & .model == "Exp_Growth") %>% 
+  autoplot(corona_range_reg_long_tsbl) +
+  labs(title = paste(
+    country_select, " - Forecast of Daily Rolling Mean Cases for the next ", 
+    forecast_range, "-days"),
+    subtitle = paste(
+      "Forecast is based on regression of past ",
+      range_reg_long, " days")) +
+  scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
+  facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
+             strip.position = "left")
+
+```
+
+```{r forecast check settings}
+# Note: as long as zero deaths are in the training data time range 
+# log(0) will go to infinity => no linear regression possible
+
 # total = training + test_data => 
-#    Date >= last_date + 1 - training_data_start = last 3 days
+#    Date >= last_date + 1 - training_data_start = last training_data_start days
 
-corona_tsbl_train <- corona_tsbl %>% ungroup() %>% group_by(Case_Type) %>% 
+training_data_start <- range_reg_long +  forecast_range 
+              # (last_date + 1) minus x days
+forecast_days <- paste(forecast_range, "days")
+
+corona_tsbl_train <- corona_tsbl %>% 
+  group_by(Case_Type) %>% # since .add = FALSE will override existing groups
   filter(Country %in% country_select & 
            Date >= last_date + 1 - training_data_start &
-           Date < last_date + 1 - training_data_end &
-           Case_Type != "Recovered") %>% 
-  dplyr::select(Date, Country, Case_Type, Cases)
+           Date < last_date + 1 - forecast_range)
 
-corona_tsbl_total <- corona_tsbl %>% ungroup() %>% group_by(Case_Type) %>% 
-  filter(Country %in% country_select  & 
-           Date >= last_date + 1 -  training_data_start &
-           Case_Type != "Recovered") %>% 
-  dplyr::select(Date, Country, Case_Type, Cases)
-
-fit_corona_train <- corona_tsbl_train %>% ungroup() %>% 
+corona_tsbl_total <- corona_tsbl %>% 
   group_by(Case_Type) %>% 
-  model(TSLM(log(Cases) ~ Date)) 
+  filter(Country %in% country_select  & 
+           Date >= last_date + 1 -  training_data_start) 
+
+```
+
+### Germany - Forecast Accuracy Check Daily Rolling Mean Cases for the past `r forecast_range` days {data-height=225}
+
+```{r daily forecast accuracy, fig.asp = fig_asp_trend}
+
+fit_corona_train <- corona_tsbl_train %>% 
+  model(TSLM(log(Cases_rol_mean) ~ Date)) 
 fc_corona_train <- fit_corona_train %>% 
-  fabletools::forecast(h = "3 days") 
+  fabletools::forecast(h = forecast_days) 
 
 # forecasts accuracy
 # for evaluating accuracy on forecasts to be provided:
@@ -1578,19 +1666,47 @@ fc_corona_train <- fit_corona_train %>%
 
 # level = prediction interval in % or NULL
 fc_corona_train %>%
-  filter(Country == country_select) %>% 
   autoplot(corona_tsbl_total) +
-  labs(x = "Year",
-       title = paste(country_select, "Forecast Accuracy"),
-       subtitle = "Forecast (blue line) vs. Data (black line)") +
-    facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
+  labs(title = paste(
+    country_select, "- Forecast based on regression of previous",
+    range_reg_long, "days"),
+    subtitle = "Forecast (blue line) vs. Data (black line)") +
+  facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
              strip.position = "left") +
-  scale_x_date(date_labels = "%b %d", date_breaks = "2 days") +
-  ggtitle("Forecast Accuracy")
+  scale_x_date(date_labels = "%b %d", date_breaks = "7 days")
 
 ```
 
-Forecast {data-navmenu="Forecast"}
+
+```{r cumulated forecast accuracy, fig.asp = fig_asp_trend, eval = FALSE}
+### Germany - Forecast Accuracy Check for the past `r forecast_range` days 
+### for the Cumulated Cases {data-height=225}
+
+fit_corona_train <- corona_tsbl_train %>% 
+  model(TSLM(log(Cases) ~ Date)) 
+fc_corona_train <- fit_corona_train %>% 
+  fabletools::forecast(h = forecast_days) 
+
+# forecasts accuracy
+# for evaluating accuracy on forecasts to be provided:
+# - a complete dataset that includes the future data and 
+# - data used to train the model.
+
+# level = prediction interval in % or NULL
+fc_corona_train %>%
+  autoplot(corona_tsbl_total) +
+  labs(       title = paste(
+    country_select, "- Forecast based on regression of previous",
+    range_reg_long, "days"),
+    subtitle = "Forecast (blue line) vs. Data (black line)") +
+  facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
+             strip.position = "left") +
+  scale_x_date(date_labels = "%b %d", date_breaks = "7 days")
+
+```
+
+
+Forecast w/ CFR {data-navmenu="Forecast"}
 =====================================
 
 ***
@@ -1688,7 +1804,7 @@ fc_corona_sel <- fc_corona %>%
     Case_Type == "Confirmed" ~ "FC_Confirmed",
     Case_Type == "Deaths" ~ "Exp_growth"))
 fc_corona_sel %<>% as_tibble(fc_corona_sel) %>% 
-  dplyr::select(Date, Country, Case_Type, Cases)
+  dplyr::select(Date, Country, Case_Type, Cases_rol_mean)
 
 corona_country_sel <- bind_rows(corona_country_sel, fc_corona_sel)
 ```
@@ -1698,7 +1814,7 @@ corona_country_sel <- bind_rows(corona_country_sel, fc_corona_sel)
 data <- corona_population %>%  filter(Country %in% countries_to_forecast &
            Date >= last_date - 21)
 
-p <- ggts_conf_deaths_facet(data, y = Daily_Cases, col = Country)
+p <- ggts_conf_deaths_facet(data, y = Daily_Cases, col = Case_Type)
 p # ggplotly(p)
 ```
 
