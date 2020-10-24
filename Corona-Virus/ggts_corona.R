@@ -6,31 +6,28 @@ ggts_cases_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
                strip.position = "left") +
     geom_point(size = 1, na.rm = TRUE) +
     geom_line(na.rm = TRUE) +  
-    theme(legend.position = "none")  +
-    labs(y = "") + 
     scale_x_date(date_labels = "%b %d", date_breaks = "28 days") +
+    theme(legend.position = "none")  +
+    theme(plot.title = element_text(size = 10))
     # scale_colour_distiller(palette = col_scheme, direction = 1) +
     # scale_colour_brewer(palette = col_scheme, direction = 1) +
     # scale_color_discrete(c("blue",  "green", "red")) +
-    ggtitle("Confirmed and Death Cases") +
-    theme(plot.title = element_text(size = 10))
   p # ggplotly(p)
 }
 
 # function to get grid plot with Cases trend and Daily_Cases
-ggts_trend_daily <- function(data, i, span = 7, weeks = 6) {
+ggts_trend_daily <- function(data, i, span = 7, weeks = 12) {
   plot_cases <- ggts_cases_facet(data, y = Cases) +
     labs(title = paste(i, "- Cumulated Cases (all)"))
   
   last_date <- max(data$Date)
   plot_daily_cases <- ggts_cases_facet(
     filter(data, Date >= last_date - weeks * 7 + 1), y = Daily_Cases) +
-    geom_line(aes(y = Cases_rol_mean, col = "Rolling Mean"), 
+    geom_line(aes(y = Daily_Cases_Mean, col = "Rolling Mean"), 
               size = 1, na.rm = TRUE) +
     scale_x_date(date_labels = "%b %d", date_breaks = "14 days") +
     labs(title = paste(i, "- Daily Cases (past", weeks, "weeks)"),
          subtitle = paste0("with Rolling Mean of past ", span, " days"))
-  # gridExtra::grid.arrange(plot_cases, plot_daily_cases, ncol = 2)
   plot_cases + plot_daily_cases 
             # + plot_annotation(tag_levels = "A", title = "title annot")
 }
@@ -109,14 +106,14 @@ bar_chart_countries_hot_spots <- function(data, i) {
   data <- bind_rows(
     data %>% 
       filter(Case_Type == i, Country != "World") %>% 
-      arrange(desc(Cases_100k_rol_mean)) %>% head(14), 
+      arrange(desc(Daily_Cases_100k_Mean)) %>% head(14), 
     data %>%
       filter(Case_Type == i, Country == "World"))
   
   data %>%
-    arrange(desc(Cases_100k_rol_mean)) %>% 
+    arrange(desc(Daily_Cases_100k_Mean)) %>% 
     # to get world data in the right order
-    hchart("bar",hcaes(x = Country,  y = Cases_100k_rol_mean)) %>%
+    hchart("bar",hcaes(x = Country,  y = Daily_Cases_100k_Mean)) %>%
     hc_title(
       text = paste(i, "- Mean Daily Cases per 100k Inhabitants (Descending Order)")) %>% 
     hc_yAxis(title = list(text = ("Mean Cases per 100k Inhabitants"))) %>% 
@@ -202,14 +199,14 @@ plot_dygraph_daily <-
       dyAxis("y", label = "Daily Confirmed Cases") %>%
       dyAxis("y2", label = "Daily Death Cases",  independentTicks = TRUE) %>%
       dyLegend(width = 400) %>% 
-      dySeries("Daily_Confirmed", 
+      dySeries("Daily_Conf", 
                drawPoints = TRUE, pointSize = 3, pointShape = "circle", 
                color = "tomato") %>%  
-      dySeries("Conf_rol_mean", drawPoints = FALSE,  color = "red") %>% 
+      dySeries("Daily_Conf_Mean", drawPoints = FALSE,  color = "red") %>% 
       dySeries("Daily_Deaths", 
                drawPoints = TRUE, pointSize = 3, pointShape = "triangle", 
                color = "turquoise", axis = "y2") %>%     
-      dySeries("Deaths_rol_mean", drawPoints = FALSE, 
+      dySeries("Daily_Deaths_Mean", drawPoints = FALSE, 
                color = "blue", axis = "y2") %>% 
       dyRangeSelector(dateWindow = 
                         c(as.character(last_date - weeks * 7), as.character(last_date)))
@@ -229,10 +226,10 @@ plot_dygraph_daily_repro <-
                color = "black") %>% 
       dyLimit(1, "Repro_number = 1",
               strokePattern = "dashed", color = "black") %>%
-      dySeries("Daily_Confirmed", 
+      dySeries("Daily_Conf", 
                drawPoints = TRUE, pointSize = 3, pointShape = "triangle", 
                color = "tomato", axis = "y2") %>%
-      dySeries("Conf_rol_mean", drawPoints = FALSE,  
+      dySeries("Daily_Conf_Mean", drawPoints = FALSE,  
                color = "red", axis = "y2") %>%
       dyRangeSelector(dateWindow =
                         c(as.character(last_date - weeks * 7), as.character(last_date)))
