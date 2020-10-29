@@ -1,5 +1,30 @@
+#' provide trend plot for cumulated and daily cases 
+#' for all case types (e.g. Confirmed and Deaths)
+ggts_cum_daily <- function(data, 
+                           y_cum = Cases, y_daily = Daily_Cases,
+                           daily_mean = Daily_Cases_Mean,
+                           country, span = 7, weeks = 12) {
+  data <- data %>% filter(Country == country)
+  
+  plot_cum_cases <- ggts_trend_facet(data, y = {{ y_cum }}) +
+    labs(title = paste(country, "- Cumulated Cases (since Jan 2020)"))
+  
+  last_date <- max(data$Date)
+  data <- data %>% filter(Date >= last_date - 7 * weeks + 1)
+  
+  plot_daily_cases <- ggts_trend_facet(data, y = {{ y_daily }}) +
+    geom_line(aes(y = {{ daily_mean }}, col = "Rolling Mean"), 
+              size = 1, na.rm = TRUE) +
+    scale_x_date(date_labels = "%b %d", date_breaks = "14 days") +
+    labs(title = paste(country, "- Daily Cases (past", weeks, "weeks)"),
+         subtitle = paste0("with Rolling Mean of past ", span, " days"))
+  
+  plot_cum_cases + plot_daily_cases 
+  # + plot_annotation(tag_levels = "A", title = "title annot")
+}
 
-ggts_cases_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
+#' provide trend facet plot for case types (e.g. Confirmed and Deaths)
+ggts_trend_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
   # col_scheme <- "Set1" # "RdYlGn" #"YlOrRd" #"Oranges" # "YlGnBu" # 
   p <- ggplot(data, aes({{ x }}, {{ y }}, col = {{  col }})) +
     facet_wrap(vars({{ col }}), ncol = 1, scales = "free_y",
@@ -9,28 +34,45 @@ ggts_cases_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
     scale_x_date(date_labels = "%b %d", date_breaks = "28 days") +
     theme(legend.position = "none")  +
     theme(plot.title = element_text(size = 10))
-    # scale_colour_distiller(palette = col_scheme, direction = 1) +
-    # scale_colour_brewer(palette = col_scheme, direction = 1) +
-    # scale_color_discrete(c("blue",  "green", "red")) +
+  # scale_colour_distiller(palette = col_scheme, direction = 1) +
+  # scale_colour_brewer(palette = col_scheme, direction = 1) +
+  # scale_color_discrete(c("blue",  "green", "red")) +
   p # ggplotly(p)
 }
 
-# function to get grid plot with Cases trend and Daily_Cases
-ggts_trend_daily <- function(data, i, span = 7, weeks = 12) {
-  plot_cases <- ggts_cases_facet(data, y = Cases) +
-    labs(title = paste(i, "- Cumulated Cases (all)"))
-  
-  last_date <- max(data$Date)
-  plot_daily_cases <- ggts_cases_facet(
-    filter(data, Date >= last_date - weeks * 7 + 1), y = Daily_Cases) +
-    geom_line(aes(y = Daily_Cases_Mean, col = "Rolling Mean"), 
-              size = 1, na.rm = TRUE) +
-    scale_x_date(date_labels = "%b %d", date_breaks = "14 days") +
-    labs(title = paste(i, "- Daily Cases (past", weeks, "weeks)"),
-         subtitle = paste0("with Rolling Mean of past ", span, " days"))
-  plot_cases + plot_daily_cases 
-            # + plot_annotation(tag_levels = "A", title = "title annot")
-}
+
+# ggts_cases_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
+#   # col_scheme <- "Set1" # "RdYlGn" #"YlOrRd" #"Oranges" # "YlGnBu" # 
+#   p <- ggplot(data, aes({{ x }}, {{ y }}, col = {{  col }})) +
+#     facet_wrap(vars({{ col }}), ncol = 1, scales = "free_y",
+#                strip.position = "left") +
+#     geom_point(size = 1, na.rm = TRUE) +
+#     geom_line(na.rm = TRUE) +  
+#     scale_x_date(date_labels = "%b %d", date_breaks = "28 days") +
+#     theme(legend.position = "none")  +
+#     theme(plot.title = element_text(size = 10))
+#     # scale_colour_distiller(palette = col_scheme, direction = 1) +
+#     # scale_colour_brewer(palette = col_scheme, direction = 1) +
+#     # scale_color_discrete(c("blue",  "green", "red")) +
+#   p # ggplotly(p)
+# }
+# 
+# # function to get grid plot with Cases trend and Daily_Cases
+# ggts_trend_daily <- function(data, i, span = 7, weeks = 12) {
+#   plot_cases <- ggts_cases_facet(data, y = Cases) +
+#     labs(title = paste(i, "- Cumulated Cases (all)"))
+#   
+#   last_date <- max(data$Date)
+#   plot_daily_cases <- ggts_cases_facet(
+#     filter(data, Date >= last_date - weeks * 7 + 1), y = Daily_Cases) +
+#     geom_line(aes(y = Daily_Cases_Mean, col = "Rolling Mean"), 
+#               size = 1, na.rm = TRUE) +
+#     scale_x_date(date_labels = "%b %d", date_breaks = "14 days") +
+#     labs(title = paste(i, "- Daily Cases (past", weeks, "weeks)"),
+#          subtitle = paste0("with Rolling Mean of past ", span, " days"))
+#   plot_cases + plot_daily_cases 
+#             # + plot_annotation(tag_levels = "A", title = "title annot")
+# }
 
 
 # grid plot Confirmed / Death for selected countries 
