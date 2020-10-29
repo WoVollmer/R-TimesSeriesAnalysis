@@ -21,8 +21,10 @@ Following data/files are required to run R Markdown file
         since data not consistend and w/o real value add)
   - **ggts\_corona.R** R file providing the functions to create the
     plots
+  - **uts\_corona.R** R file providing utility functions
   - **world\_population\_un.RDS** R data file providing the population
-    numbers of the different countries (based on UN data)
+    numbers of the different countries (based on UN data) and population
+    sum for *World* and *EU* (European Union).
   - **References\_Corona.bib** Bibtex file providing the references with
     the Bibtexkeys
 
