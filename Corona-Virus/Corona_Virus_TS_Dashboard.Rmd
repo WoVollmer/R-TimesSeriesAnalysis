@@ -129,7 +129,7 @@ range_reg_long <- 21 # days; 2 or 3 weeks if one week is to short
 range_forcast <- 14  # 14days forecast => unclass(last_date + 1 + range_forcast -1)
 
 range_cfr <- 14  # 14days cfr past period length
-lag_n <- 11  # average confirmed lag - for all countries
+lag_n <- 12  # average lag for confirmed -> death - for all countries
 
 ```
 
@@ -319,17 +319,11 @@ corona_tsbl <- corona_data  %>%
 
 ```{r}
 saveRDS(corona_data, "corona_data.RDS")
-```
 
-```{r save read rds data, eval = FALSE}
-
-# saveRDS(corona_country, "corona_country.RDS")
-# saveRDS(corona_data, "corona_data.RDS")
-
-# corona_country <- readRDS("corona_country.RDS")
 # corona_data <- readRDS("corona_data.RDS")
 
 ```
+
 
 ```{r complete data wide format}
 # wide format: 
@@ -748,9 +742,12 @@ Column
 
 The number of confirmed cases is an early predictor of the number of deaths.
 The number of today's deaths is already determined by the infections about by 
-$\sim19$ days ago or respectively by the confirmed cases about by $\sim11$ days ago.
-The *Confirmed infection to Death* period can be assumed to be an average of 
-$11$ days [[see @RWI2020]](#bib).
+$\sim19$ days ago or respectively by the confirmed cases about by $\sim11$ days 
+ago [[see @RWI2020]](#bib).
+
+An average duration of *Confirmed Infection to Death* of $12$ (lag-)days 
+(country-independent for the sake of simplicity) is assumed for the calculations, 
+since many tests are carried out in the meantime before symptoms appear.
 
 However, this varies considerably depending on country-specific test rate and 
 health system. In the worst health systems it is only one day for recognized 
@@ -1449,7 +1446,7 @@ fc_daily_corona %>%
   filter(Country == country_select) %>% 
   autoplot(corona_range_reg_long_tsbl) +
   labs(title = paste(
-    country_select, " - Forecast of Daily Rolling Mean Cases for the next ", 
+    country_select, " - Forecast of Mean Daily Mean Cases for the next ", 
     forecast_range, "-days"),
     subtitle = paste(
       "Forecast is based on regression of past ",
@@ -1592,7 +1589,7 @@ fc_daily_corona %>%
   filter(Country == country_select & .model == "Exp_Growth") %>% 
   autoplot(corona_range_reg_long_tsbl) +
   labs(title = paste(
-    country_select, " - Forecast of Daily Rolling Mean Cases for the next ", 
+    country_select, " - Forecast of Mean Daily Cases for the next ", 
     forecast_range, "-days"),
     subtitle = paste(
       "Forecast is based on regression of past ",
@@ -1743,22 +1740,26 @@ Column {data-width=600}
 
 ```{r forecast for selected countries and lags}
 
-# avg_days_to_confirmed  # Incubation period ~ 5-6 days; Hospitalisation + 4 days
-# avg_days_to_death      # death     ~ after 21 days
+# infected_to_confirmed  # infected -> confirmed ~ 9 days,
+#                        # Incubation period ~ 5-6 days + testing + get result
+#                        # Hospitalisation + 4 days
+# infected_to_death      # infected -> death     ~ after 21 days
+# lag_x : confirmed_to_death     # ~ 13 days, ~ 21 - 9 days
 # case_fatality_rate     # proportion of deaths / number of people diagnosed
+# 
 #                                                                   (Confirmed)
 
 lag_germany <- 12 # 13
 lag_italy <-  12  # 10
-lag_spain <- 10   # 11
+lag_spain <- 12   # 11
 
 countries_to_forecast <- c("Germany", "Italy", "Spain")
 
 countries_fc_param <-
   tibble(Country = countries_to_forecast,
        confirmed_to_death = c(lag_germany, lag_italy , lag_spain),
-       infected_to_death     = 21,
-       case_fatality_rate = c(0.06, 0.25, 0.3)) %>% 
+       infected_to_death     = 21) %>% 
+       # case_fatality_rate = c(0.08, 0.20, 0.13))
   mutate(infected_to_confirmed = infected_to_death  - confirmed_to_death)
 
         
@@ -1769,7 +1770,6 @@ countries_fc_param <-
 
 corona_country_sel <- corona_data %>% 
   filter(Country %in% countries_to_forecast & 
-           Case_Type != "Recovered" &
            Date >= last_date - 28) %>%
   ungroup() %>% 
   dplyr::select(Date, Country, Case_Type, Cases)
@@ -1791,7 +1791,8 @@ corona_country_sel <- bind_rows(corona_country_sel, fc_corona_sel)
 data <- corona_data %>%  filter(Country %in% countries_to_forecast &
            Date >= last_date - 21)
 
-p <- ggts_conf_deaths_facet(data, y = Daily_Cases, col = Case_Type)
+p <- ggts_conf_deaths_facet(data, y = Daily_Cases_Mean, col = Case_Type) +
+      ggtitle("Daily Rolling Mean Cases (past 3 weeks)")
 p # ggplotly(p)
 ```
 
@@ -1808,36 +1809,20 @@ country <- countries_to_forecast[1]
 
 corona_tsbl_lag_range <- corona_tsbl %>% ungroup() %>% group_by(Case_Type) %>% 
   filter(Country %in% countries_to_forecast &
-           Case_Type != "Recovered" &
            Date >= last_date - lag_range) %>% 
-  dplyr::select(Date, Country, Case_Type, Daily_Cases) %>% 
+  dplyr::select(Date, Country, Case_Type, Daily_Cases_Mean) %>% 
   group_by(Country)
 
 ```
 
-
-```{r plot facet daily confirmed and daily deaths, eval = FALSE}
-
-corona_tsbl_lag_range %>% 
-  filter(Country == country) %>% 
-  ggplot(aes(x = Date, y = Daily_Cases)) +
-  geom_line() +
-  facet_grid(vars(Case_Type), scales = "free_y") +
-  labs(x = "Day", y = NULL,
-       title = paste(country, "- Daily Confirmed and Death Cases"),
-       subtitle = "w/o lagging and w/o fatality factor")
-
-```
 
 ```{r}
 ## wide format to get Daily Deaths as function of Daily Confirmed Cases
 corona_tsbl_lag_range_wide <- corona_tsbl_lag_range %>%   
   pivot_wider(id_cols = c(Country, Date), 
               names_from = Case_Type, 
-              values_from = Daily_Cases) %>% 
+              values_from = Daily_Cases_Mean) %>% 
   tsibble::as_tsibble(index = Date, key = c(Country))
-  
-no_values <- nrow(corona_tsbl_lag_range_wide %>% filter(Country == country)) 
 
 ```
 
@@ -1871,18 +1856,21 @@ for (country in countries_to_forecast) {
     fit_best_germany <- fit_best
   }
 
-  corona_deaths_of_confirmed <- corona_tsbl_lag_range_wide  %>% ungroup() %>%
+  corona_deaths_of_confirmed <- corona_tsbl_lag_range_wide  %>% 
+    ungroup() %>%
     new_data(lag_days, keep_all = TRUE)
   
   
   ## plot Daily Deaths plus FC of model(ARIMA(Deaths ~ 0 + lag(Confirmed, lag_days)))
   plot_fit <- fit_best %>%
     forecast(corona_deaths_of_confirmed) %>%
+    #  forecast horizon automatically (by new data) fixed to lag-days minus 
+    #     model dependency lag_days - 1 & lag_days - 2 => 12days - 2 = 10 days
     autoplot(corona_tsbl_lag_range_wide %>%  
                filter(Date >= last_date - 20)) + 
-    ylab("Daily Deaths") +
-    ggtitle(paste(country, "Forecast Daily Deaths based on Confirmed Cases"), 
-            subtitle = paste("ARIMA-Model, lag Confirmed:", lag_days, "days"))
+    labs(y = "Daily Deaths",
+         subtitle = 
+           paste(country, "w/ avg. Confirmed -> Death:", lag_days, "lag-days"))
   save_plot_fit[[country]] <- plot_fit
   country_table_new <- c(Country = country, 
                          lag_Confirmed = lag_days, 
@@ -1894,7 +1882,13 @@ for (country in countries_to_forecast) {
   country_table <- bind_rows(country_table, country_table_new)
 }
 
-
+plot_deaths_forecast <- 
+  save_plot_fit$Germany / save_plot_fit$Italy / save_plot_fit$Spain + 
+  plot_annotation(
+    title = "Forecast Mean Daily Deaths for next 10 days") +
+  plot_layout(guides = 'collect') &
+  theme(legend.position='bottom')
+plot_deaths_forecast 
 
 ```
 
@@ -1926,21 +1920,17 @@ knitr::kable(cfr_table %>% filter(Country %in% countries_to_forecast),
 Column {data-width=600}
 -------------------------------------
 
-### Daily Deaths depending on lagged Daily Confirmed Cases
+### Daily Deaths Forecast depending on lagged Daily Confirmed Cases (ARIMA model)
 
 
-```{r plot lag confirmed country dependent, fig.width = 5, fig.asp = 0.4}
+```{r plot lag confirmed country dependent, fig.width = 5, fig.asp = 1.2}
 
-save_plot_fit$Germany
-
-save_plot_fit$Italy
-
-save_plot_fit$Spain
+plot_deaths_forecast
 
 ```
 
 
-### Exampla Germany - White Noise of Forecast Residuals  {data-height=150}
+### Exampla Germany - White Noise of Forecast Residuals {data-height=150}
 
 Forecast residuals indicate quality of fit with Arima model:
 
