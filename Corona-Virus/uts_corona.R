@@ -1,23 +1,24 @@
 require(checkmate)
-require(tsibble)
+require(tidyverse)
 
 #' @title Utilities for corona data analysis and data
 #'
 #' @description provide data in wide form and adapt names
-#' @param tsibble data frame 
-#' @details The data input nust be ...
+#' @param data A data frame to pivot
+#' @details Data frame columns required are checked
 #'
-#' @return tsibble data frame
+#' @return data frame
 #' 
 #' @encoding UTF-8
 #' @md
-#' 
 get_corona_data_wide <- function(data) {
-  
-  names_data <- c("Country", "Date", "Population", "Case_Type", "Cases",
+
+  # assert if names_data is subset of names of input data columns
+  # => all columns exist for pivot_wider() and for select()  
+  names_data <- c("Country",  "Date", "Population", "Case_Type", "Cases",
                   "Daily_Cases", "Cases_100k", "Daily_Cases_100k",
                   "Daily_Cases_Mean", "Daily_Cases_100k_Mean")
-  assert_names(names(data), subset.of = names_data)
+  assert_names(names_data, subset.of = names(data))
   
   data %>% 
     pivot_wider(names_from = Case_Type, 
@@ -41,4 +42,50 @@ get_corona_data_wide <- function(data) {
                   Daily_Conf_100k, Daily_Conf_100k_Mean, 
                   Deaths, Daily_Deaths, Daily_Deaths_Mean, Deaths_100k, 
                   Daily_Deaths_100k, Daily_Deaths_100k_Mean)
+}
+
+#### Reproduction number calculation - source from TU Ilmenau - GitHub #
+repronum <- function(
+  new.cases, # I
+  profile, # w
+  window = 1, # H
+  delay = 0, # Delta
+  conf.level = 0.95, # 1-alpha
+  pad.zeros = FALSE,
+  min.denominator = 5,
+  min.numerator = 5
+) {
+  # pad zeros if desired
+  if (pad.zeros) new.cases <- c(rep(0, length(profile) - 1), new.cases)
+  
+  # compute convolutions over h, tau and both, respectively
+  sum.h.I <- as.numeric(stats::filter(new.cases, rep(1, window),
+                                      method = "convolution", sides = 1))
+  sum.tau.wI <- as.numeric(stats::filter(new.cases, c(0, profile),
+                                         method = "convolution", sides = 1))
+  sum.htau.wI <- as.numeric(stats::filter(sum.tau.wI, rep(1, window),
+                                          method = "convolution", sides = 1))
+  
+  # estimators
+  repronum <- ifelse(sum.h.I < min.numerator, NA, sum.h.I) / ifelse(sum.htau.wI < min.denominator, NA, sum.htau.wI)
+  
+  # standard errors
+  repronum.se <- sqrt(repronum / sum.htau.wI)
+  
+  # shift by delay
+  repronum <- c(repronum, rep(NA, delay))[(1:length(repronum)) + delay]
+  repronum.se <- c(repronum.se,
+                   rep(NA, delay))[(1:length(repronum.se)) + delay]
+  
+  # standard normal qunatile
+  q <- qnorm(1 - (1 - conf.level) / 2)
+  
+  # return data.frame with as many rows as new.cases
+  ret <- data.frame(
+    repronum = repronum,
+    repronum.se = repronum.se,
+    ci.lower = repronum - q * repronum.se,
+    ci.upper = repronum + q * repronum.se
+  )
+  if (pad.zeros) ret[-(1:(length(profile) - 1)),] else ret
 }

@@ -41,45 +41,12 @@ ggts_trend_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
 }
 
 
-# ggts_cases_facet <- function(data, x = Date, y = Cases, col = Case_Type) {
-#   # col_scheme <- "Set1" # "RdYlGn" #"YlOrRd" #"Oranges" # "YlGnBu" # 
-#   p <- ggplot(data, aes({{ x }}, {{ y }}, col = {{  col }})) +
-#     facet_wrap(vars({{ col }}), ncol = 1, scales = "free_y",
-#                strip.position = "left") +
-#     geom_point(size = 1, na.rm = TRUE) +
-#     geom_line(na.rm = TRUE) +  
-#     scale_x_date(date_labels = "%b %d", date_breaks = "28 days") +
-#     theme(legend.position = "none")  +
-#     theme(plot.title = element_text(size = 10))
-#     # scale_colour_distiller(palette = col_scheme, direction = 1) +
-#     # scale_colour_brewer(palette = col_scheme, direction = 1) +
-#     # scale_color_discrete(c("blue",  "green", "red")) +
-#   p # ggplotly(p)
-# }
-# 
-# # function to get grid plot with Cases trend and Daily_Cases
-# ggts_trend_daily <- function(data, i, span = 7, weeks = 12) {
-#   plot_cases <- ggts_cases_facet(data, y = Cases) +
-#     labs(title = paste(i, "- Cumulated Cases (all)"))
-#   
-#   last_date <- max(data$Date)
-#   plot_daily_cases <- ggts_cases_facet(
-#     filter(data, Date >= last_date - weeks * 7 + 1), y = Daily_Cases) +
-#     geom_line(aes(y = Daily_Cases_Mean, col = "Rolling Mean"), 
-#               size = 1, na.rm = TRUE) +
-#     scale_x_date(date_labels = "%b %d", date_breaks = "14 days") +
-#     labs(title = paste(i, "- Daily Cases (past", weeks, "weeks)"),
-#          subtitle = paste0("with Rolling Mean of past ", span, " days"))
-#   plot_cases + plot_daily_cases 
-#             # + plot_annotation(tag_levels = "A", title = "title annot")
-# }
-
 
 # grid plot Confirmed / Death for selected countries 
 ggts_conf_deaths_facet <- function(data, x = Date, y = Cases, col = Case_Type,
                                    vars_2 = Country) {
   # col_scheme <- "Set1" # "RdYlGn" #"YlOrRd" #"Oranges" # "YlGnBu" # 
-  ggplot(data, aes({{ x }}, {{ y }}, col = {{  col }})) +
+  ggplot(data, aes({{ x }}, {{ y }}, col = {{ col }})) +
     facet_grid(vars({{ vars_2 }}, {{ col }}), scales = "free_y") +
     geom_point(size = 1.5, na.rm = TRUE) +
     geom_line(size = 1, na.rm = TRUE) +  
@@ -96,7 +63,7 @@ ggts_conf_deaths_facet <- function(data, x = Date, y = Cases, col = Case_Type,
 
 # https://api.highcharts.com/highcharts/title
 # https://rdrr.io/cran/highcharter/man/hc_xAxis.html
-world_map_plot <- function(data, i, value, title) {
+world_map_plot <- function(data, value, title) {
   highchart() %>%
     hc_add_series_map(worldgeojson, 
                       data, 
@@ -111,56 +78,31 @@ world_map_plot <- function(data, i, value, title) {
 ### bar chart #############################
 
 # Visualization with top x country bar chart
-# https://rdrr.io/cran/highcharter/man/hc_xAxis.html
-bar_chart_countries <- function(data, i) {
-  data %>%
-    arrange(desc(Cases)) %>% 
-    head(15) %>%
-    hchart("bar",hcaes(x = Country,  y = Cases)) %>%
-    hc_title(text = paste(i, "- Cumulated Cases (Descending Order)")) %>% 
-    hc_yAxis(title = list(text = ("Cumulated Cases per 100k Inhabitants"))) %>% 
+# https://rdrr.io/cran/highcharter/man/hc_xAxis.html  
+# 
+# to get ordering plus World => via bind_rows()
+#   data <- bind_rows(
+#    data %>% filter(Country != "World") %>% 
+#     arrange(desc(Cases_100k)) %>% head(14), 
+#    data %>%
+#     filter(Country == "World"))
+#
+bar_chart_country <- function(data, y, title = "Text", n = 15) {
+  data %>% # ungroup() %>% 
+    slice_max(order_by = .data[[y]], n = n) %>% 
+    rename(col_name = .data[[y]]) %>%
+    # hchart() does not work with {{y}} or substitute(), ....
+    #      => fixed colname to be used and hc_yAxis() needed, otherwise "value"
+    head(n) %>%
+    hchart("bar", hcaes(x = Country,  y = col_name)) %>%
+    hc_title(text = title) %>%
+    hc_yAxis(title = list(text = y)) %>%
     hc_add_theme(hc_theme_sandsignika())
+  #
+
 }
 
 
-# Visualization with top x country/100k bar chart
-bar_chart_countries_pop <- function(data, i) {
-  data <- bind_rows(
-    data %>% 
-      filter(Case_Type == i, Country != "World") %>% 
-      arrange(desc(Cases_100k)) %>% head(14), 
-    data %>%
-      filter(Case_Type == i, Country == "World"))
-  
-  data %>%
-    arrange(desc(Cases_100k)) %>% 
-    # to get world data in the right order
-    hchart("bar",hcaes(x = Country,  y = Cases_100k)) %>%
-    hc_title(
-      text = paste(i, "- Cumulated Cases per 100k Inhabitants (Descending Order)")) %>% 
-    hc_yAxis(title = list(text = ("Cumulated Cases per 100k Inhabitants"))) %>% 
-    hc_add_theme(hc_theme_sandsignika())
-}
-
-
-# Visualization with top x hot spots country/mean bar chart
-bar_chart_countries_hot_spots <- function(data, i) {
-  data <- bind_rows(
-    data %>% 
-      filter(Case_Type == i, Country != "World") %>% 
-      arrange(desc(Daily_Cases_100k_Mean)) %>% head(14), 
-    data %>%
-      filter(Case_Type == i, Country == "World"))
-  
-  data %>%
-    arrange(desc(Daily_Cases_100k_Mean)) %>% 
-    # to get world data in the right order
-    hchart("bar",hcaes(x = Country,  y = Daily_Cases_100k_Mean)) %>%
-    hc_title(
-      text = paste(i, "- Mean Daily Cases per 100k Inhabitants (Descending Order)")) %>% 
-    hc_yAxis(title = list(text = ("Mean Cases per 100k Inhabitants"))) %>% 
-    hc_add_theme(hc_theme_sandsignika())
-}
 
 ### log scale #############################
 
@@ -178,53 +120,6 @@ gg_logscale <- function(data, x = Date, y = Cases, col = Country,
     theme(legend.position = "bottom") +
     facet_wrap(vars({{ vars_1 }}), ncol = 2, scales = "free_y",
                strip.position = "left") 
-}
-
-#### Reproduction number calculation - source from TU Ilmenau - GitHub 
-#
-repronum <- function(
-  new.cases, # I
-  profile, # w
-  window = 1, # H
-  delay = 0, # Delta
-  conf.level = 0.95, # 1-alpha
-  pad.zeros = FALSE,
-  min.denominator = 5,
-  min.numerator = 5
-) {
-  # pad zeros if desired
-  if (pad.zeros) new.cases <- c(rep(0, length(profile) - 1), new.cases)
-  
-  # compute convolutions over h, tau and both, respectively
-  sum.h.I <- as.numeric(stats::filter(new.cases, rep(1, window),
-                                      method = "convolution", sides = 1))
-  sum.tau.wI <- as.numeric(stats::filter(new.cases, c(0, profile),
-                                         method = "convolution", sides = 1))
-  sum.htau.wI <- as.numeric(stats::filter(sum.tau.wI, rep(1, window),
-                                          method = "convolution", sides = 1))
-  
-  # estimators
-  repronum <- ifelse(sum.h.I < min.numerator, NA, sum.h.I) / ifelse(sum.htau.wI < min.denominator, NA, sum.htau.wI)
-  
-  # standard errors
-  repronum.se <- sqrt(repronum / sum.htau.wI)
-  
-  # shift by delay
-  repronum <- c(repronum, rep(NA, delay))[(1:length(repronum)) + delay]
-  repronum.se <- c(repronum.se,
-                   rep(NA, delay))[(1:length(repronum.se)) + delay]
-  
-  # standard normal qunatile
-  q <- qnorm(1 - (1 - conf.level) / 2)
-  
-  # return data.frame with as many rows as new.cases
-  ret <- data.frame(
-    repronum = repronum,
-    repronum.se = repronum.se,
-    ci.lower = repronum - q * repronum.se,
-    ci.upper = repronum + q * repronum.se
-  )
-  if (pad.zeros) ret[-(1:(length(profile) - 1)),] else ret
 }
 
 # https://rstudio.github.io/dygraphs/gallery-series-highlighting.html

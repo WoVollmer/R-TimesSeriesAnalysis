@@ -21,17 +21,17 @@ knitr::opts_chunk$set(eval = TRUE, echo = FALSE, warning = FALSE,
 # csl: harvard1.csl
 # csl: ieee.csl
 
-################################################################################
-##                                                                            ##
-## Corona Virus -                                                             ##
-##       Analyze Time Series of Confirmed, Death and Recovered Cases          ##
-##                                                                            ##
-##                                          Wolfgang Vollmer,   July  2, 2020 ##
-##                                              First Version: March 12, 2020 ##
-##                                                                            ##
-## URL:                                                                       ##
-## https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Corona-Virus##  
-################################################################################
+#===============================================================================
+#
+#  Corona Virus -
+#        Analyze Time Series of Confirmed and Death and Cases
+#
+#                                           Wolfgang Vollmer,  October 30, 2020
+#                                               First Version:   March 12, 2020
+#
+#  URL:
+#  https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Corona-Virus
+#===============================================================================
 library(flexdashboard)
 library(tidyverse)
 library(magrittr)
@@ -49,6 +49,7 @@ library(gghighlight)
 library(plotly)
 library(highcharter)
 library(dygraphs)  # R interface to the dygraphs JavaScript charting library
+library(checkmate) # to provide informative error messages
 
 ```
 
@@ -112,10 +113,11 @@ x_axis_theme <- element_text(size = 14)
 
 
 compare_countries <- c("Austria", "France", "Germany", "Italy", "India",
-                       "South Korea", "Spain", "EU", "United States of America")
+                       "Japan", "Spain", "EU", 
+                        "United Kingdom", "United States of America")
 countries <- c("China", compare_countries)
 countries_exp_growth <- c("World", "China", "Austria", "France", "Germany", "Italy", 
-                       "South Korea", "Spain", "EU",  "United States of America")
+                       "India", "Spain", "EU",  "United States of America")
 country_select <- "Germany"
 
 span <- 7 #  for rolling mean over 7 days
@@ -309,7 +311,8 @@ corona_data %<>%
     Daily_Cases_100k_Mean = round(
       slider::slide_dbl(Daily_Cases_100k,  ~ mean(.), 
                         .before = 2*q, .after = 0, .complete = TRUE),
-      digits = 2))
+      digits = 2)) %>% 
+  ungroup()
 
 corona_tsbl <- corona_data  %>%
   tsibble::as_tsibble(index = Date, key = c(Country, Case_Type))
@@ -329,53 +332,18 @@ saveRDS(corona_data, "corona_data.RDS")
 # wide format: 
 #    Country Population Date  Confirmed Daily_Conf ... Death ...
 # for easy to read datatable outputs e.g.with filter for last date
-# 
-
-
-# library(checkmate)
 
 corona_data_wide <- get_corona_data_wide(corona_data)
-# corona_data_wide <- corona_data %>% 
-#   pivot_wider(names_from = Case_Type, 
-#               values_from = c(Cases, Daily_Cases, 
-#                               Cases_100k, Daily_Cases_100k, 
-#                               Daily_Cases_Mean, Daily_Cases_100k_Mean)) %>% 
-#   rename(Confirmed = Cases_Confirmed,
-#          Deaths = Cases_Deaths,
-#          Daily_Conf = Daily_Cases_Confirmed,
-#          Daily_Deaths = Daily_Cases_Deaths,
-#          Conf_100k = Cases_100k_Confirmed,
-#          Deaths_100k = Cases_100k_Deaths,
-#          Daily_Conf_100k = Daily_Cases_100k_Confirmed,
-#          Daily_Deaths_100k = Daily_Cases_100k_Deaths,
-#          Daily_Conf_Mean = Daily_Cases_Mean_Confirmed, 
-#          Daily_Deaths_Mean = Daily_Cases_Mean_Deaths,
-#          Daily_Conf_100k_Mean = Daily_Cases_100k_Mean_Confirmed, 
-#          Daily_Deaths_100k_Mean = Daily_Cases_100k_Mean_Deaths) %>% 
-#   dplyr::select(Country, Population, Date, 
-#                 Confirmed, Daily_Conf, Daily_Conf_Mean, Conf_100k, 
-#                 Daily_Conf_100k, Daily_Conf_100k_Mean, 
-#                 Deaths, Daily_Deaths, Daily_Deaths_Mean, Deaths_100k, 
-#                 Daily_Deaths_100k, Daily_Deaths_100k_Mean)
 
 # View(corona_data_wide %>% filter(Date == last_date))
-```
-
-```{r}
-
-
-
-
 ```
 
 ```{r}
 corona_data_last_wide <- corona_data_wide %>%
   filter(Date == last_date)
 
-# corona_country_last <- corona_country %>%  filter(Date == last_date)
 corona_data_last <- corona_data %>%
   filter(Date == last_date)
-
 
 corona_last_abs_wide <- corona_data_last_wide %>% 
   dplyr::select(!contains("_100k"), -Population)
@@ -402,11 +370,11 @@ World Map {data-navmenu="World Map"}
 # see https://code.highcharts.com/mapdata/
 
 # plot total confirmed in world
-i <- "Confirmed"
-title <- paste(i, "- Cumulated Cases / Country")
+case_type <- "Confirmed"
+title <- paste(case_type, "- Cumulated Cases / Country")
 world_map_plot(
-  filter(corona_data_last, Case_Type == i & Country != "World"), 
-  i, value = "Cases", title)
+  filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+  value = "Cases", title = title)
 
 ```
 
@@ -416,11 +384,11 @@ world_map_plot(
 ```{r World Map Deaths}
 
 # plot total deaths in world
-i <- "Deaths"
-title <- paste(i, "- Cumulated Cases / Country")
+case_type <- "Deaths"
+title <- paste(case_type, "- Cumulated Cases / Country")
 world_map_plot(
-  filter(corona_data_last, Case_Type == i & Country != "World"), 
-  i, value = "Cases", title)
+  filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+  value = "Cases", title = title)
 
 ```
 
@@ -438,11 +406,11 @@ World Map / Inhabitants {data-navmenu="World Map"}
 # see https://code.highcharts.com/mapdata/
 
 # plot total confirmed in world
-i <- "Confirmed"
-title <- paste(i, "- Cumulated Cases per 100k Inhabitants / Country")
+case_type <- "Confirmed"
+title <- paste(case_type, "- Cumulated Cases / 100k / Country")
 world_map_plot(
-  filter(corona_data_last, Case_Type == i & Country != "World"), 
-  i, value = "Cases_100k", title)
+  filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+  value = "Cases_100k", title = title)
 
 ```
 
@@ -452,11 +420,11 @@ world_map_plot(
 ```{r World Map Deaths per 100k Inhabitants}
 
 # plot total deaths in world
-i <- "Deaths"
-title <- paste(i, "- Cumulated Cases per 100k Inhabitants / Country")
+case_type <- "Deaths"
+title <- paste(case_type, "- Cumulated Cases / 100k / Country")
 world_map_plot(
-  filter(corona_data_last, Case_Type == i & Country != "World"), 
-  i, value = "Cases_100k", title)
+  filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+  value = "Cases_100k", title = title)
 
 ```
 
@@ -475,13 +443,13 @@ World Map / Hot Spots {data-navmenu="World Map"}
 # see https://code.highcharts.com/mapdata/
 
 # plot total confirmed in world
-i <- "Confirmed"
+case_type <- "Confirmed"
 title <- 
-  paste(i, 
-        "- Mean Daily Cases per 100k Inhabitants / Country over the past seven days")
+  paste(case_type, 
+        "- Mean Daily Cases / 100k / Country over the past seven days")
 world_map_plot(
-  filter(corona_data_last, Case_Type == i & Country != "World"), 
-  i, value = "Daily_Cases_100k_Mean", title)
+  filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+  value = "Daily_Cases_100k_Mean", title = title)
 
 ```
 
@@ -491,13 +459,13 @@ world_map_plot(
 ```{r World Map Mean Deaths per 100k Inhabitants}
 
 # plot total deaths in world
-i <- "Deaths"
+case_type <- "Deaths"
 title <- 
-  paste(i, 
-        "- Mean Daily Cases per 100k Inhabitants / Country over the past seven days")
+  paste(case_type, 
+        "- Mean Daily Cases / 100k / Country over the past seven days")
 world_map_plot(
-  filter(corona_data_last, Case_Type == i & Country != "World"), 
-  i, value = "Daily_Cases_100k_Mean", title)
+  filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+  value = "Daily_Cases_100k_Mean", title = title)
 
 ```
 
@@ -518,9 +486,14 @@ Column {data-width=300}
 ```{r Top Ten Bar Chart Confirmed}
 
 # plot bar chart deaths / country
-i <- "Confirmed"
-bar_chart_countries(filter(corona_data_last,
-                           Country != "World" & Case_Type == i), i)
+
+case_type <- "Confirmed"
+abscissa <- "Cases"
+title <- paste(case_type , "- Cumulated Cases")
+bar_chart_country(
+  filter(corona_data_last, Country != "World" & Case_Type == case_type),
+  y = abscissa, title = title, n = 15)
+# for cumulated cases world = sum of all => filter out
 
 ```
 
@@ -529,11 +502,13 @@ bar_chart_countries(filter(corona_data_last,
 ```{r Top Ten Bar Chart Deaths}
 
 # plot bar chart deaths / country
-i <- "Deaths"
-bar_chart_countries(filter(corona_data_last,
-                           Country != "World" & Case_Type == i), i)
+case_type <-  "Deaths"
 
-# include comment
+title <- paste(case_type , "- Cumulated Cases")
+bar_chart_country(
+  filter(corona_data_last, Country != "World" & Case_Type == case_type),
+  y = abscissa, title = title, n = 15)
+
 ```
 
 
@@ -567,22 +542,33 @@ Column {data-width=300}
 
 ### Bar Chart Cumulated Confirmed per 100,000 Inhabitants
 
-```{r Top 20 Bar Chart Population Confirmed}
+```{r Top Ten Bar Chart per 100k Confirmed}
 
 # plot bar chart Confirmed / 100k for countries and + world
-i <- "Confirmed"
-bar_chart_countries_pop(filter(corona_data_last, Case_Type == i), i)
+
+case_type <- "Confirmed"
+abscissa <- "Cases_100k"
+title <- paste(case_type , 
+               "- Cumulated Cases / 100k")
+bar_chart_country(
+  filter(corona_data_last, Case_Type == case_type),
+  y = abscissa, title = title, n = 15)
 
 ```
 
 
 ### Bar Chart Cumulated Deaths per 100,000 Inhabitants
 
-```{r Top 20 Bar Chart Population Deaths}
+```{r Top Ten Bar Chart per 100k Deaths}
 
 # plot bar chart deaths / country
-i <- "Deaths"
-bar_chart_countries_pop(filter(corona_data_last, Case_Type == i), i)
+case_type  <- "Deaths"
+
+title <- paste(case_type , 
+               "- Cumulated Cases / 100k")
+bar_chart_country(
+  filter(corona_data_last, Case_Type == case_type),
+  y = abscissa, title = title, n = 15)
 
 ```
 
@@ -614,24 +600,32 @@ Column {data-width=300}
 
 ### Bar Chart Mean Confirmed per 100,000 Inhabitants over past seven days
 
-```{r Top 20 Mean Bar Chart Population Confirmed}
+```{r Top Ten Bar Chart Hot Spot Confirmed}
 
-# plot bar chart mean Confirmed / 100k for countries and + world
-i <- "Confirmed"
-bar_chart_countries_hot_spots(filter(corona_data_last, Case_Type == i), i) 
-                      #  value = "Daily_Cases_100k_Mean")
+# plot bar chart  Daily Confirmed Mean / 100k for countries and + world
+case_type <- "Confirmed"
+abscissa <- "Daily_Cases_100k_Mean"
+title <- paste(case_type , 
+               "- Mean Daily Cases / 100k")
+bar_chart_country(
+  filter(corona_data_last, Case_Type == case_type),
+  y = abscissa, title = title, n = 15)
 
 ```
 
 
 ### Bar Chart Mean Deaths per 100,000 Inhabitants over past seven days
 
-```{r Top 20 Mean Bar Chart Population Deaths}
+```{r Top Ten Bar Chart Hot Spot Deaths}
 
-# plot bar chart deaths / country
-i <- "Deaths"
-bar_chart_countries_hot_spots(filter(corona_data_last, Case_Type == i), i)
-                        # value = "Daily_Cases_100k_Mean")
+# plot bar chart  Daily Deaths Mean / 100k for countries and + world
+case_type <- "Deaths"
+
+title <- paste(case_type , 
+               "- Mean Daily Cases / 100k")
+bar_chart_country(
+  filter(corona_data_last, Case_Type == case_type),
+  y = abscissa, title = title, n = 15)
 
 ```
 
@@ -694,45 +688,27 @@ cfr_table <- left_join(corona_total_CFR_lag, corona_before) %>%
 ```
 
 
-```{r Top 20 Bar Chart CFR}
+```{r Top n Bar Chart CFR}
 
-# Visualization with top 10 country - CFR  bar chart
-bar_chart_cfr <- function(data, i) {
-  data %>%
-    arrange(desc(CFR_total)) %>% 
-    head(20) %>%
-    hchart("bar",hcaes(x = Country,  y = CFR_total)) %>%
-    hc_title(text = paste(i, "- Case Fatality Rate (in %)")) %>% 
-    hc_add_theme(hc_theme_sandsignika())
-}
-
-
-# plot bar chart Confirmed - CFR countries and + world
-i <- "CFR_total"
-bar_chart_cfr(cfr_table, i)
+# plot bar chart CFR Confirmed Mean / Deaths Mean
+abscissa <- "CFR_past_period"
+title <- paste(abscissa, "- Case Fatality Rate (in %)")
+bar_chart_country(cfr_table, y = abscissa, title = title, n = 20)
 
 ```
+
 
 ### Bar Chart CFR Total (in %) - - selected countries {data-height=200}
 
 
-```{r Top 20 Bar Chart CFR selected countries}
-
-# Visualization with top 10 country - CFR  bar chart
-bar_chart_cfr <- function(data, i) {
-  data %>%
-    arrange(desc(CFR_total)) %>% 
-    head(25) %>%
-    hchart("bar",hcaes(x = Country,  y = CFR_total)) %>%
-    hc_title(text = paste(i, "- Case Fatality Rate (in %)")) %>% 
-    hc_add_theme(hc_theme_sandsignika())
-}
-
+```{r Top n Bar Chart CFR selected countries}
 
 # plot bar chart Confirmed - CFR countries and + world
-i <- "CFR_total"
-bar_chart_cfr(filter(cfr_table, Country %in% compare_countries), i)
-
+title <- paste(abscissa, "(in %) - selected countries")
+bar_chart_country(filter(cfr_table, 
+                         Country %in% c(compare_countries, "United Kingdom")), 
+                         y = abscissa, title = title)
+                  
 ```
 
 Column  
@@ -985,6 +961,15 @@ i <- i + 1
 
 ### `r countries[i]` 
 ```{r  Trend Cum and Daily Country 10, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
+
+country <- countries[i]
+ggts_cum_daily(corona_data, country = country, weeks = weeks)
+i <- i + 1
+```
+
+
+### `r countries[i]` 
+```{r  Trend Cum and Daily Country 11, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
 
 country <- countries[i]
 ggts_cum_daily(corona_data, country = country, weeks = weeks)
@@ -1932,7 +1917,9 @@ plot_deaths_forecast
 
 ### Exampla Germany - White Noise of Forecast Residuals {data-height=150}
 
-Forecast residuals indicate quality of fit with Arima model:
+Forecast residuals  
+indicate quality of  
+Arima model fit:
 
 
 ```{r corona ARIMA tsresiduals, fig.width = 5, fig.asp = 0.618}
