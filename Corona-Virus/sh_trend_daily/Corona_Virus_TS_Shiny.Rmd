@@ -8,48 +8,50 @@ output: html_document
 runtime: shiny
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(eval = TRUE, echo = FALSE, warning = FALSE,      
-                      message = FALSE, fig.width = 7, fig.asp = 0.618)
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE, echo = FALSE, warning = FALSE,
+                      message = FALSE, fig.width = 7, fig.asp = 0.618)
 
 library(flexdashboard)
 library(tidyverse)
 library(magrittr)
 library(lubridate)
 library(slider) # for rolling analysis using window functions
-library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages & some tidyverse
+library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages
 library(slider) # sliding window functions - rolling averages, cumulative sums
 library(DT)      # R interface to the JavaScript library DataTables
 library(patchwork) # package for composing plots
            # https://www.data-imaginist.com/2019/patch-it-up-and-send-it-out/
-# library(gghighlight) 
+# library(gghighlight)
 # # https://cran.r-project.org/web/packages/gghighlight/vignettes/gghighlight.html
 # # library(gridExtra)
 # # library(janitor)
 # library(plotly)
 library(highcharter)
 library(dygraphs)  # R interface to the dygraphs JavaScript charting library
+library(checkmate) # to provide informative error messages
 
 ```
 
 
+
 ```{r initialization, eval = TRUE, include = FALSE}
 
-################################################################################
-##                                                                            ##
-## Corona Virus -                                                             ##
-##       Analyze Time Series of Confirmed, Death and Recovered Cases          ##
-##                                                                            ##
-##                                          Wolfgang Vollmer,   July  2, 2020 ##
-##                                              First Version: March 12, 2020 ##
-##                                                                            ##
-## URL:                                                                       ##
-## https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Corona-Virus##  
-################################################################################
+#===============================================================================
+#
+#  Corona Virus -
+#        Analyze Time Series of Confirmed and Death and Cases
+#
+#                                           Wolfgang Vollmer,  October 30, 2020
+#                                               First Version:   March 12, 2020
+#
+#  URL:
+#  https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Corona-Virus
+#===============================================================================
 
-######  variables clean up, library() and	source() statements 
-rm(list=ls()) # deletes all existing objects / variables !!
+# variables clean up, library() and	source() statements
+# rm(list=ls()) # deletes all existing objects / variables !!
 # Prog.Start <- Sys.time()
 
 
@@ -88,71 +90,38 @@ lag_n <- 11  # average confirmed lag - for all countries
 
 ```
 
-```{r path on desktop vs. notebook, eval = TRUE}
-# if (device == "desktop") {
-#   setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
-#   
-#   data_path <- 
-#     "D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
-#   
-# } else if (device == "notebook") {
-#   # attention: here we have (whyever) TimesS.. (Time + s) instead of TimeS..
-#   setwd("C:/Wolfgang/Programs-R/R-TimesSeriesAnalysis/Corona-Virus")
-#   
-#   data_path <- 
-#     "C:/Wolfgang/Programs-R/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
-# } else {
-#   stop("no valid device outlined")
-# }
+```{r path, eval = TRUE}
 
-######  Plot and util functions
-######  ######  Plot and util functions
+# Plot and util functions
+# no setwd() needed and not allowed for publishing
+# all needed files in same folder or in subfolder
 source("ggts_corona.R") # ggplot2 functions for time series plots
+source("./uts_corona.R")  # utility functions for corona analysis
 
 ```
 
-```{r save read rds data}
+```{r read rds data}
 
-# corona_country <- readRDS("corona_country.RDS")
-corona_population <- readRDS("./data/corona_population.RDS")
+# corona_country <- readRDS('corona_country.RDS')
+corona_data <- readRDS("./data/corona_data.RDS")
 
-first_date <- min(corona_population$Date)
-last_date <- max(corona_population$Date)
+first_date <- min(corona_data$Date)
+last_date <- max(corona_data$Date)
 
 ```
 
-```{r complete data}
-corona_all_data_wide <- corona_population %>% 
-  pivot_wider(names_from = Case_Type, 
-              values_from = c(Cases, Daily_Cases, 
-                              
-                              Cases_100k, Daily_Cases_100k, 
-                              Cases_rol_mean, Cases_100k_rol_mean)) %>% 
-  rename(Confirmed = Cases_Confirmed,
-         Deaths = Cases_Deaths,
-         Daily_Confirmed = Daily_Cases_Confirmed,
-         Daily_Deaths = Daily_Cases_Deaths,
-         Conf_100k = Cases_100k_Confirmed,
-         Deaths_100k = Cases_100k_Deaths,
-         Daily_Conf_100k = Daily_Cases_100k_Confirmed,
-         Daily_Deaths_100k = Daily_Cases_100k_Deaths,
-         Conf_rol_mean = Cases_rol_mean_Confirmed, 
-         Deaths_rol_mean = Cases_rol_mean_Deaths,
-         Conf_100k_rol_mean = Cases_100k_rol_mean_Confirmed, 
-         Deaths_100k_rol_mean = Cases_100k_rol_mean_Deaths) %>% 
-  dplyr::select(Country, Population, Date, 
-                Confirmed, Daily_Confirmed, Conf_rol_mean, Conf_100k, 
-                Daily_Conf_100k, Conf_100k_rol_mean, 
-                Deaths, Daily_Deaths, Deaths_rol_mean, Deaths_100k, 
-                Daily_Deaths_100k, Deaths_100k_rol_mean)
 
-corona_abs_wide <- corona_all_data_wide %>% 
-  dplyr::select(!contains("_100k"), -Population)
+```{r complete data wide format}
+# wide format: 
+#    Country Population Date  Confirmed Daily_Conf ... Death ...
+# for easy to read datatable outputs e.g.with filter for last date
 
-corona_rel_wide <- corona_all_data_wide %>% 
-  dplyr::select(Country, Date, contains("_100k"))
+# library(checkmate)
 
-# View(corona_all_data_wide %>% filter(Date == last_date))
+corona_data_wide <- get_corona_data_wide(corona_data)
+
+# View(corona_data_wide %>% filter(Date == last_date))
+```
 ```
 
 
@@ -190,23 +159,25 @@ shinyApp(
     titlePanel("Cumulated and Daily Cases over Time - Country 1"),
     fluidRow(column(width = 6,
                     selectInput(
-                      'country', label = 'Select Country:',
-                      choices = unique(corona_population$Country), 
+                      "country", label = "Select Country:",
+                      choices = unique(corona_data$Country), 
                       selected = "World")),
              # Input: Specify the number of weeks for plot ----
              # numericInput("weeks", "Number of Weeks for plot range:", 6, 
              #              min = 2, max = 28),
              column(width = 6,
                     sliderInput("weeks", "Number of Weeks for plot range:", 
-                                weeks, min = 2, max = 28))),
+                                weeks, min = 2, max = 40))),
     plotOutput("trend_plot")
   ),
   
   server = function(input, output) {
-    output$trend_plot = renderPlot({
-      ggts_trend_daily(corona_population %>% 
-                         filter(Country == input$country), 
-                       input$country, weeks = input$weeks)
+    output$trend_plot <- renderPlot({
+    ggts_cum_daily(corona_data, 
+                   country = input$country, weeks = input$weeks)
+    #      ggts_trend_daily(corona_data %>% 
+    #                     filter(Country == input$country), 
+    #                   input$country, weeks = input$weeks)
     })
   },
   
@@ -225,23 +196,22 @@ shinyApp(
     titlePanel("Cumulated and Daily Cases over Time - Country 2"),
     fluidRow(column(width = 6,
                     selectInput(
-                      'country', label = 'Select Country:',
-                      choices = unique(corona_population$Country), 
+                      "country", label = "Select Country:",
+                      choices = unique(corona_data$Country), 
                       selected = "Germany")),
              # Input: Specify the number of weeks for plot ----
              # numericInput("weeks", "Number of Weeks for plot range:", 6, 
              #              min = 2, max = 28),
              column(width = 6,
                     sliderInput("weeks", "Number of Weeks for plot range:", 
-                                weeks, min = 2, max = 28))),
+                                weeks, min = 2, max = 40))),
     plotOutput("trend_plot")
   ),
   
   server = function(input, output) {
-    output$trend_plot = renderPlot({
-      ggts_trend_daily(corona_population %>% 
-                         filter(Country == input$country), 
-                       input$country, weeks = input$weeks)
+    output$trend_plot <- renderPlot({
+    ggts_cum_daily(corona_data, 
+                   country = input$country, weeks = input$weeks)
     })
   },
   
@@ -255,31 +225,32 @@ shinyApp(
 
 
 ```{r dygraph_plot Daily Rolling Mean, eval = TRUE}
+
 shinyApp(
   
   ui = fluidPage(
     # Input: Select Country for plot ----
     titlePanel("Rolling Mean of Daily Cases"), 
     selectInput(
-      'country', label = 'Select Country:',
-      choices = unique(corona_population$Country), selected = "Germany"),
+      "country", label = "Select Country:",
+      choices = unique(corona_data$Country), selected = "Germany"),
     dygraphOutput("dygraph_plot")
   ),
   
   server = function(input, output) {
-    output$dygraph_plot = renderDygraph({
+    output$dygraph_plot <- renderDygraph({
       # input <- list()
       # input$country <- "Germany"
       
-      data <- corona_abs_wide %>% 
+      data <- corona_data_wide %>% 
         filter(Country == input$country) %>% 
         ungroup()
       
       # change tibble in xts object
       index <- data$Date
       data_xts <- xts::xts(
-        data %>% dplyr::select(Daily_Confirmed, Conf_rol_mean, 
-                               Daily_Deaths, Deaths_rol_mean),
+  data %>% dplyr::select(Daily_Conf, Daily_Conf_Mean, 
+                         Daily_Deaths, Daily_Deaths_Mean),
         order.by = index) 
     
       plot_dygraph_daily(data_xts, input$country, last_date, weeks = weeks)
@@ -288,6 +259,7 @@ shinyApp(
   
   options = list(height = 600)
 )
+
 ```
 
 
@@ -299,7 +271,7 @@ names(infectivity) <- seq_along(infectivity)
 infectivity <- infectivity / sum(infectivity)
 
 width <- 7         #  => window (rolling mean one sided) in repronum() 
-report.delay <- 7  #  => delay (reporting delay) in repronum() 
+report_delay <- 7  #  => delay (reporting delay) in repronum() 
 alpha <- 0.05      # => default conf.level in repronum() 
 
 ```
@@ -313,27 +285,26 @@ shinyApp(
     # Input: Select Country for plot ----
     titlePanel("Confirmed Cases with Reproduction Number"),
     selectInput(
-      'country', label = 'Select Country:',
-      choices = unique(corona_population$Country), selected = "Germany"),
+      "country", label = "Select Country:",
+      choices = unique(corona_data$Country), selected = "Germany"),
     dygraphOutput("dygraph_plot_repro")
   ),
   
   server = function(input, output) {
-    output$dygraph_plot_repro = renderDygraph({
+    output$dygraph_plot_repro <- renderDygraph({
       # input <- list()
       # input$country <- "Germany"
-      
-      
-      data_repronum <- corona_abs_wide %>% 
-        filter(Country == input$country) %>% 
-        dplyr::select(Country, Date, Daily_Confirmed, Conf_rol_mean) %>% 
-        ungroup() 
-      
-      # repronum_output <- repronum(new.cases = data_repronum$Daily_Conf_rol_mean, 
-      repronum_output <- repronum(new.cases = data_repronum$Daily_Confirmed, 
+  
+      data_repronum <- corona_data_wide %>%
+        filter(Country == input$country) %>%
+        dplyr::select(Country, Date, Daily_Conf, Daily_Conf_Mean) %>%
+        ungroup()
+  
+      # repronum_output <- repronum(new.cases = data_repronum$Daily_Conf_Mean,
+      repronum_output <- repronum(new.cases = data_repronum$Daily_Conf, 
                                   profile = infectivity, 
                                   window = width,
-                                  delay = report.delay)
+                                  delay = report_delay)
       
       
       data_repronum  <- bind_cols(data_repronum, repronum_output) %>% 
@@ -350,15 +321,12 @@ shinyApp(
       plot_dygraph_daily_repro(data_xts, input$country, last_date, weeks = weeks)
     })
   },
-  
+ 
   options = list(height = 600)
 )
-
-
 ```
 
 
 ```{r}
-
 ```
 
