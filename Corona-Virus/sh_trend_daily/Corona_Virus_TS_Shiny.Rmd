@@ -95,14 +95,13 @@ lag_n <- 11  # average confirmed lag - for all countries
 # Plot and util functions
 # no setwd() needed and not allowed for publishing
 # all needed files in same folder or in subfolder
-source("ggts_corona.R") # ggplot2 functions for time series plots
+source("./ggts_corona.R") # ggplot2 functions for time series plots
 source("./uts_corona.R")  # utility functions for corona analysis
 
 ```
 
 ```{r read rds data}
 
-# corona_country <- readRDS('corona_country.RDS')
 corona_data <- readRDS("./data/corona_data.RDS")
 
 first_date <- min(corona_data$Date)
@@ -118,14 +117,14 @@ last_date <- max(corona_data$Date)
 
 # library(checkmate)
 
-corona_data_wide <- get_corona_data_wide(corona_data)
+corona_data_wide <- uts_get_corona_data_wide(corona_data)
 
 # View(corona_data_wide %>% filter(Date == last_date))
 ```
 ```
 
 
-## Cumulated and Daily Trend
+## Cumulative and Daily Trend
 
 
 ```{r}
@@ -156,7 +155,7 @@ shinyApp(
   
   ui = fluidPage(
     # Input: Selct Country for plot ----
-    titlePanel("Cumulated and Daily Cases over Time - Country 1"),
+    titlePanel("Cumulative and Daily Cases over Time - Country 1"),
     fluidRow(column(width = 6,
                     selectInput(
                       "country", label = "Select Country:",
@@ -175,9 +174,6 @@ shinyApp(
     output$trend_plot <- renderPlot({
     ggts_cum_daily(corona_data, 
                    country = input$country, weeks = input$weeks)
-    #      ggts_trend_daily(corona_data %>% 
-    #                     filter(Country == input$country), 
-    #                   input$country, weeks = input$weeks)
     })
   },
   
@@ -193,7 +189,7 @@ shinyApp(
   
   ui = fluidPage(
     # Input: Selct Country for plot ----
-    titlePanel("Cumulated and Daily Cases over Time - Country 2"),
+    titlePanel("Cumulative and Daily Cases over Time - Country 2"),
     fluidRow(column(width = 6,
                     selectInput(
                       "country", label = "Select Country:",
@@ -270,9 +266,9 @@ infectivity <- c((0:3)/3, 1, (5:0)/5)
 names(infectivity) <- seq_along(infectivity)
 infectivity <- infectivity / sum(infectivity)
 
-width <- 7         #  => window (rolling mean one sided) in repronum() 
-report_delay <- 7  #  => delay (reporting delay) in repronum() 
-alpha <- 0.05      # => default conf.level in repronum() 
+width <- 7         #  => window (rolling mean one sided) in uts_repronum() 
+report_delay <- 7  #  => delay (reporting delay) in uts_repronum() 
+alpha <- 0.05      # => default conf.level in uts_repronum() 
 
 ```
 
@@ -300,8 +296,8 @@ shinyApp(
         dplyr::select(Country, Date, Daily_Conf, Daily_Conf_Mean) %>%
         ungroup()
   
-      # repronum_output <- repronum(new.cases = data_repronum$Daily_Conf_Mean,
-      repronum_output <- repronum(new.cases = data_repronum$Daily_Conf, 
+      # repronum_output <- uts_repronum(new.cases = data_repronum$Daily_Conf_Mean,
+      repronum_output <- uts_repronum(new.cases = data_repronum$Daily_Conf, 
                                   profile = infectivity, 
                                   window = width,
                                   delay = report_delay)

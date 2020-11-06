@@ -1,17 +1,29 @@
+# require(tidyverse)
+require(ggplot2)  # for ggplot(), geom_...()
+require(dplyr) # for filter() and "%>%"
+require(tidyr) # for pivot_wider
 require(checkmate)
-require(tidyverse)
 
-#' @title Utilities for corona data analysis and data
+# @import(ggplot2)  # for ggplot(), geom_...()
+# @import(dplyr) # for filter() and "%>%"
+# @import(tidyr)
+
+#' Utilities for corona data analysis and data
 #'
-#' @description provide data in wide form and adapt names
-#' @param data A data frame to pivot
+#' Provide data in wide form and adapt column names
+#' 
 #' @details Data frame columns required are checked
 #'
+#' @param data A data frame to pivot
 #' @return data frame
-#' 
-#' @encoding UTF-8
-#' @md
-get_corona_data_wide <- function(data) {
+#' @import dplyr
+#' @import tidyr
+#' @import checkmate
+#' @examples
+#' # Corona data of "Germany"
+#' uts_get_corona_data_wide(corona_data %>% dplyr::filter(Country == "Germany"))
+#' @export 
+uts_get_corona_data_wide <- function(data) {
 
   # assert if names_data is subset of names of input data columns
   # => all columns exist for pivot_wider() and for select()  
@@ -44,8 +56,42 @@ get_corona_data_wide <- function(data) {
                   Daily_Deaths_100k, Daily_Deaths_100k_Mean)
 }
 
-#### Reproduction number calculation - source from TU Ilmenau - GitHub #
-repronum <- function(
+#' Reproduction number calculation
+#' 
+#' Source: TU Ilmenau - GitHub 
+#' 
+#' @param new.cases Vector of daily cases data
+#' @param profile  tbd
+#' @param window tbd
+#' @param delay tbd
+#' @param conf.level tbd
+#' @param pad.zeros tbd
+#' @param min.denominator tbd
+#' @param min.numerator tbd
+#'
+#' @details Here are further details
+#' 
+#' ## subsection details and so on
+#' 
+#' However, needs some text.
+#' 
+#' ### sub-subsection details
+#' 
+#' Also su-subsection needs some text.
+#' @return data.frame with as many rows as new.cases
+#' 
+#'     repronum = reproduction number
+#'     
+#'     repronum.se = reproduction number standard error
+#'     
+#'     ci.lower = confidence interval lower limit
+#'     
+#'     ci.upper = confidence interval upper limit
+#' @export 
+#' @references 
+#' **TU Ilmenau** *GitHub code source:* <https://github.com/Stochastik-TU-Ilmenau/COVID-19/blob/gh-pages/estimator.r>
+#' 
+uts_repronum <- function(
   new.cases, # I
   profile, # w
   window = 1, # H

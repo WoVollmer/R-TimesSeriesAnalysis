@@ -111,7 +111,6 @@ x_axis_theme <- element_text(size = 14)
 
 ```{r settings}
 
-
 compare_countries <- c("Austria", "France", "Germany", "Italy", "India",
                        "Japan", "Spain", "EU", 
                         "United Kingdom", "United States of America")
@@ -216,7 +215,7 @@ corona %<>% mutate(
   arrange(Country, `Province/State`) %>% 
   group_by(Case_Type, Country, `Province/State`)
 
-# View(corona %>% filter(Date == last_date & Case_Type == "Confirmed"))
+# View(corona %>% dplyr::filter(Date == last_date & Case_Type == "Confirmed"))
 ```
 
 
@@ -230,12 +229,12 @@ corona_country %<>%
   mutate(Daily_Cases = c(NA, diff(Cases)))
 
 # without Case_Type "Recovered"  - no real value add, no consistent data
-corona_country %<>% filter(Case_Type != "Recovered")
+corona_country %<>% dplyr::filter(Case_Type != "Recovered")
 
 first_date <- min(corona_country$Date)
 last_date <- max(corona_country$Date)
 
-# View(corona_country %>% filter(Date == last_date & Case_Type == "Confirmed"))
+# View(corona_country %>% dplyr::filter(Date == last_date & Case_Type == "Confirmed"))
 ```
 
 ```{r add country World}
@@ -267,7 +266,7 @@ countries_eu <- c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus",
                   "Sweden")   
 
 corona_country_sum <- corona_country %>% 
-  filter(Country %in% countries_eu) %>% 
+  dplyr::filter(Country %in% countries_eu) %>% 
   group_by(Date, Case_Type) %>% 
   summarise(Cases = sum(Cases, na.rm = TRUE))
 corona_country_sum %<>% 
@@ -291,7 +290,7 @@ population_countries <- population_countries %>%
 
 corona_data <- full_join(corona_country, population_countries) 
 
-corona_data %<>% filter(!is.na(Date)) %>% 
+corona_data %<>% dplyr::filter(!is.na(Date)) %>% 
   mutate(Cases_100k = round(Cases/(Population/100000), digits = 1),
          Daily_Cases_100k = round(Daily_Cases/(Population/100000), digits = 2))
 
@@ -333,17 +332,17 @@ saveRDS(corona_data, "corona_data.RDS")
 #    Country Population Date  Confirmed Daily_Conf ... Death ...
 # for easy to read datatable outputs e.g.with filter for last date
 
-corona_data_wide <- get_corona_data_wide(corona_data)
+corona_data_wide <- uts_get_corona_data_wide(corona_data)
 
-# View(corona_data_wide %>% filter(Date == last_date))
+# View(corona_data_wide %>%  dplyr::filter(Date == last_date))
 ```
 
 ```{r}
 corona_data_last_wide <- corona_data_wide %>%
-  filter(Date == last_date)
+  dplyr::filter(Date == last_date)
 
 corona_data_last <- corona_data %>%
-  filter(Date == last_date)
+  dplyr::filter(Date == last_date)
 
 corona_last_abs_wide <- corona_data_last_wide %>% 
   dplyr::select(!contains("_100k"), -Population)
@@ -360,34 +359,57 @@ World Map {data-navmenu="World Map"}
 ***
 ***
 
-<center>**Spread of Coronavirus SARS-CoV-2**</center>
+```{r map and bar chart settings}
 
-**World Map with Confirmed and Death Cases** (Data source [[@JHU2020a]](#bib), see also [[@JHU2020]](#bib))  
+page_2 <- "Cumulative Cases per 100,000 Inhabitants"
+page_3 <- "Mean number of cases over the past seven days per 100,000 Inhabitants"
+page_4 <- paste("Case Fatality Rate (CFR) of past", range_cfr, 
+                "days assuming a time lag of", lag_n, 
+                "days between Confirmed => Death")
 
-### Total Confirmed for each Country
+map_page_title_1 <- paste("World Map - Spread of Coronavirus SARS-CoV-2",
+                        "(Data source [[@JHU2020a]](#bib), see also [[@JHU2020]](#bib))")
+map_page_title_2 <- paste("World Map -",  page_2)
+map_page_title_3 <- paste("World Map -",  page_3)
+
+
+bar_chart_page_title_1 <- paste("Bar Chart (descending order) and Data Table")
+bar_chart_page_title_2 <- paste("Bar Chart -",  page_2)
+bar_chart_page_title_3 <- paste("Bar Chart -",  page_3)
+bar_chart_page_title_4 <- paste("Bar Chart -",  page_4)
+  
+```
+
+
+<center>**`r map_page_title_1`**</center>
+
+###
 
 ```{r World Map Confirmed}
+# Cumulative Cases - Confirmed
+
 # see https://code.highcharts.com/mapdata/
 
 # plot total confirmed in world
 case_type <- "Confirmed"
-title <- paste(case_type, "- Cumulated Cases / Country")
-world_map_plot(
-  filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+title <- paste(case_type, "- cumulative Cases / Country")
+hc_world_map_plot(
+  dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
   value = "Cases", title = title)
 
 ```
 
 
-### Total Deaths for each Country
+###
 
 ```{r World Map Deaths}
-
+#  Cumulative Cases -  Deaths
+#  
 # plot total deaths in world
 case_type <- "Deaths"
-title <- paste(case_type, "- Cumulated Cases / Country")
-world_map_plot(
-  filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+title <- paste(case_type, "- cumulative Cases / Country")
+hc_world_map_plot(
+  dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
   value = "Cases", title = title)
 
 ```
@@ -396,48 +418,48 @@ world_map_plot(
 World Map / Inhabitants {data-navmenu="World Map"}
 =====================================
 
-<center>**Spread of Coronavirus SARS-CoV-2**</center>
+***
+***
 
-**World Map with Confirmed and Death Cases** (Data source [[@JHU2020a]](#bib), see also [[@JHU2020]](#bib))  
+<center>**`r map_page_title_2`**</center> 
 
-### Total Confirmed for each Country per 100,000 Inhabitants
+###
 
 ```{r World Map Confirmed per 100k Inhabitants}
 # see https://code.highcharts.com/mapdata/
 
 # plot total confirmed in world
 case_type <- "Confirmed"
-title <- paste(case_type, "- Cumulated Cases / 100k / Country")
-world_map_plot(
-  filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+title <- paste(case_type, "- cumulative Cases / 100k / Country")
+hc_world_map_plot(
+  dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
   value = "Cases_100k", title = title)
 
 ```
 
-
-### Total Deaths for each Country per 100,000 Inhabitants
+###
 
 ```{r World Map Deaths per 100k Inhabitants}
 
 # plot total deaths in world
 case_type <- "Deaths"
-title <- paste(case_type, "- Cumulated Cases / 100k / Country")
-world_map_plot(
-  filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+title <- paste(case_type, "- cumulative Cases / 100k / Country")
+hc_world_map_plot(
+  dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
   value = "Cases_100k", title = title)
 
 ```
 
 
-
 World Map / Hot Spots {data-navmenu="World Map"}
 =====================================
 
-<center>**Spread of Coronavirus SARS-CoV-2**</center>
+***
+***
 
-**World Map with mean Confirmed and Death Cases over the past seven days** (Data source [[@JHU2020a]](#bib), see also [[@JHU2020]](#bib))  
+<center>**`r map_page_title_3`**</center>
 
-### Mean Confirmed Cases for each Country per 100,000 Inhabitants
+###
 
 ```{r World Map Mean Confirmed per 100k Inhabitants}
 # see https://code.highcharts.com/mapdata/
@@ -447,14 +469,14 @@ case_type <- "Confirmed"
 title <- 
   paste(case_type, 
         "- Mean Daily Cases / 100k / Country over the past seven days")
-world_map_plot(
-  filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+hc_world_map_plot(
+  dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
   value = "Daily_Cases_100k_Mean", title = title)
 
 ```
 
 
-### Mean Death Cases for each Country per 100,000 Inhabitants
+###
 
 ```{r World Map Mean Deaths per 100k Inhabitants}
 
@@ -463,8 +485,8 @@ case_type <- "Deaths"
 title <- 
   paste(case_type, 
         "- Mean Daily Cases / 100k / Country over the past seven days")
-world_map_plot(
-  filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+hc_world_map_plot(
+  dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
   value = "Daily_Cases_100k_Mean", title = title)
 
 ```
@@ -475,13 +497,13 @@ Bar Chart {data-navmenu="Bar Chart"}
 
 ***
 ***
-  
-**Bar Charts with descending order**
 
+**`r bar_chart_page_title_1`**
+  
 Column {data-width=300}
 -------------------------------------
 
-### Bar Chart Cumulated Confirmed
+###
 
 ```{r Top Ten Bar Chart Confirmed}
 
@@ -489,24 +511,25 @@ Column {data-width=300}
 
 case_type <- "Confirmed"
 abscissa <- "Cases"
-title <- paste(case_type , "- Cumulated Cases")
-bar_chart_country(
-  filter(corona_data_last, Country != "World" & Case_Type == case_type),
+title <- paste(case_type , "- cumulative Cases")
+hc_bar_chart_country(
+  dplyr::filter(corona_data_last, Country != "World" & Case_Type == case_type),
   y = abscissa, title = title, n = 15)
-# for cumulated cases world = sum of all => filter out
+# for cumulative cases world = sum of all => filter out
 
 ```
 
-### Bar Chart Cumulated Deaths
+###
 
 ```{r Top Ten Bar Chart Deaths}
+### Bar Chart Deaths - cumulative  Cases
 
 # plot bar chart deaths / country
 case_type <-  "Deaths"
 
-title <- paste(case_type , "- Cumulated Cases")
-bar_chart_country(
-  filter(corona_data_last, Country != "World" & Case_Type == case_type),
+title <- paste(case_type , "- cumulative Cases")
+hc_bar_chart_country(
+  dplyr::filter(corona_data_last, Country != "World" & Case_Type == case_type),
   y = abscissa, title = title, n = 15)
 
 ```
@@ -515,10 +538,11 @@ bar_chart_country(
 Column
 -------------------------------------
 
-### Confirmed and Deaths - Cumulated and Daily Cases (absolute date)
+### Confirmed and Deaths - cumulative and daily Cases (absolute date)
 
 Case numbers are taken from [[@JHU2020a]](#bib). In order to compensate for the 
-daily fluctuations, the mean case numbers for the past seven days (*_Mean) were also added.
+daily fluctuations, the 
+mean number of cases over the past seven day (*_Mean) are added.
 
 ```{r print datatable in wide format}
 
@@ -535,12 +559,12 @@ Bar Chart / Inhabitants {data-navmenu="Bar Chart"}
 ***
 ***
   
-**Bar Charts with descending order**
+**`r bar_chart_page_title_2`**
 
 Column {data-width=300}
 -------------------------------------
 
-### Bar Chart Cumulated Confirmed per 100,000 Inhabitants
+###
 
 ```{r Top Ten Bar Chart per 100k Confirmed}
 
@@ -549,15 +573,14 @@ Column {data-width=300}
 case_type <- "Confirmed"
 abscissa <- "Cases_100k"
 title <- paste(case_type , 
-               "- Cumulated Cases / 100k")
-bar_chart_country(
-  filter(corona_data_last, Case_Type == case_type),
+               "- cumulative Cases / 100k")
+hc_bar_chart_country(
+  dplyr::filter(corona_data_last, Case_Type == case_type),
   y = abscissa, title = title, n = 15)
 
 ```
 
-
-### Bar Chart Cumulated Deaths per 100,000 Inhabitants
+###
 
 ```{r Top Ten Bar Chart per 100k Deaths}
 
@@ -565,9 +588,9 @@ bar_chart_country(
 case_type  <- "Deaths"
 
 title <- paste(case_type , 
-               "- Cumulated Cases / 100k")
-bar_chart_country(
-  filter(corona_data_last, Case_Type == case_type),
+               "- cumulative Cases / 100k")
+hc_bar_chart_country(
+  dplyr::filter(corona_data_last, Case_Type == case_type),
   y = abscissa, title = title, n = 15)
 
 ```
@@ -575,10 +598,11 @@ bar_chart_country(
 Column
 -------------------------------------
 
-### Confirmed and Deaths - Cumulated and Daily Cases per 100,000 Inhabitants (relative date)
+### Confirmed and Deaths - cumulative and daily Cases per 100,000 Inhabitants (relative data)
 
 Population numbers are taken from [[@UNO2020]](#bib).
-In order to compensate for the daily fluctuations, the mean case numbers for the past seven days (*_Mean) were also added.
+In order to compensate for the daily fluctuations, the
+mean number of cases over the past seven days (*_Mean) are added.
 
 ```{r print datatable 100k in wide format}
 
@@ -593,12 +617,12 @@ Bar Chart / Hot Spots {data-navmenu="Bar Chart"}
 ***
 ***
   
-**Bar Charts with descending order**
+**`r bar_chart_page_title_3`**
 
 Column {data-width=300}
 -------------------------------------
 
-### Bar Chart Mean Confirmed per 100,000 Inhabitants over past seven days
+###
 
 ```{r Top Ten Bar Chart Hot Spot Confirmed}
 
@@ -607,14 +631,14 @@ case_type <- "Confirmed"
 abscissa <- "Daily_Cases_100k_Mean"
 title <- paste(case_type , 
                "- Mean Daily Cases / 100k")
-bar_chart_country(
-  filter(corona_data_last, Case_Type == case_type),
+hc_bar_chart_country(
+  dplyr::filter(corona_data_last, Case_Type == case_type),
   y = abscissa, title = title, n = 15)
 
 ```
 
 
-### Bar Chart Mean Deaths per 100,000 Inhabitants over past seven days
+###
 
 ```{r Top Ten Bar Chart Hot Spot Deaths}
 
@@ -623,8 +647,8 @@ case_type <- "Deaths"
 
 title <- paste(case_type , 
                "- Mean Daily Cases / 100k")
-bar_chart_country(
-  filter(corona_data_last, Case_Type == case_type),
+hc_bar_chart_country(
+  dplyr::filter(corona_data_last, Case_Type == case_type),
   y = abscissa, title = title, n = 15)
 
 ```
@@ -632,10 +656,11 @@ bar_chart_country(
 Column
 -------------------------------------
 
-### Confirmed and Deaths - Cumulated and Daily Cases per 100,000 Inhabitants (relative date)
+### Confirmed and Deaths - cumulative and daily Cases per 100,000 Inhabitants (relative data)
 
 Population numbers are taken from [[@UNO2020]](#bib).
-In order to compensate for the daily fluctuations, the mean case numbers for the past seven days (*_Mean) were also added.
+In order to compensate for the daily fluctuations, the 
+mean number of cases over the past seven days (*_Mean) are added.
 
 ```{r print mean datatable 100k in wide format}
 
@@ -644,18 +669,18 @@ DT::datatable(corona_last_rel_wide,
 
 ```
 
-Bar Chart - CFR {data-navmenu="Bar Chart" #cfr}
+Bar Chart / CFR {data-navmenu="Bar Chart" #cfr}
 =====================================
 
 ***
 ***
   
-**Bar Chart with descending order**
+**`r bar_chart_page_title_4`**
 
 Column {data-width=300}
 -------------------------------------
 
-### Bar Chart CFR Total - Case Fatality Rate (in %)
+###
 
 ```{r calculate lagged CFR}
 
@@ -667,12 +692,12 @@ corona_confirmed_lag <- corona_data_wide %>%
          CFR_unlagged = round(Deaths / Confirmed * 100, digits = 1)) 
 
 corona_total_CFR_lag <- corona_confirmed_lag %>% 
-  filter(Date == last_date) 
+  dplyr::filter(Date == last_date) 
 
 
 
 corona_before <- corona_confirmed_lag %>% 
-  filter(Date == last_date - range_cfr + 1) %>% 
+  dplyr::filter(Date == last_date - range_cfr + 1) %>% 
   mutate(Deaths_before = Deaths,
          confirmed_lag_before = confirmed_lag) %>% 
   select(Country, Deaths_before, confirmed_lag_before )
@@ -683,7 +708,7 @@ cfr_table <- left_join(corona_total_CFR_lag, corona_before) %>%
          deaths_past_period = Deaths - Deaths_before,
          CFR_past_period = round(
            deaths_past_period / confirmed_past_period * 100, digits = 1)) %>% 
-  select(Country, CFR_total, CFR_past_period, CFR_unlagged)
+  select(Country,  CFR_past_period, CFR_total, CFR_unlagged)
 
 ```
 
@@ -693,22 +718,22 @@ cfr_table <- left_join(corona_total_CFR_lag, corona_before) %>%
 # plot bar chart CFR Confirmed Mean / Deaths Mean
 abscissa <- "CFR_past_period"
 title <- paste(abscissa, "- Case Fatality Rate (in %)")
-bar_chart_country(cfr_table, y = abscissa, title = title, n = 20)
+hc_bar_chart_country(cfr_table, y = abscissa, title = title, n = 20)
 
 ```
 
 
-### Bar Chart CFR Total (in %) - - selected countries {data-height=200}
+### {data-height=200}
 
 
 ```{r Top n Bar Chart CFR selected countries}
 
 # plot bar chart Confirmed - CFR countries and + world
 title <- paste(abscissa, "(in %) - selected countries")
-bar_chart_country(filter(cfr_table, 
+hc_bar_chart_country(dplyr::filter(cfr_table, 
                          Country %in% c(compare_countries, "United Kingdom")), 
                          y = abscissa, title = title)
-                  
+
 ```
 
 Column  
@@ -721,22 +746,24 @@ The number of today's deaths is already determined by the infections about by
 $\sim19$ days ago or respectively by the confirmed cases about by $\sim11$ days 
 ago [[see @RWI2020]](#bib).
 
-An average duration of *Confirmed Infection to Death* of $12$ (lag-)days 
-(country-independent for the sake of simplicity) is assumed for the calculations, 
+An average duration of *Confirmed Infection to Death* of $12$ (lag-)days is 
+assumed (country-independent for the sake of simplicity) for the calculations, 
 since many tests are carried out in the meantime before symptoms appear.
 
 However, this varies considerably depending on country-specific test rate and 
-health system. In the worst health systems it is only one day for recognized 
-cases, the "Confirmed" cases must be "lagged" by $\sim1$ day. 
-In the best case, the time from the end of incubation period (in average $\sim5-6$ days) to death is an average $\sim19$ days. In this case, the average 
+health system. In the worst health systems it may be only one day between
+infection confirmation and death, 
+the "Confirmed" cases must be "lagged" by $\sim1$ day. 
+In the best case, the time from the end of incubation period (in average 
+$\sim5-6$ days) to death is an average $\sim14$ days. In this case, the average
 *Confirmed infection to Death* period is $\sim14$ days), the "Confirmed" cases
 must be correctly "lagged" by $\sim14$ days.
-For the assumed time periods see [[@RKI2020a]](#bib), [[@RKI2020b]](#bib), for Case Fatality Rate 
-and Incubation Period in general see [[@Wikipedia2020a]](#bib),
-[[@Wikipedia2020b]](#bib).
+For the assumed time periods see [[@RKI2020a]](#bib), [[@RKI2020b]](#bib), 
+for Case Fatality Rate and Incubation Period in general 
+see [[@Wikipedia2020a]](#bib), [[@Wikipedia2020b]](#bib).
 
-The simple calculation with unlagged cumulated confirmed cases divided by
-cumulated deaths results in a significant underestimation of the CFR in health systems with early disease detection. 
+The simple calculation with unlagged cumulative confirmed cases divided by
+cumulative deaths results in a significant underestimation of the CFR in health systems with early disease detection. 
 If the number of cumulative cases is already large compared to the number of 
 active cases (~ cases from the past two weeks), the "lagged" rsp. "unlagged"
 values converge.
@@ -749,10 +776,9 @@ be country independent and only rough estimates exist (RKI: bottom of existing e
 
 ```{r CFR Table}
 
-title <- paste("Case Fatality Rate in %", "- CFR_total and CFR_past_period (period of past", 
-               range_cfr, "days) w/ Confirmed lagged by", lag_n, "days")
-# knitr::kable(cfr_table,
-#              digits = 2, caption = title)
+title <- paste("Case Fatality Rate (in %) - assuming a time lag of", lag_n, 
+               "days between Confirmed => Death for",
+               "CFR_past_period (period of ", range_cfr, "days) and CFR_total")
 
 ```
 
@@ -770,12 +796,15 @@ DT::datatable(cfr_table,
 
 ```{r CFR Table selected countries}
 
-knitr::kable(filter(cfr_table, Country %in% compare_countries), digits = 2)
+# knitr::kable(dplyr::filter(cfr_table, Country %in% compare_countries), 
+#              digits = 2)
 
+DT::datatable(dplyr::filter(cfr_table, Country %in% compare_countries),
+              options = list(pageLength = 10, scrollY = "300px"))
 ```
 
 
-Countries - Table overview {data-navmenu="Bar Chart"}
+Data Table - all Countries {data-navmenu="Bar Chart"}
 =====================================
 
 **Countries - Table overview**
@@ -783,7 +812,7 @@ Countries - Table overview {data-navmenu="Bar Chart"}
 Column
 -------------------------------------
 
-### Confirmed and Deaths - Cumulated and mean daily Cases, overall and per 100,000 Inhabitants (absolute and relative date)
+### Confirmed and Deaths - cumulative and mean daily Cases, overall and per 100,000 Inhabitants (absolute and relative data)
 
 Population numbers are taken from [[@UNO2020]](#bib).
 In order to compensate for daily fluctuations, the mean number of cases for the 
@@ -791,7 +820,7 @@ past seven days (*_Mean) is used instead of the daily cases.
 
 ```{r print datatable all with 100k in wide format}
 
-# DT::datatable(corona_data_last %>% filter(Case_Type != "Recovered"),
+# DT::datatable(corona_data_last %>% dplyr::filter(Case_Type != "Recovered"),
 #               options=list(pageLength=25))
 
 DT::datatable(
@@ -801,11 +830,12 @@ DT::datatable(
       Country, `Population /m`, Date, 
       Confirmed, Daily_Conf_Mean, Conf_100k, Daily_Conf_100k_Mean,
       Deaths, Daily_Deaths_Mean, Deaths_100k, Daily_Deaths_100k_Mean), 
-  options = list(pageLength = 50, scrollY=scroll_y))
+  options = list(pageLength = 50, scrollY=scroll_y),
+  filter = "bottom")
 
 ```
 
-EU - Table overview {data-navmenu="Bar Chart"}
+Data Table - EU {data-navmenu="Bar Chart"}
 =====================================
 
 **European Union - Table overview**
@@ -813,7 +843,7 @@ EU - Table overview {data-navmenu="Bar Chart"}
 Column
 -------------------------------------
 
-### Confirmed and Deaths - Cumulated and mean daily Cases, overall and per 100,000 Inhabitants (absolute and relative date)
+### Confirmed and Deaths - cumulative and mean daily Cases, overall and per 100,000 Inhabitants (absolute and relative data)
 
 Population numbers are taken from [[@UNO2020]](#bib).
 In order to compensate for daily fluctuations, the mean number of cases for the 
@@ -821,24 +851,25 @@ past seven days (*_Mean) is used instead of the daily cases.
 
 ```{r print datatable EU with 100k in wide format}
 
-# DT::datatable(corona_data_last %>% filter(Case_Type != "Recovered"),
+# DT::datatable(corona_data_last %>% dplyr::filter(Case_Type != "Recovered"),
 #               options=list(pageLength=25))
 
 DT::datatable(
   corona_data_last_wide %>% 
-    filter(Country %in% c(countries_eu, "EU")) %>% 
+    dplyr::filter(Country %in% c(countries_eu, "EU")) %>% 
     mutate("Population /m" = round(Population / 1000000, digits = 3)) %>% 
     dplyr::select(
       Country, `Population /m`, Date, 
       Confirmed, Daily_Conf_Mean, Conf_100k, Daily_Conf_100k_Mean,
       Deaths, Daily_Deaths_Mean, Deaths_100k, Daily_Deaths_100k_Mean), 
-  options = list(pageLength = 50, scrollY=scroll_y))
+  options = list(pageLength = 50, scrollY=scroll_y),
+  filter = "bottom")
 
 ```
 
 
 
-Cumulated and Daily Trend {data-orientation=rows data-navmenu="Cumulated and Daily Trend" }
+Cumulative and Daily Trend {data-orientation=rows data-navmenu="Cumulative and Daily Trend" }
 =====================================
 
 ***
@@ -855,7 +886,7 @@ weeks <- 12
 ```
 
 
-**Cumulated and Daily Cases over Time**  
+**Cumulative and daily Cases over Time**  
 
 Row {data-height=400}
 ------------------------------------
@@ -976,7 +1007,7 @@ ggts_cum_daily(corona_data, country = country, weeks = weeks)
 i <- i + 1
 ```
 
-Reproduction Number {data-orientation=rows data-navmenu="Cumulated and Daily Trend"}
+Reproduction Number {data-orientation=rows data-navmenu="Cumulative and Daily Trend"}
 =====================================
 
 ***
@@ -987,7 +1018,7 @@ Reproduction Number {data-orientation=rows data-navmenu="Cumulated and Daily Tre
 Row {data-height=400}
 ------------------------------------
 
-### `r country_select` Rolling Mean of Daily Cases  
+### `r country_select` Rolling Mean of daily Cases  
 
 
 
@@ -997,7 +1028,7 @@ Row {data-height=400}
 
 data <- corona_data_wide %>% 
   dplyr::select(!contains("_100k"), -Population) %>% 
-  filter(Country == country_select) 
+  dplyr::filter(Country == country_select) 
 
 
 ```
@@ -1027,7 +1058,7 @@ plot_dygraph_daily(data_xts, country_select, last_date, weeks = weeks)
 
 ```
 
-### Rolling Mean of Daily Cases {data-width=300} 
+### Rolling Mean of daily Cases {data-width=300} 
 
 The *7-day Rolling Mean/Moving Average* of the Daily Confirmed and Death Cases 
 smooths out the short-term weekly fluctuations (weekend).
@@ -1055,17 +1086,17 @@ infectivity <- c((0:3)/3, 1, (5:0)/5)
 names(infectivity) <- seq_along(infectivity)
 infectivity <- infectivity / sum(infectivity)
 
-width <- 7         #  => window (rolling mean one sided) in repronum() 
-report.delay <- 7  #  => delay (reporting delay) in repronum() 
-alpha <- 0.05      # => default conf.level in repronum() 
+width <- 7         #  => window (rolling mean one sided) in uts_repronum() 
+report.delay <- 7  #  => delay (reporting delay) in uts_repronum() 
+alpha <- 0.05      # => default conf.level in uts_repronum() 
 
 
 data_repronum <- corona_data_wide %>% 
-  filter(Country == country_select) %>% 
+  dplyr::filter(Country == country_select) %>% 
   dplyr::select(Country, Date, Daily_Conf, Daily_Conf_Mean) %>% 
   ungroup() 
 
-repronum_output <- repronum(new.cases = data_repronum$Daily_Conf, 
+repronum_output <- uts_repronum(new.cases = data_repronum$Daily_Conf, 
                             profile = infectivity, 
                             window = width,
                             delay = report.delay)
@@ -1134,7 +1165,7 @@ had a significant slope.
 In early phases countries have a more or less unchecked exponential
 growth. 
 If countermeasures are effective, reduced exponential growth is reflected in a 
-reduced slope of the accumulated cases again.
+reduced slope of the cumulative cases again.
 
 Column
 -------------------------------------
@@ -1153,32 +1184,32 @@ labels_scale <- c(10, 100, 1000, 5000, 10000, 50000, 100000, 500000, 1000000,
 
 # logscale plot w/o date filter
 data <- corona_tsbl %>% ungroup() %>% group_by(Case_Type) %>% 
-  filter(Country %in%  c("World", "China", compare_countries) & 
+  dplyr::filter(Country %in%  c("World", "China", compare_countries) & 
            Case_Type != "Recovered" & Cases >= 10) %>% 
   dplyr::select(Date, Country, Case_Type, Cases)
 
-gg_plot <- gg_logscale(data)
+gg_plot <- ggts_logscale(data)
   
 plot_1 <- gg_plot + 
   scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
   geom_line(aes(col = Country), size = 0.5) +
-  labs(title = "Cumulated Cases") +
+  labs(title = "Cumulative Cases") +
   facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
              strip.position = "left")
 
 ##  plot per 100,000 inhabitants
 data <- corona_tsbl %>% ungroup() %>% group_by(Case_Type) %>% 
-  filter(Country %in%  c("World", "China", compare_countries) & 
+  dplyr::filter(Country %in%  c("World", "China", compare_countries) & 
            Case_Type != "Recovered" & Cases >= 10) %>% 
   dplyr::select(Date, Country, Case_Type, Cases_100k)
 
-gg_plot <- gg_logscale(data, x = Date, y = Cases_100k)
+gg_plot <- ggts_logscale(data, x = Date, y = Cases_100k)
   
 plot_2 <- gg_plot + 
   scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
   geom_line(aes(col = Country), size = 0.5) +
-  labs(title = "Cumulated Cases / 100k Inhabitants",
-       y = "Cumulated Cases / 100k Inhabitants") +
+  labs(title = "Cumulative Cases / 100k Inhabitants",
+       y = "Cumulative Cases / 100k Inhabitants") +
   facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
              strip.position = "left") 
 
@@ -1201,17 +1232,17 @@ plot_1 + plot_2 +
 # Virus Spread / 100,000 Inhabitantson on log10 scale (since mid of Jan)
 
 data <- corona_tsbl %>% ungroup() %>% group_by(Case_Type) %>% 
-  filter(Country %in%  c("World", "China", compare_countries) & 
+  dplyr::filter(Country %in%  c("World", "China", compare_countries) & 
            Case_Type != "Recovered" & Cases >= 10) %>% 
   dplyr::select(Date, Country, Case_Type, Cases_100k)
 
-gg_plot <- gg_logscale(data, x = Date, y = Cases_100k)
+gg_plot <- ggts_logscale(data, x = Date, y = Cases_100k)
   
 gg_plot + 
   scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
   geom_line(aes(col = Country), size = 0.5) +
   labs(subtitle = paste("Since", first_date),
-       y = "Cumulated Cases / 100k Inhabitants",
+       y = "Cumulative Cases / 100k Inhabitants",
        title = "Virus Spread / 100,000 Inhabitants (with log10 scale)") +
   facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
              strip.position = "left") 
@@ -1273,7 +1304,7 @@ selected countries: **`r compare_countries`** and **World** in total
 # provide tsbl of range_reg_short for linear regression of log data
 corona_range_reg_short_tsbl <- corona_tsbl %>% 
   group_by(Case_Type) %>% 
-  filter(Country %in% c("World", compare_countries) & 
+  dplyr::filter(Country %in% c("World", compare_countries) & 
            Date >= last_date - range_reg_short + 1) %>% 
            # Case_Type != "Recovered" & Cases >= 10) %>% 
   dplyr::select(Date, Country, Case_Type, Cases)
@@ -1288,7 +1319,7 @@ corona_range_reg_short_tsbl <- corona_tsbl %>%
 
 corona_range_reg_long_tsbl <- corona_tsbl %>% 
   group_by(Case_Type) %>% 
-  filter(Country %in% c("World", compare_countries) & 
+  dplyr::filter(Country %in% c("World", compare_countries) & 
            Date >= last_date + 1 - range_reg_long) 
 
 ```
@@ -1303,7 +1334,7 @@ fc_corona <- fit_corona %>%
   fabletools::forecast(h = "14 days") 
 
 fc_corona %>%  
-  filter(Country == country_select) %>% 
+  dplyr::filter(Country == country_select) %>% 
   autoplot(corona_range_reg_long_tsbl) +
   ggtitle(paste(country_select, "- Cases and 14-days Forecast (linear y-scale)"),
           subtitle = paste(
@@ -1336,9 +1367,9 @@ Column {data-width=600}
 
 ```{r plot log10scale selected Country}
 
-# gg_plot <- gg_logscale(corona_tsbl_range_reg)  +
+# gg_plot <- ggts_logscale(corona_tsbl_range_reg)  +
 #   geom_smooth(method="lm", aes(col = Country), lty = "dashed", se=FALSE)
-gg_plot <- gg_logscale(corona_range_reg_long_tsbl, y = Daily_Cases_Mean)  +
+gg_plot <- ggts_logscale(corona_range_reg_long_tsbl, y = Daily_Cases_Mean)  +
   geom_smooth(method="lm", aes(col = Country), lty = "dashed", se=FALSE)
   
 gg_plot +
@@ -1349,7 +1380,7 @@ gg_plot +
 
 
 
-### Germany - Cumulated cases with ~linear slope on a log10 scale {data-height=400}
+### Germany - Cumulative cases with ~linear slope on a log10 scale {data-height=400}
 
 ```{r  Plot with Linear Regression}
 # plot with linear regression on log scale
@@ -1357,17 +1388,17 @@ gg_plot +
 # 
 for (i in country_select) { 
   plot_cases <- 
-    ggts_trend_facet(corona_data %>% filter(Country == i & Cases >= 10)) +
-    labs(title = paste(i, "- Cumulated Cases")) +
+    ggts_trend_facet(corona_data %>% dplyr::filter(Country == i & Cases >= 10)) +
+    labs(title = paste(i, "- Cumulative Cases")) +
     scale_y_log10()
   plot_cases_past_weeks <- 
-    ggts_trend_facet(corona_data %>% filter(Country == i & Cases >= 10 &
+    ggts_trend_facet(corona_data %>% dplyr::filter(Country == i & Cases >= 10 &
                                                     Date >= last_date - 28 + 1)) +
-    labs(title = paste(i, "- Cumulated Cases (past 28 days"), 
+    labs(title = paste(i, "- Cumulative Cases (past 28 days"), 
          subtitle = paste("w/ linear regression of log data for past", 
                           range_reg_short, "days"))  +
     geom_smooth(data = corona_data %>% 
-                  filter(Country == i & Case_Type != "Recovered" & 
+                  dplyr::filter(Country == i & Case_Type != "Recovered" & 
                            Date >= last_date + 1 - range_reg_short), 
                 method="lm", 
                 col = "black", size = 1, se = FALSE) +
@@ -1428,7 +1459,7 @@ fc_daily_corona <- fit_daily_corona %>%
   fabletools::forecast(h = forecast_days) 
 
 fc_daily_corona %>%  
-  filter(Country == country_select) %>% 
+  dplyr::filter(Country == country_select) %>% 
   autoplot(corona_range_reg_long_tsbl) +
   labs(title = paste(
     country_select, " - Forecast of Mean Daily Mean Cases for the next ", 
@@ -1443,7 +1474,7 @@ fc_daily_corona %>%
 ```
 
 
-### Cumulated Cases - Comparison Exponential and Linear Growth
+### Cumulative Cases - Comparison Exponential and Linear Growth
 
 ```{r daily forecast exp growth, fig.asp = fig_asp_trend}
 
@@ -1458,10 +1489,10 @@ fc_cum_corona <- fit_cum_corona %>%
 
 fc_cum_corona %>%  
   
-  filter(Country == country_select) %>% 
+  dplyr::filter(Country == country_select) %>% 
   autoplot(corona_range_reg_long_tsbl) +
   labs(title = paste(
-    country_select, " - Forecast of Cumulated Cases for the next ", 
+    country_select, " - Forecast of Cumulative Cases for the next ", 
     forecast_range, "-days"),
     subtitle = paste(
       "Forecast is based on regression of past ",
@@ -1492,7 +1523,7 @@ especially relevant for the confirmed cases.
 Therefore the 14 days forecast is only an indication for the direction of an 
 unchecked exponentiell growth.
 
-The cumulated cases doubling rate is only a good indicator at the beginning of 
+The Cumulative cases doubling rate is only a good indicator at the beginning of 
 the pandemic. 
 If the number of confirmed cases from the past two weeks is already small 
 compared to the total number of confirmed cases, the number of infectious people 
@@ -1539,7 +1570,7 @@ knitr::kable(forecast_table,  digits = c(0, 0, 1, 0, 0),
 Column
 -----------------------------------------------------------------------  
 
-### Forecast of Daily  and Cumulated Cases and check of Accuracy {data-height=250}
+### Forecast of Daily  and Cumulative Cases and check of Accuracy {data-height=250}
 
 The forecast accuracy is checked by using the forecast method for the past 
 three weeks before the past week (*training data*). Subsequent forecasting of the 
@@ -1550,9 +1581,9 @@ declining. However, possible changes in underreporting
 (in particular the proportion confirmed / actually infected) requires careful 
 interpretation.
 
-For doubling periods of the total cumulated cases in the order of infectivity (RKI assumption: $\sim9-10$
+For doubling periods of the total cumulative cases in the order of infectivity (RKI assumption: $\sim9-10$
 days, with great uncertainty, [[see @RKI2020b]](#bib), we have no  
-exponential growth for the total cumulated cases. Since the "old" infected cases are 
+exponential growth for the total cumulative cases. Since the "old" infected cases are 
 no longer infectious after these periods and we then have a constant infection 
 rate with  basic reproduction number $R_t \sim 1$.
 
@@ -1571,7 +1602,7 @@ See also [[@CMMID2020]](#bib).
 ```{r forecast daily exp model, fig.asp = fig_asp_trend}
 
 fc_daily_corona %>%  
-  filter(Country == country_select & .model == "Exp_Growth") %>% 
+  dplyr::filter(Country == country_select & .model == "Exp_Growth") %>% 
   autoplot(corona_range_reg_long_tsbl) +
   labs(title = paste(
     country_select, " - Forecast of Mean Daily Cases for the next ", 
@@ -1598,13 +1629,13 @@ forecast_days <- paste(forecast_range, "days")
 
 corona_tsbl_train <- corona_tsbl %>% 
   group_by(Case_Type) %>% # since .add = FALSE will override existing groups
-  filter(Country %in% country_select & 
+  dplyr::filter(Country %in% country_select & 
            Date >= last_date + 1 - training_data_start &
            Date < last_date + 1 - forecast_range)
 
 corona_tsbl_total <- corona_tsbl %>% 
   group_by(Case_Type) %>% 
-  filter(Country %in% country_select  & 
+  dplyr::filter(Country %in% country_select  & 
            Date >= last_date + 1 -  training_data_start) 
 
 ```
@@ -1637,9 +1668,9 @@ fc_corona_train %>%
 ```
 
 
-```{r cumulated forecast accuracy, fig.asp = fig_asp_trend, eval = FALSE}
+```{r cumulative forecast accuracy, fig.asp = fig_asp_trend, eval = FALSE}
 ### Germany - Forecast Accuracy Check for the past `r forecast_range` days 
-### for the Cumulated Cases {data-height=225}
+### for the cumulative Cases {data-height=225}
 
 fit_corona_train <- corona_tsbl_train %>% 
   model(TSLM(log(Cases) ~ Date)) 
@@ -1754,13 +1785,13 @@ countries_fc_param <-
 ```{r eval = TRUE}
 
 corona_country_sel <- corona_data %>% 
-  filter(Country %in% countries_to_forecast & 
+  dplyr::filter(Country %in% countries_to_forecast & 
            Date >= last_date - 28) %>%
   ungroup() %>% 
   dplyr::select(Date, Country, Case_Type, Cases)
 
 fc_corona_sel <- fc_corona %>% 
-  filter(Country %in% countries_to_forecast &
+  dplyr::filter(Country %in% countries_to_forecast &
            Date <= last_date + 8) %>% 
   mutate(Case_Type = case_when(
     Case_Type == "Confirmed" ~ "FC_Confirmed",
@@ -1773,10 +1804,10 @@ corona_country_sel <- bind_rows(corona_country_sel, fc_corona_sel)
 
 ```{r Daily Confirmed lagged, fig.width = 5, fig.asp = 1.2}
 
-data <- corona_data %>%  filter(Country %in% countries_to_forecast &
+data <- corona_data %>%  dplyr::filter(Country %in% countries_to_forecast &
            Date >= last_date - 21)
 
-p <- ggts_conf_deaths_facet(data, y = Daily_Cases_Mean, col = Case_Type) +
+p <- ggts_conf_deaths_facet(data, y = Daily_Cases_Mean, vars_1 = Case_Type) +
       ggtitle("Daily Rolling Mean Cases (past 3 weeks)")
 p # ggplotly(p)
 ```
@@ -1793,7 +1824,7 @@ country <- countries_to_forecast[1]
 
 
 corona_tsbl_lag_range <- corona_tsbl %>% ungroup() %>% group_by(Case_Type) %>% 
-  filter(Country %in% countries_to_forecast &
+  dplyr::filter(Country %in% countries_to_forecast &
            Date >= last_date - lag_range) %>% 
   dplyr::select(Date, Country, Case_Type, Daily_Cases_Mean) %>% 
   group_by(Country)
@@ -1826,10 +1857,10 @@ save_plot_fit <- list()
 ## issue testing ##
 for (country in countries_to_forecast) {  
   lag_days <- (countries_fc_param %>% 
-                 filter(Country == country))$confirmed_to_death
+                 dplyr::filter(Country == country))$confirmed_to_death
   # model ~ 0 + => w/o intercept
   fit_best <- corona_tsbl_lag_range_wide %>% 
-    filter(Country == country) %>% 
+    dplyr::filter(Country == country) %>% 
     model(ARIMA(Deaths ~ 0 + pdq(d = 0) + 
                   lag(Confirmed, lag_days - 2) +
                   lag(Confirmed, lag_days - 1) +
@@ -1852,7 +1883,7 @@ for (country in countries_to_forecast) {
     #  forecast horizon automatically (by new data) fixed to lag-days minus 
     #     model dependency lag_days - 1 & lag_days - 2 => 12days - 2 = 10 days
     autoplot(corona_tsbl_lag_range_wide %>%  
-               filter(Date >= last_date - 20)) + 
+               dplyr::filter(Date >= last_date - 20)) + 
     labs(y = "Daily Deaths",
          subtitle = 
            paste(country, "w/ avg. Confirmed -> Death:", lag_days, "lag-days"))
@@ -1861,7 +1892,7 @@ for (country in countries_to_forecast) {
                          lag_Confirmed = lag_days, 
                          CFR = as.numeric(
                            round(coef(fit_best) %>%  
-                                   filter(term %in% term) %>%
+                                   dplyr::filter(term %in% term) %>%
                                    summarise(CFR = sum(estimate)), digits = 2))
   )
   country_table <- bind_rows(country_table, country_table_new)
@@ -1883,7 +1914,7 @@ plot_deaths_forecast
 ```{r CFR Table - for compare_countries}
 
 title <- paste("Case Fatality Rate in % (CFR, proportion of deaths from confirmed cases)", "lagged by", lag_n, "days; total and for period of past", range_cfr, "days")
-knitr::kable(cfr_table %>% filter(Country %in% countries_to_forecast),
+knitr::kable(cfr_table %>% dplyr::filter(Country %in% countries_to_forecast),
              digits = 2, caption = title)
 
 
@@ -1894,7 +1925,7 @@ knitr::kable(cfr_table %>% filter(Country %in% countries_to_forecast),
 
 
 # knitr::kable(coef(fit_best) %>% 
-#                group_by(Country) %>% filter(term %in% lm_term) %>%  
+#                group_by(Country) %>% dplyr::filter(term %in% lm_term) %>%  
 #                summarise(CFR = sum(estimate) ), 
 #              digits = 2, caption = paste(
 #                "Case Fatality Fate in % (CFR, proportion of deaths from confirmed cases)", "lagged by", lag_n, "total and for period of past ", lag_n, "days")
