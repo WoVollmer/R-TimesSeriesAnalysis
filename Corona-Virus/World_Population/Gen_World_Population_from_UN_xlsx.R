@@ -63,6 +63,15 @@ world_population_un <- world_population_un %>%
     )  
 
 
+## -- World-population - already part of un xlsx.file -----------------------
+## 
+# a <- (world_population_un %>% dplyr::filter(Country == "World"))$Population
+#         # = 7794798729
+# b <- as.double(world_population_un %>%
+#   dplyr::filter(Country != "World") %>%
+#   summarise(sum(Population)))
+# all.equal(a, b)   # => TRUE
+
 ## ---- split Republic of Serbia to Republic of Serbia and Kosovo and add EU ---
 ##        
 pop_kosovo <- 1932774
@@ -73,13 +82,18 @@ serbia <- filter(world_population_un, Country == "Republic of Serbia") %>%
   mutate(Population = Population - pop_kosovo)
 
 # add EU popoulation (sum of EU countries)
-# countries_eu <- c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus",
-#                   "Czech Republic", "Denmark", "Estonia", "Finland", "France",
-#                   "Germany", "Greece", "Hungary", "Ireland", "Italy",
-#                   "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands",
-#                   "Poland", "Portugal", "Slovakia", "Slovenia", "Spain",
-#                   "Sweden")  
-pop_eu <- 426012840
+countries_eu <- c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus",
+                  "Czech Republic", "Denmark", "Estonia", "Finland", "France",
+                  "Germany", "Greece", "Hungary", "Ireland", "Italy",
+                  "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands",
+                  "Poland", "Portugal", "Romania", "Slovakia", "Slovenia",
+                  "Spain", "Sweden")
+
+pop_eu <- as.double(world_population_un %>% 
+  dplyr::filter(Country %in% countries_eu) %>% 
+  summarise(sum(Population)))
+# result: pop_eu = 445250522
+
 eu <- filter(world_population_un, Country == "World") %>% 
   mutate(Country = "EU",
          Population = pop_eu)
