@@ -9,25 +9,6 @@ and references see the Dashboard-file
 *Corona\_Virus\_TS\_Dashboard.html* rsp. RMD-file
 *Corona\_Virus\_TS\_Dashboard.Rmd*.
 
-## Installation
-
-Following data/files are required to run R Markdown file
-**Corona\_Virus\_TS\_Dashboard.Rmd**
-
-  - **Data files**:
-      - *time\_series\_covid19\_confirmed\_global.csv*
-      - *time\_series\_covid19\_deaths\_global*
-      - *time\_series\_covid19\_recovered\_global.csv* (note: not used
-        since data not consistend and w/o real value add)
-  - **ggts\_corona.R** R file providing the functions to create the
-    plots
-  - **uts\_corona.R** R file providing utility functions
-  - **world\_population\_un.RDS** R data file providing the population
-    numbers of the different countries (based on UN data) and population
-    sum for *World* and *EU* (European Union).
-  - **References\_Corona.bib** Bibtex file providing the references with
-    the Bibtexkeys
-
 ## Overview
 
 The **`Corona_Virus_TS_Dashboard`** provides an interactive dashboard
@@ -43,6 +24,55 @@ dashboard with the R package
 
 The [Corona Virus Dashboard](https://wovollmer.github.io/github.io/) is
 published as **GitHub page**
+
+## Installation
+
+### Johns Hopkins University data files
+
+<https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_time_series>
+
+Following data/files are required to run R Markdown file
+**Corona\_Virus\_TS\_Dashboard.Rmd**
+
+  - **Data files**:
+      - *time\_series\_covid19\_confirmed\_global.csv*
+      - *time\_series\_covid19\_deaths\_global*
+      - *time\_series\_covid19\_recovered\_global.csv* (note: not used
+        since data not consistend and w/o real value add)
+
+### Files from this GitHub repository
+
+<https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Corona-Virus>
+
+  - `Corona_Virus_TS_Dashboard.Rmd` R Markdown file for dashboard
+    creation
+  - `world_population_un.RDS` R object file providing UN world
+    population data
+  - `References_Corona.bib` Bibtex file providing the references with
+    the Bibtexkeys
+
+Not used for dashboard creation:
+
+  - `corona_data.RDS` R object file storing in between generated corona
+    data, usable for test purposes
+
+### R package `pkgTS` on GitHub
+
+R package `pkgTS` providing functions for the **T**ime **S**eries
+analysis.
+
+<https://github.com/WoVollmer/pkgTS>
+
+R installation by
+
+  - `install.packages("devtools")`
+  - `devtools::install_github("WoVollmer/pkgTS")`
+
+The used R function files are
+
+  - `pkgTS/R/ggts_corona.R` - providing the functions to create the
+    plots
+  - `pkgTS/R/uts_corona.R` - providing utility functions
 
 -----
 

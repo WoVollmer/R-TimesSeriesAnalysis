@@ -50,6 +50,8 @@ library(plotly)
 library(highcharter)
 library(dygraphs)  # R interface to the dygraphs JavaScript charting library
 library(checkmate) # to provide informative error messages
+library(pkgTS) # TimeSeries Funcstion - own R package on GitHub
+               # devtools::install_github("WoVollmer/pkgTS")
 
 ```
 
@@ -60,6 +62,8 @@ device <- params$device
 
 if (device == "desktop") {
   setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
+  # alternative not possible, since knit uses *.RMD file dir as working dir 
+  # population_countries <- readRDS("./Corona-Virus/world_population_un.RDS") 
   data_path <- 
     "D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
 } else if (device == "notebook") {
@@ -79,13 +83,12 @@ if (device == "desktop") {
 ```
 
 ```{r source function and population data}
-
+# sources part of library(pkgTS) # devtools::install_github("WoVollmer/pkgTS")
 # Plot and util functions - has to come after setwd()  ------------
-source("./ggts_corona.R") # ggplot2 functions for time series plots
-source("./uts_corona.R")  # utility functions for corona analysis
+# source("./ggts_corona.R") # ggplot2 functions for time series plots
+# source("./uts_corona.R")  # utility functions for corona analysis
 
-# read world population for normalization per 100k inhabitants
-# population_countries <- readRDS("./world_population.RDS") # data from CIA
+# read UN world population data for normalization per 100k inhabitants
 population_countries <- readRDS("./world_population_un.RDS") # data from UN
 
 ```
@@ -110,6 +113,13 @@ x_axis_theme <- element_text(size = 14)
 
 
 ```{r settings}
+
+countries_eu <- c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus",
+                  "Czech Republic", "Denmark", "Estonia", "Finland", "France",
+                  "Germany", "Greece", "Hungary", "Ireland", "Italy",
+                  "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands",
+                  "Poland", "Portugal", "Romania", "Slovakia", "Slovenia",
+                  "Spain", "Sweden")
 
 compare_countries <- c("Austria", "France", "Germany", "Italy", "India",
                        "Japan", "Spain", "EU", 
@@ -258,13 +268,6 @@ corona_country <- bind_rows(corona_country, corona_country_sum)
 ```{r add country EU}
 ### provide sum of all EU countries as country "EU" data
 
-countries_eu <- c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus",
-                  "Czech Republic", "Denmark", "Estonia", "Finland", "France",
-                  "Germany", "Greece", "Hungary", "Ireland", "Italy",
-                  "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands",
-                  "Poland", "Portugal", "Slovakia", "Slovenia", "Spain",
-                  "Sweden")   
-
 corona_country_sum <- corona_country %>% 
   dplyr::filter(Country %in% countries_eu) %>% 
   group_by(Date, Case_Type) %>% 
@@ -320,8 +323,8 @@ corona_tsbl <- corona_data  %>%
 
 
 ```{r}
-saveRDS(corona_data, "corona_data.RDS")
 
+saveRDS(corona_data, "./corona_data.RDS")
 # corona_data <- readRDS("corona_data.RDS")
 
 ```
@@ -352,6 +355,39 @@ corona_last_rel_wide <- corona_data_last_wide %>%
 ```
 
 
+```{r calculate lagged CFR}
+## `cfr_table` - calculate Case Fatality Rate (CFR in %) -----------------------
+#   assuming a time lag of `lag_n`-days (~12) between Confirmed => Death
+#   - CFR_past_period - past 14 days
+#   - CFR_total
+#   - CFR_unlagged (unlagged total)
+
+corona_confirmed_lag <- corona_data_wide %>% 
+  dplyr::select(!contains("_100k"), -Population, 
+                -Daily_Conf, -Daily_Deaths) %>% 
+  mutate(confirmed_lag = lag(Confirmed, lag_n),
+         CFR_total = round(Deaths / confirmed_lag * 100, digits = 1),
+         CFR_unlagged = round(Deaths / Confirmed * 100, digits = 1)) 
+
+corona_total_CFR_lag <- corona_confirmed_lag %>% 
+  dplyr::filter(Date == last_date) 
+
+corona_before <- corona_confirmed_lag %>% 
+  dplyr::filter(Date == last_date - range_cfr + 1) %>% 
+  mutate(Deaths_before = Deaths,
+         confirmed_lag_before = confirmed_lag) %>% 
+  select(Country, Deaths_before, confirmed_lag_before )
+
+cfr_table <- left_join(corona_total_CFR_lag, corona_before) %>% 
+  mutate(confirmed_past_period = confirmed_lag - confirmed_lag_before,
+         deaths_past_period = Deaths - Deaths_before,
+         CFR_past_period = round(
+           deaths_past_period / confirmed_past_period * 100, digits = 1)) %>% 
+  select(Country,  CFR_past_period, CFR_total, CFR_unlagged)
+
+```
+
+
 
 World Map {data-navmenu="World Map"}
 =====================================  
@@ -363,15 +399,15 @@ World Map {data-navmenu="World Map"}
 
 page_2 <- "Cumulative Cases per 100,000 Inhabitants"
 page_3 <- "Mean number of cases over the past seven days per 100,000 Inhabitants"
-page_4 <- paste("Case Fatality Rate (CFR) of past", range_cfr, 
-                "days assuming a time lag of", lag_n, 
+page_4 <- paste("Case Fatality Rate - CFR of past", range_cfr, 
+                "days and CFR_total assuming a time lag of", lag_n, 
                 "days between Confirmed => Death")
 
 map_page_title_1 <- paste("World Map - Spread of Coronavirus SARS-CoV-2",
                         "(Data source [[@JHU2020a]](#bib), see also [[@JHU2020]](#bib))")
 map_page_title_2 <- paste("World Map -",  page_2)
 map_page_title_3 <- paste("World Map -",  page_3)
-
+map_page_title_4 <- paste("World Map -",  page_4)
 
 bar_chart_page_title_1 <- paste("Bar Chart (descending order) and Data Table")
 bar_chart_page_title_2 <- paste("Bar Chart -",  page_2)
@@ -488,6 +524,38 @@ title <-
 hc_world_map_plot(
   dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
   value = "Daily_Cases_100k_Mean", title = title)
+
+```
+
+
+World Map / CFR {data-navmenu="World Map"}
+=====================================
+
+***
+***
+
+<center>**`r map_page_title_4`** [see Bar Chart - CFR](#cfr)</center>
+
+###
+
+```{r World Map CFR_past_period}
+# see https://code.highcharts.com/mapdata/
+
+title <- paste("CFR_past_period", "- Case Fatality Rate (in %)")
+hc_world_map_plot(
+  dplyr::filter(cfr_table, Country != "World"), 
+  value = "CFR_past_period", title = title)
+
+```
+
+###
+
+```{r World Map CFR_total}
+
+title <- paste("CFR_total", "- Case Fatality Rate (in %)")
+hc_world_map_plot(
+  dplyr::filter(cfr_table, Country != "World"), 
+  value = "CFR_total", title = title)
 
 ```
 
@@ -682,57 +750,30 @@ Column {data-width=300}
 
 ###
 
-```{r calculate lagged CFR}
-
-corona_confirmed_lag <- corona_data_wide %>% 
-  dplyr::select(!contains("_100k"), -Population, 
-                -Daily_Conf, -Daily_Deaths) %>% 
-  mutate(confirmed_lag = lag(Confirmed, lag_n),
-         CFR_total = round(Deaths / confirmed_lag * 100, digits = 1),
-         CFR_unlagged = round(Deaths / Confirmed * 100, digits = 1)) 
-
-corona_total_CFR_lag <- corona_confirmed_lag %>% 
-  dplyr::filter(Date == last_date) 
-
-
-
-corona_before <- corona_confirmed_lag %>% 
-  dplyr::filter(Date == last_date - range_cfr + 1) %>% 
-  mutate(Deaths_before = Deaths,
-         confirmed_lag_before = confirmed_lag) %>% 
-  select(Country, Deaths_before, confirmed_lag_before )
-
-
-cfr_table <- left_join(corona_total_CFR_lag, corona_before) %>% 
-  mutate(confirmed_past_period = confirmed_lag - confirmed_lag_before,
-         deaths_past_period = Deaths - Deaths_before,
-         CFR_past_period = round(
-           deaths_past_period / confirmed_past_period * 100, digits = 1)) %>% 
-  select(Country,  CFR_past_period, CFR_total, CFR_unlagged)
-
-```
-
-
-```{r Top n Bar Chart CFR}
+```{r Top n Bar Chart CFR_past_period}
 
 # plot bar chart CFR Confirmed Mean / Deaths Mean
 abscissa <- "CFR_past_period"
 title <- paste(abscissa, "- Case Fatality Rate (in %)")
-hc_bar_chart_country(cfr_table, y = abscissa, title = title, n = 20)
+hc_bar_chart_country(cfr_table, y = abscissa, title = title, n = 15)
 
 ```
 
 
-### {data-height=200}
+###
 
+```{r Top n Bar Chart CFR_total or selected countries}
 
-```{r Top n Bar Chart CFR selected countries}
+# plot bar chart CFR Confirmed Mean / Deaths Mean
+abscissa <- "CFR_total"
+title <- paste(abscissa, "- Case Fatality Rate (in %)")
+hc_bar_chart_country(cfr_table, y = abscissa, title = title, n = 15)
 
 # plot bar chart Confirmed - CFR countries and + world
-title <- paste(abscissa, "(in %) - selected countries")
-hc_bar_chart_country(dplyr::filter(cfr_table, 
-                         Country %in% c(compare_countries, "United Kingdom")), 
-                         y = abscissa, title = title)
+# title <- paste(abscissa, "(in %) - selected countries")
+# hc_bar_chart_country(dplyr::filter(cfr_table, 
+#                          Country %in% c(compare_countries, "United Kingdom")), 
+#                          y = abscissa, title = title)
 
 ```
 
@@ -796,11 +837,11 @@ DT::datatable(cfr_table,
 
 ```{r CFR Table selected countries}
 
-# knitr::kable(dplyr::filter(cfr_table, Country %in% compare_countries), 
-#              digits = 2)
+knitr::kable(dplyr::filter(cfr_table, Country %in% compare_countries),
+             digits = 2)
 
-DT::datatable(dplyr::filter(cfr_table, Country %in% compare_countries),
-              options = list(pageLength = 10, scrollY = "300px"))
+# DT::datatable(dplyr::filter(cfr_table, Country %in% compare_countries),
+#               options = list(pageLength = 10, scrollY = "300px"))
 ```
 
 
@@ -825,6 +866,7 @@ past seven days (*_Mean) is used instead of the daily cases.
 
 DT::datatable(
   corona_data_last_wide %>% 
+    dplyr::filter(Country != "World") %>% 
     mutate("Population /m" = round(Population / 1000000, digits = 3)) %>% 
     dplyr::select(
       Country, `Population /m`, Date, 
@@ -856,7 +898,7 @@ past seven days (*_Mean) is used instead of the daily cases.
 
 DT::datatable(
   corona_data_last_wide %>% 
-    dplyr::filter(Country %in% c(countries_eu, "EU")) %>% 
+    dplyr::filter(Country %in% countries_eu) %>% 
     mutate("Population /m" = round(Population / 1000000, digits = 3)) %>% 
     dplyr::select(
       Country, `Population /m`, Date, 
@@ -1994,10 +2036,30 @@ The data are visualized on their excellent Dashboard
 
 **Code Source**
 
-Directory with all R Sources is replicated in GitHub repository:  
+GitHub link for repository of 
+
+* *Corona_Virus_TS_Dashboard.Rmd* R Markdown source file
+* *world_population_un.RDS* R object file with UN world population data
+* *References_Corona.bib* Bibtex file providing the references with the Bibtexkeys
+
 <https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Corona-Virus>
 
-Code is based on ideas from <https://rpubs.com/TimoBoll/583802>
+
+GitHub link for repository of
+
+* R package `pkgTS` providing functions for the **T**ime **S**eries analysis.
+
+<https://github.com/WoVollmer/pkgTS>
+
+R installation by calling
+
+`install.packages("devtools")`
+`devtools::install_github("WoVollmer/pkgTS")`
+
+The required R files are
+
+* `ggts_corona.R` - providing the functions to create the plots
+* `uts_corona.R`  - providing utility functions
 
 ### Bibliography
 
