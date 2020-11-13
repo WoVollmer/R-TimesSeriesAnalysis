@@ -4,7 +4,6 @@ subtitle: Atmospheric $CO_2$ Concentration, Weather Temperature or Precipitation
 author: "Wolfgang Vollmer"
 date: '`r Sys.Date()`'
 output:
-  html_document: default
   pdf_document:
     fig_caption: no
     fig_height: 6
@@ -12,13 +11,14 @@ output:
     number_sections: yes
     toc: yes
     toc_depth: 3
+  html_document: default
   word_document:
     toc: yes
   odt_document:
+params:
+  city: "Basel"    
 urlcolor: blue
 papersize: a4
-params:
-  city: "Basel"
 ---
 
 
@@ -43,9 +43,9 @@ knitr::opts_chunk$set(
 ################################################################################
 
 ######  variables clean up, library() and	source() statements
-# setwd("D:/Wolfgang/Programs-R/R-WeatherAnalysis")
+# setwd("D:/Wolfgang/Programs-R/WeatherAnalysis")
 setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis")
-rm(list=ls()) # deletes all existing objects / variables !!
+# rm(list=ls()) # deletes all existing objects / variables !!
 Prog.Start <- Sys.time()
 
 suppressMessages(library(tidyverse))
@@ -76,7 +76,8 @@ test_eval <- TRUE
 
 city_list <- c("Cottbus", "Giessen", "Hohenpeissenberg", "Mannheim", "Potsdam",
                "Basel", "Davos", "England", "Mauna Loa", "Basel_Giessen")
-city <- c("Mannheim")
+# city <- c("Mannheim")
+city <- params$city
 city %in% city_list 
 n_mismatches <- sum(ifelse(city %in% city_list, 0, 1))
 if (n_mismatches > 0) { 
@@ -132,8 +133,8 @@ if (city == "Mauna Loa") {
     title_rmd <- paste(city, " - Weather Temperature and Precipitation Data")
     topic <- paste(city, "- Temperature and Precipitation")
     
-    y_label <- expression(paste("Temperature / ", degree*C, 
-                                " rsp. Precipitation / mm/Month"))    
+    y_label <- expression(paste("Precipitation / mm/Month", 
+                                " rsp. Temperature / ", degree*C))    
     measure <- c("Temperature and Precipitation")
   } else {
     if (temperature) {
@@ -198,6 +199,7 @@ data_monthly <- uts_data_check_and_fill_w_na(
 ## - adds automatically NAs for months before first month in first year and
 ## - adds automatically NAs for months after  last  month in last year
 data_monthly_wide <- data_monthly  %>% 
+  as_tibble() %>% 
   pivot_wider(id_cols = c(Year, City, Measure), 
               names_from = Month, 
               values_from = count) %>% 
@@ -244,10 +246,10 @@ weather_test_w_na <- FALSE  # for test purposes only - filter data from 1940 - 1
 
 if (city != "Mauna Loa" & city != "Basel_Giessen") {
   # data_monthly_wide <- 
-  #   readRDS(paste0("../R-WeatherAnalysis/WeatherData_", city, ".rds")) # %>% 
+  #   readRDS(paste0("../WeatherAnalysis/WeatherData_", city, ".rds")) # %>% 
   # # read txt file with csv data format
   file <- paste0("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis",
-                 "/R-WeatherAnalysis/Data_Weather/Weather-Data-Input_", 
+                 "/WeatherAnalysis/Data_Weather/Weather-Data-Input_", 
                  city, ".csv")
   data_monthly_wide <- read_csv(file, col_names = TRUE, skip = 0)
 
@@ -295,9 +297,10 @@ if (city == "Basel_Giessen") {
 
 ```{r missing data, eval = TRUE}
 # get common data structure for plots w/ & w/o replaced counts 
-data_monthly %<>% mutate(Raw = count,
-                         Interpolated = NA,
-                         NA_replace = NA)
+data_monthly <- data_monthly %>%  
+  mutate(Raw = count,
+         Interpolated = NA,
+         NA_replace = NA)
 
 ## are there any NAs in data_monthly$count
 n_row <- nrow(data_monthly)
@@ -309,28 +312,30 @@ if (n_na != 0) {
                 n_na, "out of", n_row))
   data_monthly_new <- tibble()   
   for (i in unique(key_data(data_monthly)[[1]])) {    
-   # for (j in unique(key_data(data_monthly)[[2]])) {
-      # data <- filter(data_monthly, City == i & Measure == j)
-      data <- filter(data_monthly, Measure == i)
-      data_interpolate <- as_tibble(uts_interpolate_na(data, freq))
-      data_monthly_new <- bind_rows(data_interpolate, data_monthly_new)
-    }
-    #  NAs in column 'count' are now replaced by interpolated values !!
-    #    previous NAs are in RAW (old count) and 
-    #    replaced NAs are in updated count (only for easy check)
-    # yearmonth() class is lost by bind_row
-    
-  }      
+    # for (j in unique(key_data(data_monthly)[[2]])) {
+    # data <- filter(data_monthly, City == i & Measure == j)
+    data <- filter(data_monthly, Measure == i)
+    data_interpolate <- as_tibble(uts_interpolate_na(data, freq))
+    data_monthly_new <- bind_rows(data_interpolate, data_monthly_new)
+  }
+  #  NAs in column 'count' are now replaced by interpolated values !!
+  #    previous NAs are in RAW (old count) and 
+  #    replaced NAs are in updated count (only for easy check)
+  # yearmonth() class is lost by bind_row
+  
   data_monthly <- data_monthly_new %>% 
     mutate(Year_Month = yearmonth(Year_Month)) %>%  
     as_tsibble(index = Year_Month, key = key)
-# } 
+} 
 
 data_monthly %<>%  group_by(City, Measure) 
 data_monthly$Month <- factor(data_monthly$Month, levels = month.abb)
+
+# !! next line changes tsibble => tibble !! => as_tsibble() needed afterwards
 data_monthly$Measure <- factor(data_monthly$Measure,
                                levels = c("Temperature", "Precipitation", "CO2"))
-
+data_monthly <- data_monthly %>% 
+  as_tsibble(index = Year_Month, key = key) 
 # saveRDS(data_monthly, paste0("test_data_monthly_", city, ".rds"))  
 ```
 
@@ -503,14 +508,17 @@ data_monthly_over_period  <- as_tibble(data_monthly) %>%
 end_first_period <- min(data_monthly_over_period$Period)
 start_last_period <- max(data_monthly_over_period$Period) - span + 1
 
-data_monthly_over_period %<>% group_by(Month) %>% 
-  mutate(count_minus_first = count - count[1]) 
-  
+last_ref_year <- start_last_period -1
+data_monthly_over_period <- data_monthly_over_period  %>% 
+  group_by(Month, Measure) %>% 
+  mutate(count_minus_ref = count - count[Period == last_ref_year]) 
+
+
 data <- data_monthly_over_period 
 col_scheme <- "YlOrRd"
 
 period_years <- c(paste(first_year, "-", end_first_period, sep = ""),
-          paste(start_last_period - 30, "-", start_last_period -1, sep = ""),
+          paste(start_last_period - span, "-", start_last_period -1, sep = ""),
           paste(start_last_period, "-", last_year, sep = ""))
 names(period_years) <- c("first", "ref", "last")
 
@@ -523,11 +531,11 @@ subtitle <- paste("First / Reference / Last Period:",
 y_label_delta <- 
   expression(paste("Delta ", CO[2], " Concentration / ppm to First Period"))
 
-plot_monthly <- ggts_year_over_month(data_monthly_over_period, period = Period) +
-  facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free",
-             strip.position = "left") +
-  labs(y = y_label, title = title, subtitle = subtitle)
-plot_monthly
+# plot_monthly <- ggts_year_over_month(data_monthly_over_period, period = Period) +
+#   facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free",
+#              strip.position = "left") +
+#   labs(y = y_label, title = title, subtitle = subtitle)
+# plot_monthly
 
 # plot_monthly + coord_polar("x", start = pi) + # pi => rotate by 180 degrees
 #   facet_wrap(vars(!!!key(data_monthly)), ncol = 1) 
@@ -536,12 +544,15 @@ plot_monthly
 # if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) { 
 if (length(key(data_monthly)) == 1) { 
   for (i in unique(key_data(data_monthly)[[1]])) {     # City
-      data_filter <- filter(data_monthly_over_period, Measure == i)
-      plot_monthly <- ggts_year_over_month(data_filter, period = Period) +
-        labs(y = y_label, title = paste(title, "-", i), subtitle = subtitle)
-
-      print(plot_monthly + coord_polar("x", start = pi))  # pi => rotate by 180 degrees
-    }
+    data_filter <- filter(data_monthly_over_period, Measure == i)
+    plot_monthly <- ggts_year_over_month(data_filter, period = Period) +
+      labs(y = y_label_measure[i], title = paste(title, "-", i), subtitle = subtitle)
+    ratio_display <- 4 # ratio x / y
+    ratio_values <- 12/
+      (max(data_filter$count)-min(data_filter$count))
+    print(plot_monthly + coord_fixed(ratio = ratio_values / ratio_display))
+    print(plot_monthly + coord_polar("x", start = pi))  # pi => rotate by 180 degrees
+  }
   # }
 } else {
   abort(paste("nothing implemented for n_keys/key_data/key(data_monthly) =", 
@@ -553,31 +564,33 @@ if (length(key(data_monthly)) == 1) {
 ### Plot Monthly Variations to First Period - Cartesian and Polar Coordinates
 
 ```{r seasonal adjusted, fig.width= 7, fig.height= 4}
-plot_monthly <- ggts_year_over_month(data_monthly_over_period, period = Period,
-                                     y = count_minus_first) +
-  facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free",
-             strip.position = "left") +
-  labs(y = "Delta to First Period", title = title, subtitle = subtitle) +
-  labs(y = y_label, title = paste0(title, " - Delta to", 
-                                   end_first_period, "-", end_first_period), 
-       subtitle = subtitle)
-plot_monthly
+# plot_monthly <- ggts_year_over_month(data_monthly_over_period, period = Period,
+#                                      y = count_minus_ref) +
+#   facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free",
+#              strip.position = "left") +
+#   labs(y = y_label, title = paste0(title, " - Delta to", 
+#                                    end_first_period, "-", end_first_period), 
+#        subtitle = subtitle)
+# plot_monthly
 
 # !!  coord_polar doesn't support free scales => generate separate plots
 # if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) { 
 if (length(key(data_monthly)) == 1) { 
   for (i in unique(key_data(data_monthly)[[1]])) {     # City
-      data_filter <- filter(data_monthly_over_period, Measure == i)
-      plot_monthly <- ggts_year_over_month(data_filter, period = Period,
-                                           y = count_minus_first) +
-        labs(y = "Delta to First Period", title = title, subtitle = subtitle) +
-        labs(y = y_label, title = paste0(title, " - Delta to", 
-                                         end_first_period + 1, "-", end_first_period + 31), 
-             subtitle = subtitle)
-      
-      print(plot_monthly + coord_polar("x", start = pi))  # pi => rotate by 180 degrees
-    }
-#  }
+    data_filter <- filter(data_monthly_over_period, Measure == i)
+    plot_monthly <- ggts_year_over_month(data_filter, period = Period,
+                                         y = count_minus_ref) +
+      labs(y = y_label_measure[i], 
+           title = paste0(title, " - Delta to ", period_years["ref"]), 
+           subtitle = subtitle)
+    ratio_display <- 4 # ratio x / y
+    ratio_values <- 12/
+      (max(data_filter$count_minus_ref)-min(data_filter$count_minus_ref))
+    print(plot_monthly + coord_fixed(ratio = ratio_values / ratio_display))
+    print(plot_monthly + coord_polar("x", start = pi)) 
+    # pi => rotate by 180 degrees
+  }
+  #  }
 } else {
   abort(paste("nothing implemented for n_keys/key_data/key(data_monthly) =", 
               n_keys(data_monthly), key_data(data_monthly), (key(data_monthly))))
@@ -678,7 +691,7 @@ plot_yearly +
 # 4)  Note for  ENGLAND TEMPERATURE data:  Seasonal data exist for Spring 1659 onwards..
 
 ggts_season(data = data_yearly) +
-  facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free",
+  facet_wrap(vars(!!!key(data_yearly)), ncol = 1,  scales = "free",
              strip.position = "left") +
   labs(y = y_label)
 
@@ -1120,9 +1133,10 @@ knitr::kable(mean_monthly, digits = 1,
 ```
 
 
-## Test Plots
 
 ```{r ACF with ggplot, eval = FALSE, fig.width= 7, fig.height= 4}
+
+## Test Plots
 
 # acf() does not allow NAs and facetting
 data_ts <- ts(data_monthly$count, start=c(first_year, 1), frequency = freq)
@@ -1203,6 +1217,7 @@ ggplot(data_period_tbl, aes(Frequency, Spectrum)) +
 ### now with replaced NAs
 
 data_monthly_wide <- data_monthly %>%
+  as_tibble() %>% 
   pivot_wider(id_cols = c(Year, Measure),
               names_from = Month,
               values_from = count) %>% 
@@ -1211,13 +1226,10 @@ data_monthly_wide <- data_monthly %>%
 # data_yearly - generation from data_monthly_wide
 #     data_check_and_fill_w_na(data_monthly,
 # w/o gaps and as tsibble (no winter, ... since season = FALSE), maybe w/ NAs
-data_yearly <- data_monthly_wide %>% 
-  # group_by(City, Measure) %>% 
-  # grouping important, otherwise winter rolling over Measure
-  uts_gen_yearly_seasonal_avg(season = TRUE) %>% 
-  dplyr::select(-(Jan:Dec))
-# fill_gaps with NAs since (since ts objects don't allow missing years)
-data_yearly <- as_tsibble(data_yearly, index = Year, key = key) 
+# 
+data_yearly <- uts_gen_yearly_seasonal_avg(data_monthly)
+data_yearly <- as_tsibble(data_yearly, index = Year, key = key)
+
 
 nr_series_w_gaps <- ifelse(has_gaps(data_yearly, .full = TRUE)$.gaps, 1, 0) 
 

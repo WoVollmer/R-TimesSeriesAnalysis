@@ -31,6 +31,8 @@ library(patchwork) # package for composing plots
 library(highcharter)
 library(dygraphs)  # R interface to the dygraphs JavaScript charting library
 library(checkmate) # to provide informative error messages
+library(pkgTS) # TimeSeries Funcstion - own R package on GitHub
+               # devtools::install_github("WoVollmer/pkgTS")
 
 ```
 
@@ -92,11 +94,13 @@ lag_n <- 11  # average confirmed lag - for all countries
 
 ```{r path, eval = TRUE}
 
-# Plot and util functions
-# no setwd() needed and not allowed for publishing
-# all needed files in same folder or in subfolder
-source("./ggts_corona.R") # ggplot2 functions for time series plots
-source("./uts_corona.R")  # utility functions for corona analysis
+# sources part of library(pkgTS) # devtools::install_github("WoVollmer/pkgTS")
+# Plot and util functions -
+#     for Shiny no setwd() needed and not allowed for publishing
+#     - corona_data.RDS # data in subfolder ./data
+#     all needed function files via library(pgkTS)
+#     - ggts_corona.R # ggplot2 functions for time series plots
+#     - uts_corona.R  # utility functions for corona analysis
 
 ```
 

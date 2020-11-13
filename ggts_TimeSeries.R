@@ -18,21 +18,8 @@ theme_replace(
 )
 x_axis_theme <- element_text(size = 14)
 
-## replace y-axes theme: Grad Celsius by
-##        \textdegree C  rsp.   $^\circ$C
-# ylab <- "Temperature (°C) / Precipitation (mm/month)" # whyever A-hat before °C
-# ylab <- expression(paste("Temperature ", (degree~C),
-#                            " / Precipitation (mm/month)"))
-#                       # degree~C | degree*C  => blank before C  w/o blank
-ylab <- expression(paste(
-  "Precipitation / mm/Year   rsp.   Temperature / ",
-  degree * C
-))
-ylab_m <- expression(paste(
-  "Precipitation / mm/Month   rsp.   Temperature / ",
-  degree * C
-))
-
+ylab_m <- expression(paste("Precipitation / mm/Month", 
+                           " rsp. Temperature / ", degree*C))  
 
 
 
@@ -43,10 +30,10 @@ ylab_m <- expression(paste(
 #' and adding smooth line with geom_smooth(method = "loess").
 #' @param data data.frame with x (e.g. time line) and y data to be displayed,
 #' e.g. ggplot_w_rol_mean(weather_long, Year_Month, Temperature, span = span).
-#'   x : numeric string (also of data and Time classes) as index for
-#'   x column name.
+#'   time : numeric string (also of data and Time classes) as index for 
+#'   column name.
 #'   y : numeric string as index for y column name.
-#'   span : integer width of the rolling window.
+#' @param span integer width of the rolling window.
 #' @details The data input must be a valid data.frame
 #'   Year_Month ...   count
 #'        <mth> ...   <dbl>
@@ -55,34 +42,33 @@ ylab_m <- expression(paste(
 #' :
 #' n   2019 Dec ...     1.4
 #' @return ggplot object
-#' @seealso  \code{\link[stats]{filter}} and \code{\link[ggplot2]{ggplot}}
+#' @seealso  `[stats::filter]` and `[ggplot2::ggplot]`
 #' @examples
-#' economics # {ggplot2}
-#' ggplot_w_rol_mean(economics, "date", "uempmed", span = 7)
+#' ggplot2::economics
+#' ggts_w_rol_mean(economics, date, uempmed, span = 7)
 #' @keywords misc
 #' @import checkmate
 #' @importFrom stats filter
 #' @encoding UTF-8
-#' @md
 ggts_w_rol_mean <- function(data, time = Year_Month, y = count, span) {
-  # plot with running/rolling mean - attention! use aes_(aes with underscore)
-  # column <- enquo(y)  ## !!enquo(y)
-  ## new alternative: embrace the arg  {{arg}}
-  data %<>% mutate(
-    rol_mean =
-      stats::filter({{ y }}, filter = rep(1 / span, span))
-  )
-  ##   stats::filter(!!(column), filter = rep(1/span, span)))
+  # to address directly the column name embrace the arg (= col_name):  {{ arg }}  
+  #                                                            old: !!enquo(arg)
+  # ggplot2 - same look and feel like => use aes({{ arg }}) or vars({{ arg }})
+  #                                               old: aes_(x = substitute(arg))
+  data <- data %>%
+    mutate(rol_mean =
+             stats::filter({{ y }}, filter = rep(1 / span, span))
+    )
   # for getting "count": !!sym(y) or !!as.name(y)
   # print(tail(data))
-  gg_plot <- ggplot(data, aes_(x = substitute(time), y = substitute(y))) +
+  gg_plot <- ggplot(data, aes(x = {{ time }}, y = {{ y }})) +
     geom_smooth(aes(col = "Linear Reg"),
-      method = "lm",
-      size = 1, na.rm = TRUE
+                method = "lm",
+                size = 1, na.rm = TRUE
     ) +
     geom_smooth(aes(col = "Loess Reg"),
-      method = "loess",
-      size = 1, na.rm = TRUE
+                method = "loess",
+                size = 1, na.rm = TRUE
     ) +
     geom_line(aes(y = rol_mean, col = "Rolling Mean"), size = 1, na.rm = TRUE) +
     geom_line(aes(col = "Measured Values")) +
@@ -97,11 +83,12 @@ ggts_w_rol_mean <- function(data, time = Year_Month, y = count, span) {
     ) +
     theme(legend.position = "bottom") +
     labs(x = "Year", col = "") +
-    ggtitle("Data over Time",
-      subtitle = paste("with Rolling Mean over", span, "measured values")
+    ggtitle(paste(substitute(y), "over", substitute(time)),
+            subtitle = paste("with Rolling Mean over", span, "measured values")
     )
   return(gg_plot)
 }
+
 
 
 #' @title Generate Time Series Decompression ggplot facet
@@ -203,130 +190,32 @@ ggts_decomp <- function(data, ...) {
 }
 
 
-#
-#
-# ggplot_stlplus <- function(data, ...) {
-#   require(tidyverse)
-#   require(magrittr)
-#   require(stlplus)   # required for example
-#   require(tsibble)   # required for example
-#   require(lubridate) # required for example
-#   tbl_data <-
-#     as_tibble(rownames_to_column(as.data.frame(data$data), var = "Index"))
-#   tbl_data %<>% mutate(time = data$time) %>%
-#     rename(Raw = raw, Seasonal = seasonal, Trend = trend,
-#            Remainder = remainder) %>%
-#     dplyr::select(1, time, 2:ncol(.)) # select all with reording column time
-#   # print(tbl_data )
-#
-#   tbl_data_long <- tbl_data %>%
-#     mutate(trend_for_raw = Trend) %>%    # to add trend line in facet Raw only
-#     rename("Data with Trend" = Raw) %>%
-#     pivot_longer(cols = "Data with Trend":"Remainder",
-#                  names_to = c("Decompressed"),
-#                  values_to = "value") %>%
-#     mutate(Decompressed = factor(Decompressed,
-#                                  levels = c("Data with Trend", "Seasonal",
-#                                             "Trend", "Remainder")))
-#   tbl_data_long$trend_for_raw[tbl_data_long$Decompressed != "Data with Trend"] <- NA
-#
-#   # provide mean values for horizontal line
-#   tbl_data_long %<>% mutate(horiz_line =
-#                               case_when(Decompressed == "Data with Trend" ~
-#                                           mean(tbl_data$Raw, na.rm = TRUE),
-#                                         Decompressed == "Seasonal" ~
-#                                           mean(tbl_data$Seasonal, na.rm = TRUE),
-#                                         Decompressed == "Trend" ~
-#                                           mean(tbl_data$Trend, na.rm = TRUE),
-#                                         Decompressed == "Remainder" ~
-#                                           mean(tbl_data$Remainder, na.rm = TRUE)))
-#
-#   gg_plot <-  ggplot(tbl_data_long, aes(time, value, col = Decompressed)) +
-#     facet_wrap( ~ Decompressed, ncol = 1, scales = "free" ) +
-#     geom_line(aes(y = horiz_line),  linetype = "dashed", size = 1) +
-#     geom_line(aes(y = trend_for_raw),  col = "cyan", linetype = "solid", size =0.8) +
-#     geom_line(na.rm = TRUE) +  # TRUE rows w/ NA are silently removed, no warning
-#     theme(legend.position = "none")  +
-#     labs(x = "Year", col = "") +
-#     ggtitle("Time Series Decompression w/ Mean Horiz. Lines",
-#             subtitle = "with Function stlplus()")
-#
-#   return(gg_plot)
-#   # return(list(gg_plot = gg_plot,
-#   #             tbl_data = tbl_data))
-# }
-#
-#
-# ## alternartive with Raw & Trend line in one facet and each facet with mean line
-# ggplot_stlplus_w_data <- function(data, ...) {
-#
-#   tbl_data <-
-#     as_tibble(rownames_to_column(as.data.frame(data$data), var = "Index"))
-#   tbl_data %<>% mutate(time = data$time) %>%
-#     rename(Raw = raw, Seasonal = seasonal, Trend = trend,
-#            Remainder = remainder) %>%
-#     dplyr::select(1, time, 2:ncol(.))
-#
-#   tbl_data_long <- tbl_data %>%
-#     rename("Raw & Trend Line" = Raw) %>%
-#     pivot_longer(cols =  c("Raw & Trend Line", "Seasonal", "Remainder"),
-#                  names_to = c("Decompressed"),
-#                  values_to = "value") %>%
-#     mutate(Decompressed = factor(Decompressed,
-#                                  levels = c("Raw & Trend Line", "Seasonal", "Remainder")))
-#   tbl_data_long$Trend[tbl_data_long$Decompressed != "Raw & Trend Line"] <- NA
-#
-#   # pride mean values for horizontal line
-#   tbl_data_long %<>% mutate(horiz_line =
-#                               case_when(Decompressed == "Raw & Trend Line" ~
-#                                           mean(tbl_data$Raw, na.rm = TRUE),
-#                                         Decompressed == "Seasonal" ~
-#                                           mean(tbl_data$Seasonal, na.rm = TRUE),
-#                                         Decompressed == "Remainder" ~
-#                                           mean(tbl_data$Remainder, na.rm = TRUE)))
-#
-#
-#   # see also
-#   # https://stackoverflow.com/questions/34241890/ggplot-renaming-facet-labels-in-facet-wrap
-#   # w/ facet_wrap( ~ Decompressed, labeller=label_parsed) +
-#
-#
-#   gg_plot <- ggplot(tbl_data_long, aes(time, value, col = Decompressed)) +
-#     facet_wrap( ~ Decompressed, ncol = 1, scales = "free" ) +
-#     geom_line(aes(y = horiz_line),  linetype = "dashed", size =0.8) +
-#     geom_line(aes(y = Trend),  col = "red", linetype = "solid", size =0.8) +
-#     geom_line(na.rm = TRUE) +  # # TRUE rows w/ NA are silently removed, no warning
-#     theme(legend.position = "none")  +
-#     labs(x = "Year", col = "") +
-#     ggtitle("Time Series Decompression w/ Mean Horiz. Lines",
-#             subtitle = "with Function stlplus()")
-#
-#   return(list(gg_plot = gg_plot,
-#               tbl_data = tbl_data))
-# }
 
 
 # Function provides Monthly data plot (e.g. Temperature, Precipitation, ...)
 # Return: plot object graph
 ## w/ smooth, w/o facet_wrap
-ggts_season_w_smooth <-
-  function(data, x = Year_Month, y = count, season = Month) {
-    graph <- ggplot(data, aes_(substitute(x), substitute(y),
-      col = substitute(season)
-    )) +
-      geom_point(na.rm = TRUE) +
-      geom_smooth(method = "loess", size = 0.5, na.rm = TRUE) +
-      labs(x = "Year") +
-      # scale_colour_hue(): to get "cold" colours in winter, "warm" in summer
-      scale_colour_hue(h.start = -140, l = 60, c = 200) +
-      ggtitle("Monthly Data with Local Polynomial Regression Fitting") +
-      theme(axis.title.x = x_axis_theme)
+ggts_season_w_smooth <- function(data, x = Year_Month, y = count, 
+                                 season = Month) {
+  graph <- ggplot(data, aes({{ x }}, {{ y }}, col = {{ season }}
+  )) +
+    geom_point(na.rm = TRUE) +
+    geom_smooth(method = "loess", size = 0.5, na.rm = TRUE) +
+    labs(x = "Year") +
+    # scale_colour_hue(): to get "cold" colours in winter, "warm" in summer
+    scale_colour_hue(h.start = -140, l = 60, c = 200) +
+    ggtitle("Monthly Data with Local Polynomial Regression Fitting") +
+    theme(axis.title.x = x_axis_theme)
+  
+  return(graph)
+}
 
-    return(graph)
-  }
-
-# Function provides Season (Wintr, Spring, Summer, Fall) line and smooth plot in
+# Function provides Season (Winter, Spring, Summer, Fall) line and smooth plot in
 # one commmon diagram
+# facetting by calling program  e.g. 
+# ggts_season(data = data_yearly) +
+#   facet_wrap(vars(!!!key(data_yearly)), ncol = 1,  scales = "free",
+#              strip.position = "left")
 ggts_season <- function(data, span = 1) {
   data_season <- data %>%
     rename(
@@ -350,7 +239,7 @@ ggts_season <- function(data, span = 1) {
       values = c("blue", "green", "orange", "brown")
     ) +
     theme(legend.position = "bottom") +
-    labs(x = "Year", y = ylab_m) +
+    labs(x = "Year", y = "Value") +
     ggtitle("Average Season Data (w/ Loess Regression Lines",
       subtitle =
         "Winter (DJF, DecJanFeb), Spring (MAM), Summer (JJA), Fall (SON)"
@@ -361,18 +250,17 @@ ggts_season <- function(data, span = 1) {
   return(graph)
 }
 
-ggts_year_over_month <- function(data, x = Month, y = count, period = Period) {
+ggts_year_over_month <- function(data, x = Month, y = count, col = Period) {
   col_scheme <- "YlOrRd"
-
-  gg_plot <- ggplot(data, aes_(substitute(x), substitute(y),
-    group = substitute(period),
-    col = substitute(period)
-  )) +
+  
+  gg_plot <- ggplot(data, aes({{ x }}, {{ y }},
+                              group = {{ period }},
+                              col = {{ period }} )) +
     geom_point(shape = 5, na.rm = TRUE) +
     geom_line(na.rm = TRUE) +
     labs(x = "Month") +
     ggtitle(paste0(
-      "Monthly Variations of ", substitute(Period),
+      "Monthly Variations of ", substitute(col),
       "-counts over Month"
     ),
     subtitle = paste(

@@ -44,7 +44,7 @@ knitr::opts_chunk$set(
 ################################################################################
 
 ######  variables clean up, library() and	source() statements
-# setwd("D:/Wolfgang/Programs-R/R-WeatherAnalysis")
+# setwd("D:/Wolfgang/Programs-R/WeatherAnalysis")
 setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis")
 rm(list=ls()) # deletes all existing objects / variables !!
 Prog.Start <- Sys.time()
@@ -244,7 +244,7 @@ weather_test_w_na <- FALSE  # for test purposes only - filter data from 1940 - 1
 
 if (city != "Mauna Loa" & city != "Basel_Giessen" & city != "Mannheim") {
   data_monthly_wide <- 
-    readRDS(paste0("../R-WeatherAnalysis/WeatherData_", city, ".rds")) %>% 
+    readRDS(paste0("../WeatherAnalysis/WeatherData_", city, ".rds")) %>% 
     mutate(City = city) %>% 
     rename(Measure = Temp_Precip)
   if (!temp_and_precip) {

@@ -55,25 +55,34 @@ library(pkgTS) # TimeSeries Funcstion - own R package on GitHub
 
 ```
 
-```{r path on desktop vs. notebook, eval = TRUE}
+```{r setwd change, eval = FALSE}
+
+# knit: changes working dir => path of *.RMD file => setwd() not needed !
+# R code run: RStudio project R_TimeSeriesAnalysis needs 
+# relative working dir change (eval = FALSE needed for knitr runs!!) 
+
+setwd("./Corona-Virus/") 
+
+# or absolute
+# setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus") # "desktop"
+# # attention: here I need (whyever) TimesS... (Time + plural-s) not TimeS...
+# setwd("C:/Wolfgang/Programs-R/R-TimesSeriesAnalysis/Corona-Virus") # "notebook"
+# setwd("/home/wolfgang-ubuntu/Programs-R/R-TimesSeriesAnalysis/Corona-Virus")
+# "linux"
+```
+
+```{r data path desktop vs. notebook, eval = TRUE}
 # device <- "desktop" # "notebook"  # to define setwd() and data path
 # defined as params  metadata in YAML header
 device <- params$device
 
 if (device == "desktop") {
-  setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
-  # alternative not possible, since knit uses *.RMD file dir as working dir 
-  # population_countries <- readRDS("./Corona-Virus/world_population_un.RDS") 
   data_path <- 
     "D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
 } else if (device == "notebook") {
-  # attention: here we have (whyever) TimesS.. (Time + s) instead of TimeS..
-  setwd("C:/Wolfgang/Programs-R/R-TimesSeriesAnalysis/Corona-Virus")
   data_path <- 
     "C:/Wolfgang/Programs-R/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
 } else if (device == "linux") {
-  # attention: here we have (whyever) TimesS.. (Time + s) instead of TimeS..
-  setwd("/home/wolfgang-ubuntu/Programs-R/R-TimesSeriesAnalysis/Corona-Virus")
   data_path <- 
     "/home/wolfgang-ubuntu/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
 } else {
@@ -83,12 +92,13 @@ if (device == "desktop") {
 ```
 
 ```{r source function and population data}
-# sources part of library(pkgTS) # devtools::install_github("WoVollmer/pkgTS")
 # Plot and util functions - has to come after setwd()  ------------
-# source("./ggts_corona.R") # ggplot2 functions for time series plots
-# source("./uts_corona.R")  # utility functions for corona analysis
-
+# sources part of library(pkgTS) # devtools::install_github("WoVollmer/pkgTS")
+#     all needed function files via library(pgkTS)
+#     - ggts_corona.R # ggplot2 functions for time series plots
+#     - uts_corona.R  # utility functions for corona analysis
 # read UN world population data for normalization per 100k inhabitants
+
 population_countries <- readRDS("./world_population_un.RDS") # data from UN
 
 ```
@@ -2017,7 +2027,7 @@ References {#bib}
 ***
 ***
   
-### Data Source {data-height=400}
+### Data and Code Sources {data-height=400}
 
 **Data Source**
 
@@ -2029,7 +2039,7 @@ Data files are provided by **Johns Hopkins University** on GitHub
     + *time_series_covid19_deaths_global*
     + *time_series_covid19_recovered_global.csv*
 
-The data are visualized on their excellent Dashboard  
+The data are visualized on their Dashboard  
 **Johns Hopkins University Dashboard**  
 <https://coronavirus.jhu.edu/map.html>
 

@@ -10,8 +10,9 @@ require(tsibble)
 #'  three monthly values
 #'  2)  Seasons are Dec-Feb (DJF), Mar-May (MAM), June-Aug (JJA), Sept-Nov (SON)
 #'  3)  Winter: year refers to January (realized by lag()).
-#' @param data frame 
-#' @details The data input nust be ...
+#' @param data A data frame
+#' @param season Logical. If TRUE, the default, seasonal mean will be calculated 
+#' @details The data input must be ...
 #'
 #' @return data frame  
 #' Year "unchanged columns" Jan ... Dec Year_avg Winter_avg Spring_avg Summer_avg Fall_avg
@@ -118,11 +119,16 @@ uts_data_check_and_fill_w_na <- function(data, add_precip = FALSE, key = NULL) {
 #' Function converts stlplus() output to tibble w/ interpolated NA replacements 
 uts_stlplus_as_tibble <- function(stlplus_data) {
   
+  stl_year <- as.character(as.integer(stlplus_data$time))
+  stl_month <- as.character(as.integer(stlplus_data$time %% 1 * 12 + 1))
+  stl_year_month <- paste(stl_year, stl_month, sep = "-")
+  
   stlplus_new <- as_tibble(
     rownames_to_column(as.data.frame(stlplus_data$data), var = "Index")) %>%
     rename(Raw = raw, Seasonal = seasonal, Trend = trend, 
            Remainder = remainder) %>% 
-    mutate(Year_Month = yearmonth(stlplus_data$time),
+    # mutate(Year_Month = yearmonth(stlplus_data$time),
+    mutate(Year_Month = yearmonth(stl_year_month),
            Year = year(Year_Month),
            Month = factor(month(Year_Month)),
            Interpolated = Seasonal + Trend,           
