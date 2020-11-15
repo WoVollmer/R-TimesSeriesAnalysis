@@ -1,0 +1,365 @@
+---
+  title: "Coronavirus SARS-CoV-2 / Covid-19"
+author: "Wolfgang Vollmer"
+date: '`r Sys.Date()`'
+link-citations: yes
+cite-color: "green"
+bibliography: References_Corona.bib
+output:
+  flexdashboard::flex_dashboard:
+  vertical_layout: scroll
+params:
+  device: "desktop"
+---
+
+
+
+Bar Chart {data-navmenu="Bar Chart"}
+=====================================
+
+***
+***
+
+**`r bar_chart_page_title_1`**
+  
+Column {data-width=300}
+-------------------------------------
+
+###
+
+```{r Top Ten Bar Chart Confirmed}
+
+# plot bar chart deaths / country
+
+case_type <- "Confirmed"
+abscissa <- "Cases"
+title <- paste(case_type , "- cumulative Cases")
+hc_bar_chart_country(
+  dplyr::filter(corona_data_last, Country != "World" & Case_Type == case_type),
+  y = abscissa, title = title, n = 15)
+# for cumulative cases world = sum of all => filter out
+
+```
+
+###
+
+```{r Top Ten Bar Chart Deaths}
+### Bar Chart Deaths - cumulative  Cases
+
+# plot bar chart deaths / country
+case_type <-  "Deaths"
+
+title <- paste(case_type , "- cumulative Cases")
+hc_bar_chart_country(
+  dplyr::filter(corona_data_last, Country != "World" & Case_Type == case_type),
+  y = abscissa, title = title, n = 15)
+
+```
+
+
+Column
+-------------------------------------
+
+### Confirmed and Deaths - cumulative and daily Cases (absolute date)
+
+Case numbers are taken from [[@JHU2020a]](#bib). In order to compensate for the 
+daily fluctuations, the 
+mean number of cases over the past seven day (*_Mean) are added.
+
+```{r print datatable in wide format}
+
+scroll_y <- "700px"
+DT::datatable(corona_last_abs_wide, 
+              options = list(pageLength = 50, scrollY=scroll_y))
+
+```
+
+
+Bar Chart / Inhabitants {data-navmenu="Bar Chart"}
+=====================================
+
+***
+***
+  
+**`r bar_chart_page_title_2`**
+
+Column {data-width=300}
+-------------------------------------
+
+###
+
+```{r Top Ten Bar Chart per 100k Confirmed}
+
+# plot bar chart Confirmed / 100k for countries and + world
+
+case_type <- "Confirmed"
+abscissa <- "Cases_100k"
+title <- paste(case_type , 
+               "- cumulative Cases / 100k")
+hc_bar_chart_country(
+  dplyr::filter(corona_data_last, Case_Type == case_type),
+  y = abscissa, title = title, n = 15)
+
+```
+
+###
+
+```{r Top Ten Bar Chart per 100k Deaths}
+
+# plot bar chart deaths / country
+case_type  <- "Deaths"
+
+title <- paste(case_type , 
+               "- cumulative Cases / 100k")
+hc_bar_chart_country(
+  dplyr::filter(corona_data_last, Case_Type == case_type),
+  y = abscissa, title = title, n = 15)
+
+```
+
+Column
+-------------------------------------
+
+### Confirmed and Deaths - cumulative and daily Cases per 100,000 Inhabitants (relative data)
+
+Population numbers are taken from [[@UNO2020]](#bib).
+In order to compensate for the daily fluctuations, the
+mean number of cases over the past seven days (*_Mean) are added.
+
+```{r print datatable 100k in wide format}
+
+DT::datatable(corona_last_rel_wide, 
+              options = list(pageLength = 50, scrollY=scroll_y))
+
+```
+
+Bar Chart / Hot Spots {data-navmenu="Bar Chart"}
+=====================================
+
+***
+***
+  
+**`r bar_chart_page_title_3`**
+
+Column {data-width=300}
+-------------------------------------
+
+###
+
+```{r Top Ten Bar Chart Hot Spot Confirmed}
+
+# plot bar chart  Daily Confirmed Mean / 100k for countries and + world
+case_type <- "Confirmed"
+abscissa <- "Daily_Cases_100k_Mean"
+title <- paste(case_type , 
+               "- Mean Daily Cases / 100k")
+hc_bar_chart_country(
+  dplyr::filter(corona_data_last, Case_Type == case_type),
+  y = abscissa, title = title, n = 15)
+
+```
+
+
+###
+
+```{r Top Ten Bar Chart Hot Spot Deaths}
+
+# plot bar chart  Daily Deaths Mean / 100k for countries and + world
+case_type <- "Deaths"
+
+title <- paste(case_type , 
+               "- Mean Daily Cases / 100k")
+hc_bar_chart_country(
+  dplyr::filter(corona_data_last, Case_Type == case_type),
+  y = abscissa, title = title, n = 15)
+
+```
+
+Column
+-------------------------------------
+
+### Confirmed and Deaths - cumulative and daily Cases per 100,000 Inhabitants (relative data)
+
+Population numbers are taken from [[@UNO2020]](#bib).
+In order to compensate for the daily fluctuations, the 
+mean number of cases over the past seven days (*_Mean) are added.
+
+```{r print mean datatable 100k in wide format}
+
+DT::datatable(corona_last_rel_wide,
+              options = list(pageLength = 50, scrollY=scroll_y))
+
+```
+
+Bar Chart / CFR {data-navmenu="Bar Chart" #cfr}
+=====================================
+
+***
+***
+  
+**`r bar_chart_page_title_4`**
+
+Column {data-width=300}
+-------------------------------------
+
+###
+
+```{r Top n Bar Chart CFR_past_period}
+
+# plot bar chart CFR Confirmed Mean / Deaths Mean
+abscissa <- "CFR_past_period"
+title <- paste(abscissa, "- Case Fatality Rate (in %)")
+hc_bar_chart_country(cfr_table, y = abscissa, title = title, n = 15)
+
+```
+
+
+###
+
+```{r Top n Bar Chart CFR_total or selected countries}
+
+# plot bar chart CFR Confirmed Mean / Deaths Mean
+abscissa <- "CFR_total"
+title <- paste(abscissa, "- Case Fatality Rate (in %)")
+hc_bar_chart_country(cfr_table, y = abscissa, title = title, n = 15)
+
+# plot bar chart Confirmed - CFR countries and + world
+# title <- paste(abscissa, "(in %) - selected countries")
+# hc_bar_chart_country(dplyr::filter(cfr_table, 
+#                          Country %in% c(compare_countries, "United Kingdom")), 
+#                          y = abscissa, title = title)
+
+```
+
+Column  
+-------------------------------------
+
+### Case Fatality Rate - Proportion of deaths from confirmed cases {data-height=170}
+
+The number of confirmed cases is an early predictor of the number of deaths.
+The number of today's deaths is already determined by the infections about by 
+$\sim19$ days ago or respectively by the confirmed cases about by $\sim11$ days 
+ago [[see @RWI2020]](#bib).
+
+An average duration of *Confirmed Infection to Death* of $12$ (lag-)days is 
+assumed (country-independent for the sake of simplicity) for the calculations, 
+since many tests are carried out in the meantime before symptoms appear.
+
+However, this varies considerably depending on country-specific test rate and 
+health system. In the worst health systems it may be only one day between
+infection confirmation and death, 
+the "Confirmed" cases must be "lagged" by $\sim1$ day. 
+In the best case, the time from the end of incubation period (in average 
+$\sim5-6$ days) to death is an average $\sim14$ days. In this case, the average
+*Confirmed infection to Death* period is $\sim14$ days), the "Confirmed" cases
+must be correctly "lagged" by $\sim14$ days.
+For the assumed time periods see [[@RKI2020a]](#bib), [[@RKI2020b]](#bib), 
+for Case Fatality Rate and Incubation Period in general 
+see [[@Wikipedia2020a]](#bib), [[@Wikipedia2020b]](#bib).
+
+The simple calculation with unlagged cumulative confirmed cases divided by
+cumulative deaths results in a significant underestimation of the CFR in health systems with early disease detection. 
+If the number of cumulative cases is already large compared to the number of 
+active cases (~ cases from the past two weeks), the "lagged" rsp. "unlagged"
+values converge.
+
+The Infection Fatality Rate (IFR) is the fatality rate of all infection, that means
+detected confirmed cases and undetected cases (asymptomatic and not tested group).
+This lethality is assumed to 
+be country independent and only rough estimates exist (RKI: bottom of existing estimates $\sim0.56\%$). 
+
+
+```{r CFR Table}
+
+title <- paste("Case Fatality Rate (in %) - assuming a time lag of", lag_n, 
+               "days between Confirmed => Death for",
+               "CFR_past_period (period of ", range_cfr, "days) and CFR_total")
+
+```
+
+### `r title` {data-height=430}
+
+```{r}
+
+DT::datatable(cfr_table,  
+              options = list(pageLength = 25, scrollY = "300px"))
+
+```
+
+### Case Fatality Rate (in %) - selected countries {data-height=200}
+
+
+```{r CFR Table selected countries}
+
+knitr::kable(dplyr::filter(cfr_table, Country %in% compare_countries),
+             digits = 2)
+
+# DT::datatable(dplyr::filter(cfr_table, Country %in% compare_countries),
+#               options = list(pageLength = 10, scrollY = "300px"))
+```
+
+
+Data Table - all Countries {data-navmenu="Bar Chart"}
+=====================================
+
+**Countries - Table overview**
+
+Column
+-------------------------------------
+
+### Confirmed and Deaths - cumulative and mean daily Cases, overall and per 100,000 Inhabitants (absolute and relative data)
+
+Population numbers are taken from [[@UNO2020]](#bib).
+In order to compensate for daily fluctuations, the mean number of cases for the 
+past seven days (*_Mean) is used instead of the daily cases.
+
+```{r print datatable all with 100k in wide format}
+
+# DT::datatable(corona_data_last %>% dplyr::filter(Case_Type != "Recovered"),
+#               options=list(pageLength=25))
+
+DT::datatable(
+  corona_data_last_wide %>% 
+    dplyr::filter(Country != "World") %>% 
+    mutate("Population /m" = round(Population / 1000000, digits = 3)) %>% 
+    dplyr::select(
+      Country, `Population /m`, Date, 
+      Confirmed, Daily_Conf_Mean, Conf_100k, Daily_Conf_100k_Mean,
+      Deaths, Daily_Deaths_Mean, Deaths_100k, Daily_Deaths_100k_Mean), 
+  options = list(pageLength = 50, scrollY=scroll_y),
+  filter = "bottom")
+
+```
+
+Data Table - EU {data-navmenu="Bar Chart"}
+=====================================
+
+**European Union - Table overview**
+
+Column
+-------------------------------------
+
+### Confirmed and Deaths - cumulative and mean daily Cases, overall and per 100,000 Inhabitants (absolute and relative data)
+
+Population numbers are taken from [[@UNO2020]](#bib).
+In order to compensate for daily fluctuations, the mean number of cases for the 
+past seven days (*_Mean) is used instead of the daily cases.
+
+```{r print datatable EU with 100k in wide format}
+
+# DT::datatable(corona_data_last %>% dplyr::filter(Case_Type != "Recovered"),
+#               options=list(pageLength=25))
+
+DT::datatable(
+  corona_data_last_wide %>% 
+    dplyr::filter(Country %in% countries_eu) %>% 
+    mutate("Population /m" = round(Population / 1000000, digits = 3)) %>% 
+    dplyr::select(
+      Country, `Population /m`, Date, 
+      Confirmed, Daily_Conf_Mean, Conf_100k, Daily_Conf_100k_Mean,
+      Deaths, Daily_Deaths_Mean, Deaths_100k, Daily_Deaths_100k_Mean), 
+  options = list(pageLength = 50, scrollY=scroll_y),
+  filter = "bottom")
+
+```
+

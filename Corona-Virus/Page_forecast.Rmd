@@ -1,0 +1,478 @@
+---
+title: "Coronavirus SARS-CoV-2 / Covid-19"
+author: "Wolfgang Vollmer"
+date: '`r Sys.Date()`'
+link-citations: yes
+cite-color: "green"
+bibliography: References_Corona.bib
+output:
+  flexdashboard::flex_dashboard:
+  vertical_layout: scroll
+params:
+  device: "desktop"
+---
+
+
+Doubling Time / Forecast Accuracy {data-navmenu="Forecast" #doubling}
+=====================================
+
+***
+***
+
+Column {data-width=500}
+-------------------------------------
+
+**Doubling Time and Forecast** 
+The forecasted cases for the next 14 days are calculated 'only' from the
+linear regression of the logarithmic data and are not considering any effects of 
+measures in place. In addition data inaccuracies are not taken into account, 
+especially relevant for the confirmed cases. 
+
+Therefore the 14 days forecast is only an indication for the direction of an 
+unchecked exponentiell growth.
+
+The Cumulative cases doubling rate is only a good indicator at the beginning of 
+the pandemic. 
+If the number of confirmed cases from the past two weeks is already small 
+compared to the total number of confirmed cases, the number of infectious people 
+is also small compared to the total cases.
+
+Therefore the table below provides the doubling time for the 
+daily rolling mean cases. The forecast is based on the linear regression of the 
+logarithmic data of past `r range_reg_long` days.
+
+```{r daily rolling mean cases forecast coef beta_0 and beta_1, eval = TRUE}
+
+fit_corona <- corona_range_reg_long_tsbl %>%  
+  model(TSLM(log(Daily_Cases_Mean) ~ Date)) 
+
+coefs <- tidy(fit_corona) %>% 
+  group_by(Country, Case_Type) %>% 
+  mutate(T_doubling = (log(2) /estimate))
+
+forecast_table <- coefs %>% 
+  pivot_wider(id_cols = c(Country, Case_Type), 
+              names_from = term, 
+              values_from = estimate) %>% 
+  group_by(Country, Case_Type) %>%
+  rename(beta_0 = `(Intercept)`,
+         beta_1 = Date) %>% 
+  mutate(T_doubling = (log(2) / beta_1),
+         Reg_last_day = exp(beta_0 + unclass(last_date) * beta_1),
+         FC_next_day = exp(beta_0 + unclass(last_date + 1) * beta_1),
+         FC_14days = exp(beta_0 + unclass(last_date + 1 + range_forcast-1) 
+                         * beta_1)) %>% 
+  arrange(Case_Type) %>% 
+  select(Country, Case_Type, T_doubling, Reg_last_day, 
+         FC_next_day, FC_14days)
+
+knitr::kable(forecast_table,  digits = c(0, 0, 1, 0, 0),
+             format.args = list(big.mark = "'"),
+             caption = 
+             "Forecast (FC) Daily Rolling Mean Cases: Doubling Time (days), 
+            Forecasted cases next day/tomorrow and  Forecasted cases in 14 days")
+
+```
+
+
+Column
+-----------------------------------------------------------------------  
+
+### Forecast of Daily  and Cumulative Cases and check of Accuracy {data-height=250}
+
+The forecast accuracy is checked by using the forecast method for the past 
+three weeks before the past week (*training data*). Subsequent forecasting of the 
+past week enables comparison with the real data of these days (*test data*).
+
+The comparison is also an early indicator if the *exponential growth* is 
+declining. However, possible changes in underreporting
+(in particular the proportion confirmed / actually infected) requires careful 
+interpretation.
+
+For doubling periods of the total cumulative cases in the order of infectivity (RKI assumption: $\sim9-10$
+days, with great uncertainty, [[see @RKI2020b]](#bib), we have no  
+exponential growth for the total cumulative cases. Since the "old" infected cases are 
+no longer infectious after these periods and we then have a constant infection 
+rate with  basic reproduction number $R_t \sim 1$.
+
+Instead, we have "only" linear growth of the cumulative *Confirmed Cases* and 
+the *Daily Confirmed Cases* remain more or less constant if $R_t \sim 1$.
+
+However, the basic reproduction number 
+$R_0 (\approx 3.3 - 3.8)$ [[@RKI2020c]](#bib) is a product of the average number
+of contacts of an infectious person per day, the probability of transmission upon contacts and the average number of days infected people are infectious. 
+With the current uncertainty of the average duration of the infectivity duration, $R_0$ can therefore be estimated from the doubling time only to a very limited extent.
+See also [[@CMMID2020]](#bib).
+
+### Germany - Forecast Daily Rolling Mean Cases based on past `r range_reg_long` days {data-height=225}
+
+
+```{r forecast daily exp model, fig.asp = fig_asp_trend}
+
+fc_daily_corona %>%  
+  dplyr::filter(Country == country_select & .model == "Exp_Growth") %>% 
+  autoplot(corona_range_reg_long_tsbl) +
+  labs(title = paste(
+    country_select, " - Forecast of Mean Daily Cases for the next ", 
+    forecast_range, "-days"),
+    subtitle = paste(
+      "Forecast is based on regression of past ",
+      range_reg_long, " days")) +
+  scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
+  facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
+             strip.position = "left")
+
+```
+
+```{r forecast check settings}
+# Note: as long as zero deaths are in the training data time range 
+# log(0) will go to infinity => no linear regression possible
+
+# total = training + test_data => 
+#    Date >= last_date + 1 - training_data_start = last training_data_start days
+
+training_data_start <- range_reg_long +  forecast_range 
+              # (last_date + 1) minus x days
+forecast_days <- paste(forecast_range, "days")
+
+corona_data_train <- corona_data %>% 
+  group_by(Case_Type) %>% # since .add = FALSE will override existing groups
+  dplyr::filter(Country %in% country_select & 
+           Date >= last_date + 1 - training_data_start &
+           Date < last_date + 1 - forecast_range)
+
+corona_data_total <- corona_data %>% 
+  group_by(Case_Type) %>% 
+  dplyr::filter(Country %in% country_select  & 
+           Date >= last_date + 1 -  training_data_start) 
+
+```
+
+### Germany - Forecast Accuracy Check Daily Rolling Mean Cases for the past `r forecast_range` days {data-height=225}
+
+```{r daily forecast accuracy, fig.asp = fig_asp_trend}
+
+fit_corona_train <- corona_data_train %>% 
+  model(TSLM(log(Daily_Cases_Mean) ~ Date)) 
+fc_corona_train <- fit_corona_train %>% 
+  fabletools::forecast(h = forecast_days) 
+
+# forecasts accuracy
+# for evaluating accuracy on forecasts to be provided:
+# - a complete dataset that includes the future data and 
+# - data used to train the model.
+
+# level = prediction interval in % or NULL
+fc_corona_train %>%
+  autoplot(corona_data_total) +
+  labs(title = paste(
+    country_select, "- Forecast based on regression of previous",
+    range_reg_long, "days"),
+    subtitle = "Forecast (blue line) vs. Data (black line)") +
+  facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
+             strip.position = "left") +
+  scale_x_date(date_labels = "%b %d", date_breaks = "7 days")
+
+```
+
+
+```{r cumulative forecast accuracy, fig.asp = fig_asp_trend, eval = FALSE}
+### Germany - Forecast Accuracy Check for the past `r forecast_range` days 
+### for the cumulative Cases {data-height=225}
+
+fit_corona_train <- corona_data_train %>% 
+  model(TSLM(log(Cases) ~ Date)) 
+fc_corona_train <- fit_corona_train %>% 
+  fabletools::forecast(h = forecast_days) 
+
+# forecasts accuracy
+# for evaluating accuracy on forecasts to be provided:
+# - a complete dataset that includes the future data and 
+# - data used to train the model.
+
+# level = prediction interval in % or NULL
+fc_corona_train %>%
+  autoplot(corona_data_total) +
+  labs(       title = paste(
+    country_select, "- Forecast based on regression of previous",
+    range_reg_long, "days"),
+    subtitle = "Forecast (blue line) vs. Data (black line)") +
+  facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
+             strip.position = "left") +
+  scale_x_date(date_labels = "%b %d", date_breaks = "7 days")
+
+```
+
+
+Forecast w/ CFR {data-navmenu="Forecast"}
+=====================================
+
+***
+***
+
+Column {data-width=400}
+-------------------------------------
+
+### Forecasting with lagged Predictors
+
+The number of confirmed cases is an early predictor of the number of deaths.
+The number of today's deaths is already determined by the infections about by 
+$\sim19$ days ago or respectively by the confirmed cases about by $\sim11$ days
+ago [see Bar Chart - CFR](#cfr).
+
+The country specific case fatality rate (CFR, proportion of deaths from 
+confirmed cases) indicates the country specific testing rate and may depend on quality/capacity of hospitals. 
+
+Overall a rough conclusion on the country specific **underreporting rate** 
+(lack of diagnostic confirmation; proportion of all infected to confirmed cases)
+is feasible if the infection fatality rate (IFR, confiremd cases plus all 
+asymptomatic and undiagnosed infections) is assumed to be country independent 
+and the IFR is known (bottom of existing estimates $\sim0.56\%$, assumption by 
+RKI see [[@RKI2020b]](#bib).
+
+In this case an estimation of the CFR of $0.06$ $(6\%)$ indicates an
+underreporting by a by a factor of $\sim10$. 
+A CFR of $0.20$ $(20\%)$ indicates an underreporting by a by a factor of $\sim30$.
+This corresponds to RKI assumption of a underreporting by a factor of $11-20$ [[@RKI2020a]](#bib). Unfortunately, the IFR or lethality is still far too 
+imprecise for concrete conlusions.
+
+
+In the model paper RKI assumes for the
+
+* Incubation period $\sim5-6$ days - Day of infection day until symptoms are upcoming)
+* Hospitalisation $+4$ days  - Admission to the hospital (if needed) after Incubation Period)
+* Average period to death $+11$ - if the patient dies, it takes an average of 
+$11$ days after admission to the hospital
+
+Depending on the country-specific test frequency (late or early tests), 
+the 
+
+*lag_days - time from receipt of the confirmed test result to death, Confirmed to Death, 
+is about $11-13$ days.
+
+
+Note: these methods are also used for example for advertising campaigns. The
+campaign impact on sales will be some time beyond the end of the campaign, and 
+sales in one month will depend on the advertising expenditure in each of the 
+past few months [[see @Hyndman2020]](#bib).
+
+
+Column {data-width=600}
+-------------------------------------
+
+### Daily Confirmed and Death Cases
+
+```{r forecast for selected countries and lags}
+
+# infected_to_confirmed  # infected -> confirmed ~ 9 days,
+#                        # Incubation period ~ 5-6 days + testing + get result
+#                        # Hospitalisation + 4 days
+# infected_to_death      # infected -> death     ~ after 21 days
+# lag_x : confirmed_to_death     # ~ 13 days, ~ 21 - 9 days
+# case_fatality_rate     # proportion of deaths / number of people diagnosed
+# 
+#                                                                   (Confirmed)
+
+lag_germany <- 12 # 13
+lag_italy <-  12  # 10
+lag_spain <- 12   # 11
+
+countries_to_forecast <- c("Germany", "Italy", "Spain")
+
+countries_fc_param <-
+  tibble(Country = countries_to_forecast,
+       confirmed_to_death = c(lag_germany, lag_italy , lag_spain),
+       infected_to_death     = 21) %>% 
+       # case_fatality_rate = c(0.08, 0.20, 0.13))
+  mutate(infected_to_confirmed = infected_to_death  - confirmed_to_death)
+
+        
+```
+
+
+```{r eval = TRUE}
+
+corona_country_sel <- corona_data %>% 
+  dplyr::filter(Country %in% countries_to_forecast & 
+           Date >= last_date - 28) %>%
+  ungroup() %>% 
+  dplyr::select(Date, Country, Case_Type, Cases)
+
+fc_corona_sel <- fc_corona %>% 
+  dplyr::filter(Country %in% countries_to_forecast &
+           Date <= last_date + 8) %>% 
+  mutate(Case_Type = case_when(
+    Case_Type == "Confirmed" ~ "FC_Confirmed",
+    Case_Type == "Deaths" ~ "Exp_growth"))
+fc_corona_sel %<>% as_tibble(fc_corona_sel) %>% 
+  dplyr::select(Date, Country, Case_Type, Daily_Cases_Mean)
+
+corona_country_sel <- bind_rows(corona_country_sel, fc_corona_sel)
+```
+
+```{r Daily Confirmed lagged, fig.width = 5, fig.asp = 1.2}
+
+data <- corona_data %>%  dplyr::filter(Country %in% countries_to_forecast &
+           Date >= last_date - 21)
+
+
+p <- ggts_conf_deaths_facet(data, y = Daily_Cases_Mean) +
+      ggtitle("Daily Rolling Mean Cases (past 3 weeks)")
+p # ggplotly(p)
+```
+
+
+
+```{r }
+
+# identify "best" lag_day with lowest AICc 
+
+lag_days <-  max(countries_fc_param$confirmed_to_death)
+lag_range <- lag_days + 21
+country <- countries_to_forecast[1]
+
+
+corona_data_lag_range <- corona_data %>% ungroup() %>% group_by(Case_Type) %>% 
+  dplyr::filter(Country %in% countries_to_forecast &
+           Date >= last_date - lag_range) %>% 
+  dplyr::select(Date, Country, Case_Type, Daily_Cases_Mean) %>% 
+  group_by(Country)
+
+```
+
+
+```{r}
+## wide format to get Daily Deaths as function of Daily Confirmed Cases
+corona_data_lag_range_wide <- corona_data_lag_range %>%   
+  pivot_wider(id_cols = c(Country, Date), 
+              names_from = Case_Type, 
+              values_from = Daily_Cases_Mean)
+
+```
+
+
+```{r caluclate lag confirmed country dependent}
+
+lm_term <- c("lag(Confirmed, lag_days - 2)",
+             "lag(Confirmed, lag_days - 1)",
+             "lag(Confirmed, lag_days)",
+             "lag(Confirmed, lag_days + 1)",
+             "lag(Confirmed, lag_days + 2)")
+
+country_table <- tibble()
+save_plot_fit <- list()
+
+## issue testing ##
+for (country in countries_to_forecast) {  
+  lag_days <- (countries_fc_param %>% 
+                 dplyr::filter(Country == country))$confirmed_to_death
+  # model ~ 0 + => w/o intercept
+  fit_best <- corona_data_lag_range_wide %>% 
+    dplyr::filter(Country == country) %>% 
+    model(ARIMA(Deaths ~ 0 + pdq(d = 0) + 
+                  lag(Confirmed, lag_days - 2) +
+                  lag(Confirmed, lag_days - 1) +
+                  lag(Confirmed, lag_days) +
+                  lag(Confirmed, lag_days + 1) +
+                  lag(Confirmed, lag_days + 2)
+    ))
+  if (country == "Germany") {
+    fit_best_germany <- fit_best
+  }
+
+  corona_deaths_of_confirmed <- corona_data_lag_range_wide  %>% 
+    ungroup() %>%
+    new_data(lag_days, keep_all = TRUE)
+  
+  
+  ## plot Daily Deaths plus FC of model(ARIMA(Deaths ~ 0 + lag(Confirmed, lag_days)))
+  plot_fit <- fit_best %>%
+    forecast(corona_deaths_of_confirmed) %>%
+    #  forecast horizon automatically (by new data) fixed to lag-days minus 
+    #     model dependency lag_days - 1 & lag_days - 2 => 12days - 2 = 10 days
+    autoplot(corona_data_lag_range_wide %>%  
+               dplyr::filter(Date >= last_date - 20)) + 
+    labs(y = "Daily Deaths",
+         subtitle = 
+           paste(country, "w/ avg. Confirmed -> Death:", lag_days, "lag-days"))
+  save_plot_fit[[country]] <- plot_fit
+  country_table_new <- c(Country = country, 
+                         lag_Confirmed = lag_days, 
+                         CFR = as.numeric(
+                           round(coef(fit_best) %>%  
+                                   dplyr::filter(term %in% term) %>%
+                                   summarise(CFR = sum(estimate)), digits = 2))
+  )
+  country_table <- bind_rows(country_table, country_table_new)
+}
+
+plot_deaths_forecast <- 
+  save_plot_fit$Germany / save_plot_fit$Italy / save_plot_fit$Spain + 
+  plot_annotation(
+    title = "Forecast Mean Daily Deaths for next 10 days") +
+  plot_layout(guides = 'collect') &
+  theme(legend.position='bottom')
+plot_deaths_forecast 
+
+```
+
+
+### Lag days and Case Fatality Rate (CFR)  {data-height=100}
+
+```{r CFR Table - for compare_countries}
+
+title <- paste("Case Fatality Rate in % (CFR, proportion of deaths from confirmed cases)", "lagged by", lag_n, "days; total and for period of past", range_cfr, "days")
+knitr::kable(cfr_table %>% dplyr::filter(Country %in% countries_to_forecast),
+             digits = 2, caption = title)
+
+
+
+# knitr::kable(country_table,
+#              digits = 2, caption =
+#                "Lag days and CFR (proportion of deaths from confirmed cases)")
+
+
+# knitr::kable(coef(fit_best) %>% 
+#                group_by(Country) %>% dplyr::filter(term %in% lm_term) %>%  
+#                summarise(CFR = sum(estimate) ), 
+#              digits = 2, caption = paste(
+#                "Case Fatality Fate in % (CFR, proportion of deaths from confirmed cases)", "lagged by", lag_n, "total and for period of past ", lag_n, "days")
+```
+
+
+
+Column {data-width=600}
+-------------------------------------
+
+### Daily Deaths Forecast depending on lagged Daily Confirmed Cases (ARIMA model)
+
+
+```{r plot lag confirmed country dependent, fig.width = 5, fig.asp = 1.2}
+
+plot_deaths_forecast
+
+```
+
+
+### Exampla Germany - White Noise of Forecast Residuals {data-height=150}
+
+Forecast residuals  
+indicate quality of  
+Arima model fit:
+
+
+```{r corona ARIMA tsresiduals, fig.width = 5, fig.asp = 0.618}
+
+# `r coef(fit_best)$.model[1]`
+
+fit_best_germany  %>% 
+  gg_tsresiduals() +
+  labs(title = paste("Germany -  Forecast Residuals w/ Correlogram and Histogram"),
+       subtitle = paste("Model: ARIMA w/ lagged predictor; lag_days:", lag_germany))
+```
+
+```{r}
+
+```
+
+

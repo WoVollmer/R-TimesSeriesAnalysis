@@ -1,0 +1,165 @@
+---
+title: "Coronavirus SARS-CoV-2 / Covid-19"
+author: "Wolfgang Vollmer"
+date: '`r Sys.Date()`'
+link-citations: yes
+cite-color: "green"
+bibliography: References_Corona.bib
+output:
+   flexdashboard::flex_dashboard:
+   vertical_layout: scroll
+params:
+  device: "desktop"
+---
+
+
+World Map {data-navmenu="World Map"}
+=====================================  
+
+***
+***
+
+
+<center>**`r map_page_title_1`**</center>
+
+###
+
+```{r World Map Confirmed}
+# Cumulative Cases - Confirmed
+
+# see https://code.highcharts.com/mapdata/
+
+# plot total confirmed in world
+case_type <- "Confirmed"
+title <- paste(case_type, "- cumulative Cases / Country")
+hc_world_map_plot(
+  dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+  value = "Cases", title = title)
+
+```
+
+
+###
+
+```{r World Map Deaths}
+#  Cumulative Cases -  Deaths
+#  
+# plot total deaths in world
+case_type <- "Deaths"
+title <- paste(case_type, "- cumulative Cases / Country")
+hc_world_map_plot(
+  dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+  value = "Cases", title = title)
+
+```
+
+
+World Map / Inhabitants {data-navmenu="World Map"}
+=====================================
+
+***
+***
+
+<center>**`r map_page_title_2`**</center> 
+
+###
+
+```{r World Map Confirmed per 100k Inhabitants}
+# see https://code.highcharts.com/mapdata/
+
+# plot total confirmed in world
+case_type <- "Confirmed"
+title <- paste(case_type, "- cumulative Cases / 100k / Country")
+hc_world_map_plot(
+  dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+  value = "Cases_100k", title = title)
+
+```
+
+###
+
+```{r World Map Deaths per 100k Inhabitants}
+
+# plot total deaths in world
+case_type <- "Deaths"
+title <- paste(case_type, "- cumulative Cases / 100k / Country")
+hc_world_map_plot(
+  dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+  value = "Cases_100k", title = title)
+
+```
+
+
+
+World Map / Hot Spots {data-navmenu="World Map"}
+=====================================
+
+***
+***
+
+<center>**`r map_page_title_3`**</center>
+
+###
+
+```{r World Map Mean Confirmed per 100k Inhabitants}
+# see https://code.highcharts.com/mapdata/
+
+# plot total confirmed in world
+case_type <- "Confirmed"
+title <- 
+  paste(case_type, 
+        "- Mean Daily Cases / 100k / Country over the past seven days")
+hc_world_map_plot(
+  dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+  value = "Daily_Cases_100k_Mean", title = title)
+
+```
+
+
+###
+
+```{r World Map Mean Deaths per 100k Inhabitants}
+
+# plot total deaths in world
+case_type <- "Deaths"
+title <- 
+  paste(case_type, 
+        "- Mean Daily Cases / 100k / Country over the past seven days")
+hc_world_map_plot(
+  dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
+  value = "Daily_Cases_100k_Mean", title = title)
+
+```
+
+
+World Map / CFR {data-navmenu="World Map"}
+=====================================
+
+***
+***
+
+<center>**`r map_page_title_4`** [see Bar Chart - CFR](#cfr)</center>
+
+###
+
+```{r World Map CFR_past_period}
+# see https://code.highcharts.com/mapdata/
+
+title <- paste("CFR_past_period", "- Case Fatality Rate (in %)")
+hc_world_map_plot(
+  dplyr::filter(cfr_table, Country != "World"), 
+  value = "CFR_past_period", title = title)
+
+```
+
+###
+
+```{r World Map CFR_total}
+
+title <- paste("CFR_total", "- Case Fatality Rate (in %)")
+hc_world_map_plot(
+  dplyr::filter(cfr_table, Country != "World"), 
+  value = "CFR_total", title = title)
+
+```
+

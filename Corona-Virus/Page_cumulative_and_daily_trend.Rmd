@@ -1,0 +1,291 @@
+---
+  title: "Coronavirus SARS-CoV-2 / Covid-19"
+author: "Wolfgang Vollmer"
+date: '`r Sys.Date()`'
+link-citations: yes
+cite-color: "green"
+bibliography: References_Corona.bib
+output:
+  flexdashboard::flex_dashboard:
+  vertical_layout: scroll
+params:
+  device: "desktop"
+---
+
+
+Cumulative and Daily Trend {data-orientation=rows data-navmenu="Cumulative and Daily Trend" }
+=====================================
+
+***
+***
+
+
+```{r}
+
+fig_width_trend <- 10 # fig.width = fig_width_trend 7
+fig_asp_trend <- 0.35
+
+weeks <- 12
+
+```
+
+
+**Cumulative and daily Cases over Time**  
+
+Row {data-height=400}
+------------------------------------
+
+```{r}
+country <- "World"
+```
+
+### `r country`
+
+```{r  Trend Cum and Daily World, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
+
+ggts_cum_daily(corona_data, country = country, weeks = weeks)
+
+# providing same plots but with *_100k data (=> same figure with new y-scale)
+# ggts_cum_daily(corona_data, 
+#                y_cum = Cases_100k, y_daily = Daily_Cases_100k, 
+#                daily_mean = Daily_Cases_100k_Mean,
+#                country = country, weeks = weeks)
+```
+
+Row {.tabset .tabset-fade}
+------------------------------------
+
+**Selected Countries**
+
+```{r}
+i <- 1
+```
+
+
+### `r countries[i]` 
+```{r  Trend Cum and Daily Country 1, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
+
+country <- countries[i]
+ggts_cum_daily(corona_data, country = country, weeks = weeks)
+i <- i + 1
+```
+
+### `r countries[i]` 
+```{r  Trend Cum and Daily Country 2, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
+
+country <- countries[i]
+ggts_cum_daily(corona_data, country = country, weeks = weeks)
+i <- i + 1
+```
+
+### `r countries[i]` 
+```{r  Trend Cum and Daily Country 3, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
+
+country <- countries[i]
+ggts_cum_daily(corona_data, country = country, weeks = weeks)
+i <- i + 1
+```
+
+### `r countries[i]` 
+```{r  Trend Cum and Daily Country 4, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
+
+country <- countries[i]
+ggts_cum_daily(corona_data, country = country, weeks = weeks)
+i <- i + 1
+```
+
+### `r countries[i]` 
+```{r  Trend Cum and Daily Country 5, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
+
+country <- countries[i]
+ggts_cum_daily(corona_data, country = country, weeks = weeks)
+i <- i + 1
+```
+
+### `r countries[i]` 
+```{r  Trend Cum and Daily Country 6, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
+
+country <- countries[i]
+ggts_cum_daily(corona_data, country = country, weeks = weeks)
+i <- i + 1
+```
+
+### `r countries[i]` 
+```{r  Trend Cum and Daily Country 7, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
+
+country <- countries[i]
+ggts_cum_daily(corona_data, country = country, weeks = weeks)
+i <- i + 1
+```
+
+### `r countries[i]` 
+```{r  Trend Cum and Daily Country 8, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
+
+country <- countries[i]
+ggts_cum_daily(corona_data, country = country, weeks = weeks)
+i <- i + 1
+```
+
+### `r countries[i]` 
+```{r  Trend Cum and Daily Country 9, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
+
+country <- countries[i]
+ggts_cum_daily(corona_data, country = country, weeks = weeks)
+i <- i + 1
+```
+
+### `r countries[i]` 
+```{r  Trend Cum and Daily Country 10, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
+
+country <- countries[i]
+ggts_cum_daily(corona_data, country = country, weeks = weeks)
+i <- i + 1
+```
+
+
+### `r countries[i]` 
+```{r  Trend Cum and Daily Country 11, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
+
+country <- countries[i]
+ggts_cum_daily(corona_data, country = country, weeks = weeks)
+i <- i + 1
+```
+
+Reproduction Number {data-orientation=rows data-navmenu="Cumulative and Daily Trend"}
+=====================================
+
+***
+***
+
+**`r country_select` - Rolling Mean and Reproduction Number**  
+
+Row {data-height=400}
+------------------------------------
+
+### `r country_select` Rolling Mean of daily Cases  
+
+
+
+```{r dygraph_plot country_select in addition, eval = TRUE}
+
+### Germany - Confirmed and Deaths
+
+data <- corona_data_wide %>% 
+  dplyr::select(!contains("_100k"), -Population) %>% 
+  dplyr::filter(Country == country_select) 
+
+
+```
+
+```{r dygraph_plot Daily Rolling Mean}
+
+
+# change tibble in xts object
+index <- data$Date
+data  %<>% ungroup() %>% select(-Country, -Date) 
+
+
+# data_xts <- xts::xts(
+#   data %>% dplyr::select(Confirmed, Deaths, Daily_Conf, Daily_Deaths), 
+#   order.by = index)
+# 
+# 
+# plot_dygraph_all(data_xts, country_select, last_date)
+
+
+data_xts <- xts::xts(
+  data %>% dplyr::select(Daily_Conf, Daily_Conf_Mean, 
+                         Daily_Deaths, Daily_Deaths_Mean),
+  order.by = index)
+plot_dygraph_daily(data_xts, country_select, last_date, weeks = weeks)
+
+
+```
+
+### Rolling Mean of daily Cases {data-width=300} 
+
+The *7-day Rolling Mean/Moving Average* of the Daily Confirmed and Death Cases 
+smooths out the short-term weekly fluctuations (weekend).
+
+The daily confirmed cases are related to the left y-axes, the daily death cases 
+are related to the right y-axes. This clearly outlines the 12 days delay relation between daily confirmed and death cases and also  the roughly the factor 
+of ~1/25 (~4%).
+
+
+
+
+
+
+Row {data-height=400}
+------------------------------------
+
+### `r country_select` Calculated Reproduction Number  
+
+
+```{r dygraph_plot Reproduction Number Rolling Mean, eval = TRUE}
+
+
+# infectivity profile w(t) w/ w(t= day_1 & day>=11)=0:
+infectivity <- c((0:3)/3, 1, (5:0)/5)
+names(infectivity) <- seq_along(infectivity)
+infectivity <- infectivity / sum(infectivity)
+
+width <- 7         #  => window (rolling mean one sided) in uts_repronum() 
+report.delay <- 7  #  => delay (reporting delay) in uts_repronum() 
+alpha <- 0.05      # => default conf.level in uts_repronum() 
+
+
+data_repronum <- corona_data_wide %>% 
+  dplyr::filter(Country == country_select) %>% 
+  dplyr::select(Country, Date, Daily_Conf, Daily_Conf_Mean) %>% 
+  ungroup() 
+
+repronum_output <- uts_repronum(new.cases = data_repronum$Daily_Conf, 
+                            profile = infectivity, 
+                            window = width,
+                            delay = report.delay)
+
+data_repronum  <- bind_cols(data_repronum, repronum_output) %>% 
+  rename(Repro_number = repronum)
+
+
+# change tibble in xts object
+index <- data_repronum$Date
+data_repronum  %<>% select(-Country, -Date, -repronum.se) 
+
+
+data_xts <- xts::xts(data_repronum, order.by = index)
+
+plot_dygraph_daily_repro(data_xts, country_select, last_date, weeks = weeks)
+
+
+```
+
+
+### Calculated Reproduction Number {data-width=300} 
+
+The calculation of the  **reproduction number** $R(t)$ uses 
+a R function provided by [[@Hotz2020]](#bib) on GitHub. 
+
+The (effective) **reproduction number** $R(t)$ at day $t$, 
+i.e. the average number of people someone infected at time $t$ would infect 
+if conditions remained the same. 
+
+For further 
+German federal states figures (based on the data provided by Robert Koch Institut) see [[@Hotz2020a]](#bib) and for
+worldwide figures  (based on the data provided by Johns Hopkins University) see [[@Hotz2020b]](#bib).
+
+
+For the calculation the assumption of 7-days reporting delay 
+(confirmed is reported 7-days after 'real' infection) is unchanged and the same
+modelled infectivity profile *w* is used.
+The lower and upper confidence interval lines provide the (approximate, pointwise) 
+**95% confidence interval** (only based on statistical numbers, possible changes 
+in e.g. counting measures can not be considered). 
+
+This is the reason why [[@Hotz2020]](#bib) "do not compute an average over a 
+sliding window of seven days so the viewer immediately recognizes the size of such
+artefacts, warning her to be overly confident in the results. In fact, these artefacts are much larger than the statistical uncertainty due to the stochastic nature of the epidemic which is reflected in the confidence intervals."
+
+Nevertheless, here the calculation is based on the 7-days rolling mean and therefore
+the figure smooths over the the weekly rhythm.

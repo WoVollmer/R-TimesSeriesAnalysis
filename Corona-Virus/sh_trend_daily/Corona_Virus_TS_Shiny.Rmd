@@ -92,7 +92,7 @@ lag_n <- 11  # average confirmed lag - for all countries
 
 ```
 
-```{r path, eval = TRUE}
+```{r path, eval = FALSE}
 
 # sources part of library(pkgTS) # devtools::install_github("WoVollmer/pkgTS")
 # Plot and util functions -
@@ -125,16 +125,16 @@ corona_data_wide <- uts_get_corona_data_wide(corona_data)
 
 # View(corona_data_wide %>% filter(Date == last_date))
 ```
-```
-
 
 ## Cumulative and Daily Trend
 
 
-```{r}
+```{r change settings}
 
 country <- "World"
-fig_width_trend <- 10 # fig.width = fig_width_trend 7
+
+# to change default setting: fig.width = 7, fig.asp = 0.618
+fig_width_trend <- 10
 fig_asp_trend <- 0.9
 
 weeks <- 12
@@ -142,7 +142,7 @@ weeks <- 12
 ```
 
 
-```{r eval = FALSE}
+```{r, eval = FALSE}
 
 shinyAppDir(
   system.file("sh_trend_daily"),
@@ -265,6 +265,7 @@ shinyApp(
 
 
 ```{r Confirmed Cases with Reproduction Number}
+
 # infectivity profile w(t) w/ w(t= day_1 & day>=11)=0:
 infectivity <- c((0:3)/3, 1, (5:0)/5)
 names(infectivity) <- seq_along(infectivity)
