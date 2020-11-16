@@ -44,7 +44,7 @@ logarithmic data of past `r range_reg_long` days.
 ```{r daily rolling mean cases forecast coef beta_0 and beta_1, eval = TRUE}
 
 fit_corona <- corona_range_reg_long_tsbl %>%  
-  model(TSLM(log(Daily_Cases_Mean) ~ Date)) 
+  model(TSLM(log(Mean_Daily_Cases) ~ Date)) 
 
 coefs <- tidy(fit_corona) %>% 
   group_by(Country, Case_Type) %>% 
@@ -153,7 +153,7 @@ corona_data_total <- corona_data %>%
 ```{r daily forecast accuracy, fig.asp = fig_asp_trend}
 
 fit_corona_train <- corona_data_train %>% 
-  model(TSLM(log(Daily_Cases_Mean) ~ Date)) 
+  model(TSLM(log(Mean_Daily_Cases) ~ Date)) 
 fc_corona_train <- fit_corona_train %>% 
   fabletools::forecast(h = forecast_days) 
 
@@ -305,7 +305,7 @@ fc_corona_sel <- fc_corona %>%
     Case_Type == "Confirmed" ~ "FC_Confirmed",
     Case_Type == "Deaths" ~ "Exp_growth"))
 fc_corona_sel %<>% as_tibble(fc_corona_sel) %>% 
-  dplyr::select(Date, Country, Case_Type, Daily_Cases_Mean)
+  dplyr::select(Date, Country, Case_Type, Mean_Daily_Cases)
 
 corona_country_sel <- bind_rows(corona_country_sel, fc_corona_sel)
 ```
@@ -316,7 +316,7 @@ data <- corona_data %>%  dplyr::filter(Country %in% countries_to_forecast &
            Date >= last_date - 21)
 
 
-p <- ggts_conf_deaths_facet(data, y = Daily_Cases_Mean) +
+p <- ggts_conf_deaths_facet(data, y = Mean_Daily_Cases) +
       ggtitle("Daily Rolling Mean Cases (past 3 weeks)")
 p # ggplotly(p)
 ```
@@ -335,7 +335,7 @@ country <- countries_to_forecast[1]
 corona_data_lag_range <- corona_data %>% ungroup() %>% group_by(Case_Type) %>% 
   dplyr::filter(Country %in% countries_to_forecast &
            Date >= last_date - lag_range) %>% 
-  dplyr::select(Date, Country, Case_Type, Daily_Cases_Mean) %>% 
+  dplyr::select(Date, Country, Case_Type, Mean_Daily_Cases) %>% 
   group_by(Country)
 
 ```
@@ -346,7 +346,7 @@ corona_data_lag_range <- corona_data %>% ungroup() %>% group_by(Case_Type) %>%
 corona_data_lag_range_wide <- corona_data_lag_range %>%   
   pivot_wider(id_cols = c(Country, Date), 
               names_from = Case_Type, 
-              values_from = Daily_Cases_Mean)
+              values_from = Mean_Daily_Cases)
 
 ```
 
@@ -417,28 +417,17 @@ plot_deaths_forecast
 ```
 
 
-### Lag days and Case Fatality Rate (CFR)  {data-height=100}
+### Case Fatality Rate (CFR) Trend  {data-height=200}
 
-```{r CFR Table - for compare_countries}
-
-title <- paste("Case Fatality Rate in % (CFR, proportion of deaths from confirmed cases)", "lagged by", lag_n, "days; total and for period of past", range_cfr, "days")
-knitr::kable(cfr_table %>% dplyr::filter(Country %in% countries_to_forecast),
-             digits = 2, caption = title)
-
-
-
-# knitr::kable(country_table,
-#              digits = 2, caption =
-#                "Lag days and CFR (proportion of deaths from confirmed cases)")
-
-
-# knitr::kable(coef(fit_best) %>% 
-#                group_by(Country) %>% dplyr::filter(term %in% lm_term) %>%  
-#                summarise(CFR = sum(estimate) ), 
-#              digits = 2, caption = paste(
-#                "Case Fatality Fate in % (CFR, proportion of deaths from confirmed cases)", "lagged by", lag_n, "total and for period of past ", lag_n, "days")
+```{r}
+corona_data_wide %>% 
+  select(Country, Date, contains("CFR")) %>% 
+  dplyr::filter(Country %in% countries_to_forecast & 
+                  Date >= "2020-03-01") %>% 
+  ggplot(aes(x = Date, y = CFR_past_period, col = Country)) + 
+  geom_line() + ylim(0, 10) +
+  theme(legend.position = "bottom")
 ```
-
 
 
 Column {data-width=600}

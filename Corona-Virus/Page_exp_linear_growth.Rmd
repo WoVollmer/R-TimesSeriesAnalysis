@@ -13,7 +13,18 @@ params:
 ---
 
 
-Virus Spread on log10 scale {data-navmenu="Exp Linear Growth"}
+```{r config with rds data, child = 'Corona_Virus_config.Rmd', eval = FALSE}
+```
+
+
+
+```{r}
+
+fig_asp_trend <- 0.35
+
+```
+
+Cumulated Cases on log10 scale {data-navmenu="Exp Linear Growth"}
 =====================================
 
 ***
@@ -23,10 +34,9 @@ Virus Spread on log10 scale {data-navmenu="Exp Linear Growth"}
 Column {data-width=100}
 -------------------------------------
 
-### Exponential Growth Evaluation
+### Exponential Growth Cumulated Cases
 
-China and South Korea slowed down exponential growth significantly at an early stage. Their lines in the diagram with the log10 scale have therefore no longer 
-had a significant slope.
+China and South Korea slowed down exponential growth significantly at an early stage. Their lines on log10 scale have had no longer a significant slope.
  
 In early phases countries have a more or less unchecked exponential
 growth. 
@@ -36,12 +46,12 @@ reduced slope of the cumulative cases again.
 Column
 -------------------------------------
 
-### Virus Spread with log10 scale (since mid of Jan)
+### Virus Spread - Cumulative Cases on log10 scale
 
 ```{r}
 
-labels_scale <- c(10, 100, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, 
-                  5000000, 10000000)
+labels_scale <- c(0.1, 0.5, 1, 5, 100, 1000, 5000, 10000, 50000, 100000, 
+                  500000, 1000000, 5000000, 10000000)
 
 ```
 
@@ -50,70 +60,91 @@ labels_scale <- c(10, 100, 1000, 5000, 10000, 50000, 100000, 500000, 1000000,
 
 # logscale plot w/o date filter
 data <- corona_data %>% ungroup() %>% group_by(Case_Type) %>% 
-  dplyr::filter(Country %in%  c("World", "China", compare_countries) & 
-           Case_Type != "Recovered" & Cases >= 10) %>% 
-  dplyr::select(Date, Country, Case_Type, Cases)
+  dplyr::filter(Country %in% compare_countries[c(2:4, 7:10)] & 
+                  Cases >= 10) %>% 
+  dplyr::select(Date, Country, Case_Type, Cases, Cases_100k)
 
-gg_plot <- ggts_logscale(data)
-  
-plot_1 <- gg_plot + 
+plot_1 <- ggts_logscale(data, y = Cases) + 
   scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
-  geom_line(aes(col = Country), size = 0.5) +
   labs(title = "Cumulative Cases") +
+  geom_line(size = 1) +
   facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
              strip.position = "left")
 
 ##  plot per 100,000 inhabitants
-data <- corona_data %>% ungroup() %>% group_by(Case_Type) %>% 
-  dplyr::filter(Country %in%  c("World", "China", compare_countries) & 
-           Case_Type != "Recovered" & Cases >= 10) %>% 
-  dplyr::select(Date, Country, Case_Type, Cases_100k)
-
-gg_plot <- ggts_logscale(data, x = Date, y = Cases_100k)
-  
-plot_2 <- gg_plot + 
+plot_2 <- ggts_logscale(data, x = Date, y = Cases_100k) + 
   scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
-  geom_line(aes(col = Country), size = 0.5) +
-  labs(title = "Cumulative Cases / 100k Inhabitants",
-       y = "Cumulative Cases / 100k Inhabitants") +
+  labs(title = "Cumulative Cases / 100k Inhabitants") +
+  geom_line(size = 1) +
   facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
              strip.position = "left") 
 
 
 plot_1 + plot_2 + 
-  plot_annotation(
-    title = "Virus Spread - World and selected Countries") +
+  plot_annotation(title = "Virus Spread - Selected Countries") +
   plot_layout(guides = 'collect') & theme(legend.position = 'bottom')
 
 ```
 
 
 
-```{r plot per inhabitants with log10scale, eval = FALSE, fig.width = 7, fig.asp = 1.5}
-# Column
-# -------------------------------------
-# 
-# ### Virus Spread / Inhabitants with log10 scale (since mid of Jan)
+Daily Cases on log10 scale {data-navmenu="Exp Linear Growth"}
+=====================================
 
-# Virus Spread / 100,000 Inhabitantson on log10 scale (since mid of Jan)
+***
+***
 
+
+Column {data-width=100}
+-------------------------------------
+
+### Exponential Growth Daily Cases
+
+In early phases countries have a more or less unchecked exponential
+growth resulting in a significant curve slope for the daily cases.
+
+Successful countermeasures are reflected in a reduced exponential growth, 
+the slope of the curve decreases.
+
+In the steady state, the slope disappears and if the daily cases decrease,
+the slope becomes negative.
+
+Column
+-------------------------------------
+
+### Virus Spread - Daily Cases on log10 scale
+
+```{r plot daily log10scale w/o date filter, fig.width = 14, fig.asp = 0.8}
+
+# logscale plot w/o date filter
 data <- corona_data %>% ungroup() %>% group_by(Case_Type) %>% 
-  dplyr::filter(Country %in%  c("World", "China", compare_countries) & 
-           Case_Type != "Recovered" & Cases >= 10) %>% 
-  dplyr::select(Date, Country, Case_Type, Cases_100k)
+  dplyr::filter(Country %in% compare_countries[c(2:4, 7:10)] & 
+                  Mean_Daily_Cases_100k > 0.01) %>% 
+  dplyr::select(Date, Country, Case_Type, 
+                Mean_Daily_Cases, Mean_Daily_Cases_100k)
 
-gg_plot <- ggts_logscale(data, x = Date, y = Cases_100k)
-  
-gg_plot + 
+plot_1 <- ggts_logscale(data, y = Mean_Daily_Cases) +
+  geom_line(size = 1) +
   scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
-  geom_line(aes(col = Country), size = 0.5) +
-  labs(subtitle = paste("Since", first_date),
-       y = "Cumulative Cases / 100k Inhabitants",
-       title = "Virus Spread / 100,000 Inhabitants (with log10 scale)") +
+  labs(title = "Mean_Daily Cases") +
+  facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
+             strip.position = "left")
+
+##  plot per 100,000 inhabitants
+plot_2 <- ggts_logscale(data, x = Date, y = Mean_Daily_Cases_100k) + 
+  geom_line(size = 1) +
+  scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
+  labs(title = "Mean_Daily Cases / 100k Inhabitants") +
   facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
              strip.position = "left") 
 
+plot_1 + plot_2 + 
+  plot_annotation(title = "Virus Spread - Selected Countries") +
+  plot_layout(guides = 'collect') & theme(legend.position = 'bottom')
+
 ```
+
+
 
 Exponential Growth {data-navmenu="Exp Linear Growth"}
 =====================================
@@ -195,7 +226,7 @@ corona_range_reg_long_tsbl <- corona_data %>%
 
 
 fit_corona <- corona_range_reg_long_tsbl %>%  
-  model(TSLM(log(Daily_Cases_Mean) ~ Date)) 
+  model(TSLM(log(Mean_Daily_Cases) ~ Date)) 
 fc_corona <- fit_corona %>% 
   fabletools::forecast(h = "14 days") 
 
@@ -235,7 +266,7 @@ Column {data-width=600}
 
 # gg_plot <- ggts_logscale(corona_data_range_reg)  +
 #   geom_smooth(method="lm", aes(col = Country), lty = "dashed", se=FALSE)
-gg_plot <- ggts_logscale(corona_range_reg_long_tsbl, y = Daily_Cases_Mean)  +
+gg_plot <- ggts_logscale(corona_range_reg_long_tsbl, y = Mean_Daily_Cases)  +
   geom_smooth(method="lm", aes(col = Country), lty = "dashed", se=FALSE)
   
 gg_plot +
@@ -318,8 +349,8 @@ forecast_days <- paste(forecast_range, "days")
 
 fit_daily_corona <- corona_range_reg_long_tsbl %>%
   group_by(Case_Type) %>% 
-  model(Exp_Growth = TSLM(log(Daily_Cases_Mean) ~ Date),
-        Linear_Growth = TSLM(Daily_Cases_Mean ~ Date)) 
+  model(Exp_Growth = TSLM(log(Mean_Daily_Cases) ~ Date),
+        Linear_Growth = TSLM(Mean_Daily_Cases ~ Date)) 
 
 fc_daily_corona <- fit_daily_corona %>% 
   fabletools::forecast(h = forecast_days) 
@@ -328,7 +359,7 @@ fc_daily_corona %>%
   dplyr::filter(Country == country_select) %>% 
   autoplot(corona_range_reg_long_tsbl) +
   labs(title = paste(
-    country_select, " - Forecast of Mean Daily Mean Cases for the next ", 
+    country_select, " - Forecast of Mean Daily Cases for the next ", 
     forecast_range, "-days"),
     subtitle = paste(
       "Forecast is based on regression of past ",

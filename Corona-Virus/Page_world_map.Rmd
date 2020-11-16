@@ -108,10 +108,10 @@ World Map / Hot Spots {data-navmenu="World Map"}
 case_type <- "Confirmed"
 title <- 
   paste(case_type, 
-        "- Mean Daily Cases / 100k / Country over the past seven days")
+        "- Mean Daily  Cases / 100k / Country over the past seven days")
 hc_world_map_plot(
   dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
-  value = "Daily_Cases_100k_Mean", title = title)
+  value = "Mean_Daily_Cases_100k", title = title)
 
 ```
 
@@ -124,10 +124,10 @@ hc_world_map_plot(
 case_type <- "Deaths"
 title <- 
   paste(case_type, 
-        "- Mean Daily Cases / 100k / Country over the past seven days")
+        "- Mean Daily  Cases / 100k / Country over the past seven days")
 hc_world_map_plot(
   dplyr::filter(corona_data_last, Case_Type == case_type & Country != "World"), 
-  value = "Daily_Cases_100k_Mean", title = title)
+  value = "Mean_Daily_Cases_100k", title = title)
 
 ```
 
@@ -147,7 +147,7 @@ World Map / CFR {data-navmenu="World Map"}
 
 title <- paste("CFR_past_period", "- Case Fatality Rate (in %)")
 hc_world_map_plot(
-  dplyr::filter(cfr_table, Country != "World"), 
+  dplyr::filter(corona_data_last_wide, Country != "World"), 
   value = "CFR_past_period", title = title)
 
 ```
@@ -158,7 +158,7 @@ hc_world_map_plot(
 
 title <- paste("CFR_total", "- Case Fatality Rate (in %)")
 hc_world_map_plot(
-  dplyr::filter(cfr_table, Country != "World"), 
+  dplyr::filter(corona_data_last_wide, Country != "World"), 
   value = "CFR_total", title = title)
 
 ```

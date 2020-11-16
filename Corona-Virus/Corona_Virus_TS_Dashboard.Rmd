@@ -90,17 +90,17 @@ if (device == "desktop") {
 
 ```
 
+
 ```{r source function and population data}
-# Plot and util functions - has to come after setwd()  ------------
-# sources part of library(pkgTS) # devtools::install_github("WoVollmer/pkgTS")
+# source function ggts_corona.R and uts_corona.R 
+#                            - if not in package has to come after setwd()
+# sources are part of library(pkgTS)
 #     all needed function files via library(pgkTS)
 #     - ggts_corona.R # ggplot2 functions for time series plots
 #     - uts_corona.R  # utility functions for corona analysis
-# read UN world population data for normalization per 100k inhabitants
-
-population_countries <- readRDS("./world_population_un.RDS") # data from UN
 
 ```
+
 
 
 ```{r initialization, eval = TRUE, include = FALSE}
@@ -153,182 +153,19 @@ lag_n <- 12  # average lag for confirmed -> death - for all countries
 
 ```
 
+```{r read hopkins raw data and process}
 
-```{r path on desktop PC, eval = TRUE}
-
-corona_confirmed <- 
-  read_csv(paste0(data_path, "/time_series_covid19_confirmed_global.csv")) %>%
-  mutate(Case_Type = "Confirmed")
-corona_deaths <- 
-  read_csv(paste0(data_path, "/time_series_covid19_deaths_global.csv"))  %>%
-  mutate(Case_Type = "Deaths")
-corona_recovered <- 
-  read_csv(paste0(data_path, "/time_series_covid19_recovered_global.csv")) %>%
-  mutate(Case_Type = "Recovered")
-```
-
-
-```{r read data bind rows and chanfge to long format}
-
-corona <- bind_rows(corona_confirmed, corona_deaths, corona_recovered) %>%
-  pivot_longer(cols = c(-`Province/State`, -`Country/Region`, -Case_Type, 
-                        -Lat,  -Long ), 
-               names_to = c("Date"),
-               values_to = "Cases")
-
-corona <- corona %>% 
-  mutate(Date = as.Date(Date, format = "%m/%d/%y")) %>% 
-  rename(Country = `Country/Region`) 
+source("./Corona_raw_data.R")
+corona_data <- read_and_process_raw_data(data_path, eu = countries_eu)
 
 ```
 
+```{r add country population numbers and rolling mean to data}
 
-```{r data clean-up}
-
-# clean-up column names
-# corona %>% janitor::clean_names()
-
-# clean-up names of column Country / denmark "regions" to country 
-# same country names for covid-19 data and population_countries are needed
-# names have to fit to names used by
-# https://code.highcharts.com/mapdata/ => 
-# World with Palestine areas, high resolution Demo  => Highmaps basic demo
-corona <- corona %>% 
-  mutate(
-    Country = case_when(
-      Country == "Burma" ~ "Myanmar",
-      Country == "Mainland China" ~ "China",
-      Country == "Czechia" ~ "Czech Republic",
-      Country == "Denmark" & `Province/State` == "Greenland" ~ "Greenland",
-      Country == "Denmark" & `Province/State` == "Faroe Islands" ~ "Faroe Islands",
-      Country == "Guinea-Bissau" ~ "Guinea Bissau",
-      Country == "Hong Kong SAR" ~ "Hong Kong",
-      Country == "Holy See" ~ "Holy See (Vatican City)",
-      Country == "Iran (Islamic Republic of)" ~ "Iran",
-      Country == "Macao SAR" ~ "Macao",
-      Country == "occupied Palestinian territory" ~ "Palestine",
-      Country == "Republic of Korea" ~ "South Korea",
-      Country == "Cote d'Ivoire" ~ "Ivory Coast",
-      Country == "Congo (Brazzaville)" ~ "Republic of Congo",
-      Country == "Congo (Kinshasa)" ~ "Democratic Republic of the Congo",
-      Country == "Korea, South" ~ "South Korea",
-      Country == "Serbia" ~ "Republic of Serbia",
-      Country == "North Macedonia" ~ "Macedonia",
-      Country == "Eswatini" ~ "Swaziland",
-      Country == "Taiwan*" ~ "Taiwan",
-      Country == "Tanzania" ~ "United Republic of Tanzania",
-      Country == "US" ~ "United States of America",
-      Country == "Viet Nam" ~ "Vietnam",
-      TRUE ~ as.character(Country)))
-
-# clean-up content of column `Province/State`
-# replace NAs by Country
-# replace "Bavaria"  by  Country since `Province/State` exists only until 
-# end of January, as begin of February inluded in "Germany" data
-# `Province/State` == "Bavaria" ~ Country, not needed in time series format,
-#  needed for data file: covid_19_data.csv
-corona <- corona %>%  mutate(    
-  `Province/State` = case_when(
-    is.na(`Province/State`) ~ Country,
-    TRUE ~ `Province/State`)) %>% 
-  arrange(Country, `Province/State`) %>% 
-  group_by(Case_Type, Country, `Province/State`)
-
-# View(corona %>% dplyr::filter(Date == last_date & Case_Type == "Confirmed"))
-```
-
-
-```{r provinces data to country and add country world}
-# add all data from provinces to country data 
-corona_country <- corona %>% 
-  group_by(Country, Date, Case_Type) %>% 
-  summarise(Cases = sum(Cases, na.rm = TRUE))
-corona_country %<>% 
-  group_by(Country, Case_Type) %>% 
-  mutate(Daily_Cases = c(NA, diff(Cases)))
-
-# without Case_Type "Recovered"  - no real value add, no consistent data
-corona_country %<>% dplyr::filter(Case_Type != "Recovered")
-
-# first_date <- min(corona_country$Date)
-# last_date <- max(corona_country$Date)
-# View(corona_country %>% dplyr::filter(Date == last_date & Case_Type == "Confirmed"))
+corona_data <- add_popul_rolling_mean(corona_data) 
 
 ```
 
-```{r add country World}
-
-### provide sum of all countries as country "World" data
-# for sum( , na.rm = TRUE) removing missing values is important,
-# otherwise one region with NA (no cases) resulty in NA worldwide
-corona_country_sum <- corona_country %>% 
-  group_by(Date, Case_Type) %>% 
-  summarise(Cases = sum(Cases, na.rm = TRUE))
-corona_country_sum %<>% 
-  group_by(Case_Type) %>% 
-  mutate(Daily_Cases = c(NA, diff(Cases)),
-         Country = "World")
-
-corona_country <- bind_rows(corona_country, corona_country_sum)
-
-```
-
-
-```{r add country EU}
-### provide sum of all EU countries as country "EU" data
-
-corona_country_sum <- corona_country %>% 
-  dplyr::filter(Country %in% countries_eu) %>% 
-  group_by(Date, Case_Type) %>% 
-  summarise(Cases = sum(Cases, na.rm = TRUE))
-corona_country_sum %<>% 
-  group_by(Case_Type) %>% 
-  mutate(Daily_Cases = c(NA, diff(Cases)),
-         Country = "EU")
-
-corona_country <- bind_rows(corona_country, corona_country_sum)
-
-```
-
-
-
-```{r add population per country to data}
-
-# add world population and normalize Confirmed and Deaths per 100k inhabitants
-
-population_countries <- population_countries %>%
-  dplyr::select(Country, Population)
-# note: delects Type which provides split "Country" vs. "Region" for World & EU
-
-corona_data <- full_join(corona_country, population_countries) 
-
-corona_data %<>% dplyr::filter(!is.na(Date)) %>% 
-  mutate(Cases_100k = round(Cases/(Population/100000), digits = 1),
-         Daily_Cases_100k = round(Daily_Cases/(Population/100000), digits = 2))
-
-```
-
-```{r add rolling mean  per country to data}
-
-# slide_dbl() => rolling mean double value, changed to before only
-#                             no longer centered with .before = .after
-# note: for last date rolling mean before is needed, otherwise all are NA
-corona_data %<>% 
-  group_by(Country, Case_Type) %>% 
-  mutate(Daily_Cases_Mean =  round(
-    slider::slide_dbl(Daily_Cases,  ~ mean(.),
-                      .before = 2*q, .after = 0, .complete = TRUE),
-    digits = 1),
-    Daily_Cases_100k_Mean = round(
-      slider::slide_dbl(Daily_Cases_100k,  ~ mean(.), 
-                        .before = 2*q, .after = 0, .complete = TRUE),
-      digits = 2)) %>% 
-  ungroup()
-
-corona_data <- corona_data  %>%
-  tsibble::as_tsibble(index = Date, key = c(Country, Case_Type))
-
-```
 
 ```{r}
 
@@ -350,55 +187,46 @@ corona_data_wide <- uts_get_corona_data_wide(corona_data)
 # View(corona_data_wide %>%  dplyr::filter(Date == last_date))
 ```
 
-```{r}
-
-corona_data_last <- corona_data %>%
-  dplyr::filter(Date == last_date)
-
-corona_data_last_wide <- corona_data_wide %>%
-  dplyr::filter(Date == last_date)
-
-corona_last_abs_wide <- corona_data_last_wide %>% 
-  dplyr::select(!contains("_100k"), -Population)
-
-corona_last_rel_wide <- corona_data_last_wide %>% 
-  dplyr::select(Country, Date, contains("_100k"))
-```
-
 
 ```{r calculate lagged CFR}
 ## `cfr_table` - calculate Case Fatality Rate (CFR in %) -----------------------
 #   assuming a time lag of `lag_n`-days (~12) between Confirmed => Death
-#   - CFR_past_period - past 14 days
+#   - CFR_past_period : of past range_cfr (=14) days
+#        (=> lag by range_cfr+1 needed 
+#            to subtract last_day value - day before past period value)
 #   - CFR_total
 #   - CFR_unlagged (unlagged total)
 
-corona_confirmed_lag <- corona_data_wide %>% 
-  tibble::tibble() %>% 
-  # for a tsibble select() would not deselect 'Date' column => join() issue
-  # and target is a last date table only
-  dplyr::select(!contains("_100k"), -Population, 
-                -Daily_Conf, -Daily_Deaths) %>% 
+corona_data_wide <- corona_data_wide %>% 
   mutate(confirmed_lag = lag(Confirmed, lag_n),
          CFR_total = round(Deaths / confirmed_lag * 100, digits = 1),
-         CFR_unlagged = round(Deaths / Confirmed * 100, digits = 1)) 
-
-corona_total_CFR_lag <- corona_confirmed_lag %>% 
-  dplyr::filter(Date == last_date) 
-
-corona_before <- corona_confirmed_lag %>% 
-  dplyr::filter(Date == last_date - range_cfr + 1) %>% 
-  mutate(Deaths_before = Deaths,
-         confirmed_lag_before = confirmed_lag) %>% 
-  dplyr::select(Country, Deaths_before, confirmed_lag_before) 
-
-cfr_table <- left_join(corona_total_CFR_lag, corona_before) %>% 
-  mutate(confirmed_past_period = confirmed_lag - confirmed_lag_before,
-         deaths_past_period = Deaths - Deaths_before,
+         CFR_unlagged = round(Deaths / Confirmed * 100, digits = 1)) %>% 
+  mutate(confirmed_lag_range_cfr = lag(confirmed_lag, range_cfr + 1),
+         deaths_lag_range_cfr = lag(Deaths, range_cfr + 1),
+         confirmed_past_period = confirmed_lag - confirmed_lag_range_cfr,
+         deaths_past_period = Deaths - deaths_lag_range_cfr,
          CFR_past_period = round(
-           deaths_past_period / confirmed_past_period * 100, digits = 1)) %>% 
-  select(Country,  CFR_past_period, CFR_total, CFR_unlagged)
+           deaths_past_period / confirmed_past_period * 100, digits = 1))  %>% 
+  dplyr::select(!contains("_lag"), -confirmed_past_period, -deaths_past_period) 
 
+```
+
+
+```{r}
+
+# used by world map and bar chart data
+corona_data_last <- corona_data %>%
+  dplyr::filter(Date == last_date)
+
+# next 3: used bybar chart data only
+corona_data_last_wide <- corona_data_wide %>%
+  dplyr::filter(Date == last_date)
+
+corona_last_abs_wide <- corona_data_last_wide %>% 
+  dplyr::select(!contains(c("_100k", "CFR")), -Population)
+
+corona_last_rel_wide <- corona_data_last_wide %>% 
+  dplyr::select(Country, Date, contains("_100k"))
 ```
 
 

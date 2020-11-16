@@ -1,5 +1,5 @@
 ---
-  title: "Coronavirus SARS-CoV-2 / Covid-19"
+title: "Coronavirus SARS-CoV-2 / Covid-19"
 author: "Wolfgang Vollmer"
 date: '`r Sys.Date()`'
 link-citations: yes
@@ -11,8 +11,6 @@ output:
 params:
   device: "desktop"
 ---
-
-
 
 Bar Chart {data-navmenu="Bar Chart"}
 =====================================
@@ -64,7 +62,7 @@ Column
 
 Case numbers are taken from [[@JHU2020a]](#bib). In order to compensate for the 
 daily fluctuations, the 
-mean number of cases over the past seven day (*_Mean) are added.
+mean number of cases over the past seven day (Mean_Daily_*) are added.
 
 ```{r print datatable in wide format}
 
@@ -124,7 +122,7 @@ Column
 
 Population numbers are taken from [[@UNO2020]](#bib).
 In order to compensate for the daily fluctuations, the
-mean number of cases over the past seven days (*_Mean) are added.
+mean number of cases over the past seven days (Mean_Daily_*) are added.
 
 ```{r print datatable 100k in wide format}
 
@@ -150,7 +148,7 @@ Column {data-width=300}
 
 # plot bar chart  Daily Confirmed Mean / 100k for countries and + world
 case_type <- "Confirmed"
-abscissa <- "Daily_Cases_100k_Mean"
+abscissa <- "Mean_Daily_Cases_100k"
 title <- paste(case_type , 
                "- Mean Daily Cases / 100k")
 hc_bar_chart_country(
@@ -182,7 +180,7 @@ Column
 
 Population numbers are taken from [[@UNO2020]](#bib).
 In order to compensate for the daily fluctuations, the 
-mean number of cases over the past seven days (*_Mean) are added.
+mean number of cases over the past seven days (Mean_Daily_*) are added.
 
 ```{r print mean datatable 100k in wide format}
 
@@ -209,7 +207,7 @@ Column {data-width=300}
 # plot bar chart CFR Confirmed Mean / Deaths Mean
 abscissa <- "CFR_past_period"
 title <- paste(abscissa, "- Case Fatality Rate (in %)")
-hc_bar_chart_country(cfr_table, y = abscissa, title = title, n = 15)
+hc_bar_chart_country(corona_data_last_wide, y = abscissa, title = title, n = 15)
 
 ```
 
@@ -221,7 +219,7 @@ hc_bar_chart_country(cfr_table, y = abscissa, title = title, n = 15)
 # plot bar chart CFR Confirmed Mean / Deaths Mean
 abscissa <- "CFR_total"
 title <- paste(abscissa, "- Case Fatality Rate (in %)")
-hc_bar_chart_country(cfr_table, y = abscissa, title = title, n = 15)
+hc_bar_chart_country(corona_data_last_wide, y = abscissa, title = title, n = 15)
 
 # plot bar chart Confirmed - CFR countries and + world
 # title <- paste(abscissa, "(in %) - selected countries")
@@ -281,7 +279,8 @@ title <- paste("Case Fatality Rate (in %) - assuming a time lag of", lag_n,
 
 ```{r}
 
-DT::datatable(cfr_table,  
+DT::datatable(corona_data_last_wide %>% 
+                select(Country,  Date, CFR_past_period, CFR_total, CFR_unlagged),  
               options = list(pageLength = 25, scrollY = "300px"))
 
 ```
@@ -291,7 +290,9 @@ DT::datatable(cfr_table,
 
 ```{r CFR Table selected countries}
 
-knitr::kable(dplyr::filter(cfr_table, Country %in% compare_countries),
+knitr::kable(corona_data_last_wide %>% 
+               select(Country,  Date, contains("CFR")) %>% 
+               dplyr::filter(Country %in% compare_countries),
              digits = 2)
 
 # DT::datatable(dplyr::filter(cfr_table, Country %in% compare_countries),
@@ -311,7 +312,7 @@ Column
 
 Population numbers are taken from [[@UNO2020]](#bib).
 In order to compensate for daily fluctuations, the mean number of cases for the 
-past seven days (*_Mean) is used instead of the daily cases.
+past seven days (Mean_Daily_*) is used instead of the daily cases.
 
 ```{r print datatable all with 100k in wide format}
 
@@ -324,8 +325,8 @@ DT::datatable(
     mutate("Population /m" = round(Population / 1000000, digits = 3)) %>% 
     dplyr::select(
       Country, `Population /m`, Date, 
-      Confirmed, Daily_Conf_Mean, Conf_100k, Daily_Conf_100k_Mean,
-      Deaths, Daily_Deaths_Mean, Deaths_100k, Daily_Deaths_100k_Mean), 
+      Confirmed, Mean_Daily_Conf, Conf_100k, Mean_Daily_Conf_100k,
+      Deaths, Mean_Daily_Deaths, Deaths_100k, Mean_Daily_Deaths_100k), 
   options = list(pageLength = 50, scrollY=scroll_y),
   filter = "bottom")
 
@@ -343,7 +344,7 @@ Column
 
 Population numbers are taken from [[@UNO2020]](#bib).
 In order to compensate for daily fluctuations, the mean number of cases for the 
-past seven days (*_Mean) is used instead of the daily cases.
+past seven days (Mean_Daily_*) is used instead of the daily cases.
 
 ```{r print datatable EU with 100k in wide format}
 
@@ -356,8 +357,8 @@ DT::datatable(
     mutate("Population /m" = round(Population / 1000000, digits = 3)) %>% 
     dplyr::select(
       Country, `Population /m`, Date, 
-      Confirmed, Daily_Conf_Mean, Conf_100k, Daily_Conf_100k_Mean,
-      Deaths, Daily_Deaths_Mean, Deaths_100k, Daily_Deaths_100k_Mean), 
+      Confirmed, Mean_Daily_Conf, Conf_100k, Mean_Daily_Conf_100k,
+      Deaths, Mean_Daily_Deaths, Deaths_100k, Mean_Daily_Deaths_100k),
   options = list(pageLength = 50, scrollY=scroll_y),
   filter = "bottom")
 

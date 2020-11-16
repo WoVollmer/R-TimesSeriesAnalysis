@@ -249,8 +249,8 @@ shinyApp(
       # change tibble in xts object
       index <- data$Date
       data_xts <- xts::xts(
-  data %>% dplyr::select(Daily_Conf, Daily_Conf_Mean, 
-                         Daily_Deaths, Daily_Deaths_Mean),
+  data %>% dplyr::select(Daily_Conf, Mean_Daily_Conf, 
+                         Daily_Deaths, Mean_Daily_Deaths),
         order.by = index) 
     
       plot_dygraph_daily(data_xts, input$country, last_date, weeks = weeks)
@@ -298,16 +298,14 @@ shinyApp(
   
       data_repronum <- corona_data_wide %>%
         filter(Country == input$country) %>%
-        dplyr::select(Country, Date, Daily_Conf, Daily_Conf_Mean) %>%
+        dplyr::select(Country, Date, Daily_Conf, Mean_Daily_Conf) %>%
         ungroup()
   
-      # repronum_output <- uts_repronum(new.cases = data_repronum$Daily_Conf_Mean,
       repronum_output <- uts_repronum(new.cases = data_repronum$Daily_Conf, 
                                   profile = infectivity, 
                                   window = width,
                                   delay = report_delay)
-      
-      
+
       data_repronum  <- bind_cols(data_repronum, repronum_output) %>% 
         rename(Repro_number = repronum)
       
@@ -317,17 +315,11 @@ shinyApp(
       
       data_xts <- xts::xts(data_repronum, order.by = index)
       
-      
-      
       plot_dygraph_daily_repro(data_xts, input$country, last_date, weeks = weeks)
     })
   },
  
   options = list(height = 600)
 )
-```
-
-
-```{r}
 ```
 

@@ -1,5 +1,5 @@
 ---
-  title: "Coronavirus SARS-CoV-2 / Covid-19"
+title: "Coronavirus SARS-CoV-2 / Covid-19"
 author: "Wolfgang Vollmer"
 date: '`r Sys.Date()`'
 link-citations: yes
@@ -48,7 +48,7 @@ ggts_cum_daily(corona_data, country = country, weeks = weeks)
 # providing same plots but with *_100k data (=> same figure with new y-scale)
 # ggts_cum_daily(corona_data, 
 #                y_cum = Cases_100k, y_daily = Daily_Cases_100k, 
-#                daily_mean = Daily_Cases_100k_Mean,
+#                mean_daily = Mean_Daily_Cases_100k,
 #                country = country, weeks = weeks)
 ```
 
@@ -194,8 +194,8 @@ data  %<>% ungroup() %>% select(-Country, -Date)
 
 
 data_xts <- xts::xts(
-  data %>% dplyr::select(Daily_Conf, Daily_Conf_Mean, 
-                         Daily_Deaths, Daily_Deaths_Mean),
+  data %>% dplyr::select(Daily_Conf, Mean_Daily_Conf,
+                         Daily_Deaths, Mean_Daily_Deaths),
   order.by = index)
 plot_dygraph_daily(data_xts, country_select, last_date, weeks = weeks)
 
@@ -237,7 +237,7 @@ alpha <- 0.05      # => default conf.level in uts_repronum()
 
 data_repronum <- corona_data_wide %>% 
   dplyr::filter(Country == country_select) %>% 
-  dplyr::select(Country, Date, Daily_Conf, Daily_Conf_Mean) %>% 
+  dplyr::select(Country, Date, Daily_Conf, Mean_Daily_Conf) %>% 
   ungroup() 
 
 repronum_output <- uts_repronum(new.cases = data_repronum$Daily_Conf, 
