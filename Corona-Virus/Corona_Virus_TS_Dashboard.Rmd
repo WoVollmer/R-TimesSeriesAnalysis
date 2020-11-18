@@ -70,6 +70,8 @@ setwd("./Corona-Virus/")
 # defined as params  metadata in YAML header
 device <- params$device
 
+gen_from_raw_data <- TRUE
+
 if (device == "desktop") {
   data_path <- 
     "D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
@@ -146,50 +148,55 @@ range_reg_short <- 7 # days; at least one week is necessary to get rid of weekly
 range_reg_long <- 21 # days; 2 or 3 weeks if one week is to short
                            # e.g. confidence levels to large !!
 # whole week is necessary to get rid of weekly fluctuations
-range_forcast <- 14  # 14days forecast => unclass(last_date + 1 + range_forcast -1)
+range_fc_short <- 7  # days forecast => unclass(last_date + 1 + range_forcast -1)
+range_fc_long <- 14  # days forecast => unclass(last_date + 1 + range_forcast -1)
 
 range_cfr <- 14  # 14days cfr past period length
 lag_n <- 12  # average lag for confirmed -> death - for all countries
 
 ```
 
-```{r read hopkins raw data and process}
+```{r read hopkins raw data and process, eval = gen_from_raw_data}
 
 source("./Corona_raw_data.R")
 corona_data <- read_and_process_raw_data(data_path, eu = countries_eu)
 
-```
-
-```{r add country population numbers and rolling mean to data}
-
+# add country population numbers and rolling mean to data
 corona_data <- add_popul_rolling_mean(corona_data) 
 
 ```
 
 
-```{r}
+```{r save or read corona data }
+if (gen_from_raw_data) {
+  saveRDS(corona_data, "./corona_data.RDS")
+} else {
+  corona_data <- readRDS("corona_data.RDS")
+}
 
-saveRDS(corona_data, "./corona_data.RDS")
 # corona_data <- readRDS("corona_data.RDS")
 
 first_date <- min(corona_data$Date)
 last_date <- max(corona_data$Date)
+
+# used by world map and bar chart page
+corona_data_last <- corona_data %>%
+  dplyr::filter(Date == last_date) %>% 
+  as_tibble()
+
 ```
 
 
-```{r complete data wide format}
+```{r create wide data format and add CFR data}
 # wide format: 
-#    Country Population Date  Confirmed Daily_Conf ... Death ...
+#      Country Population Date Case_Type Cases ... 
+#  =>  Country Population Date Confirmed Daily_Conf ... Deaths Daily_Deaths ...
 # for easy to read datatable outputs e.g.with filter for last date
 
 corona_data_wide <- uts_get_corona_data_wide(corona_data)
 
-# View(corona_data_wide %>%  dplyr::filter(Date == last_date))
-```
-
-
-```{r calculate lagged CFR}
-## `cfr_table` - calculate Case Fatality Rate (CFR in %) -----------------------
+## `cfr_table` - calculate lagged Case Fatality Rate (CFR in %) ---------------
+#   calculation requires wide format only 
 #   assuming a time lag of `lag_n`-days (~12) between Confirmed => Death
 #   - CFR_past_period : of past range_cfr (=14) days
 #        (=> lag by range_cfr+1 needed 
@@ -209,51 +216,28 @@ corona_data_wide <- corona_data_wide %>%
            deaths_past_period / confirmed_past_period * 100, digits = 1))  %>% 
   dplyr::select(!contains("_lag"), -confirmed_past_period, -deaths_past_period) 
 
-```
 
-
-```{r}
-
-# used by world map and bar chart data
-corona_data_last <- corona_data %>%
-  dplyr::filter(Date == last_date)
-
-# next 3: used bybar chart data only
+# used by world map and bar chart page
 corona_data_last_wide <- corona_data_wide %>%
-  dplyr::filter(Date == last_date)
+  dplyr::filter(Date == last_date) %>% 
+  as_tibble()
 
-corona_last_abs_wide <- corona_data_last_wide %>% 
-  dplyr::select(!contains(c("_100k", "CFR")), -Population)
-
-corona_last_rel_wide <- corona_data_last_wide %>% 
-  dplyr::select(Country, Date, contains("_100k"))
 ```
 
 
-```{r map and bar chart settings}
+```{r world map and bar chart title suffixes}
 
-page_2 <- "Cumulative Cases per 100,000 Inhabitants"
-page_3 <- "Mean number of cases over the past seven days per 100,000 Inhabitants"
-page_4 <- paste("Case Fatality Rate - CFR of past", range_cfr, 
+title_cum_100k <- "Cumulative Cases per 100,000 Inhabitants"
+title_mean_daily <- "Mean daily cases over the past seven days per 100,000 Inhabitants"
+title_cfr <- paste("Case Fatality Rate - CFR of past", range_cfr, 
                 "days and CFR_total assuming a time lag of", lag_n, 
                 "days between Confirmed => Death")
 
-map_page_title_1 <- paste("World Map - Spread of Coronavirus SARS-CoV-2",
-                        "(Data source [[@JHU2020a]](#bib), see also [[@JHU2020]](#bib))")
-map_page_title_2 <- paste("World Map -",  page_2)
-map_page_title_3 <- paste("World Map -",  page_3)
-map_page_title_4 <- paste("World Map -",  page_4)
-
-bar_chart_page_title_1 <- paste("Bar Chart (descending order) and Data Table")
-bar_chart_page_title_2 <- paste("Bar Chart -",  page_2)
-bar_chart_page_title_3 <- paste("Bar Chart -",  page_3)
-bar_chart_page_title_4 <- paste("Bar Chart -",  page_4)
-  
 ```
 
 ```{r, eval=FALSE}
 
-# include for every flexdashboard page an own Rmd child
+# include for every page for flexdashboard an own Rmd child
 
 ```
 

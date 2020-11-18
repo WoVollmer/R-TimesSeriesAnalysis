@@ -23,7 +23,7 @@ Cumulative and Daily Trend {data-orientation=rows data-navmenu="Cumulative and D
 ```{r}
 
 fig_width_trend <- 10 # fig.width = fig_width_trend 7
-fig_asp_trend <- 0.35
+fig_asp_trend <- 0.35 # aspect ratio for trend plots
 
 weeks <- 12
 

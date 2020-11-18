@@ -18,7 +18,28 @@ Bar Chart {data-navmenu="Bar Chart"}
 ***
 ***
 
-**`r bar_chart_page_title_1`**
+```{r bar chart page titles}
+
+title_bc_cumulative <- paste("Bar Chart (descending order) and Data Table")
+title_bc_cum_100k <- paste("Bar Chart -",  title_cum_100k)
+title_bc_mean_daily <- paste("Bar Chart -",  title_mean_daily)
+title_bc_cfr <- paste("Bar Chart -",  title_cfr)
+  
+```
+
+
+```{r}
+
+# used by bar chart page only
+corona_last_abs_wide <- corona_data_last_wide %>% 
+  dplyr::select(!contains(c("_100k", "CFR")), -Population)
+
+corona_last_rel_wide <- corona_data_last_wide %>% 
+  dplyr::select(Country, Date, contains("_100k"))
+
+```
+
+**`r title_bc_cumulative`**
   
 Column {data-width=300}
 -------------------------------------
@@ -79,7 +100,7 @@ Bar Chart / Inhabitants {data-navmenu="Bar Chart"}
 ***
 ***
   
-**`r bar_chart_page_title_2`**
+**`r title_bc_cum_100k`**
 
 Column {data-width=300}
 -------------------------------------
@@ -137,7 +158,7 @@ Bar Chart / Hot Spots {data-navmenu="Bar Chart"}
 ***
 ***
   
-**`r bar_chart_page_title_3`**
+**`r title_bc_mean_daily`**
 
 Column {data-width=300}
 -------------------------------------
@@ -195,7 +216,7 @@ Bar Chart / CFR {data-navmenu="Bar Chart" #cfr}
 ***
 ***
   
-**`r bar_chart_page_title_4`**
+**`r title_bc_cfr`**
 
 Column {data-width=300}
 -------------------------------------

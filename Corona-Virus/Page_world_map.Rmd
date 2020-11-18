@@ -20,7 +20,18 @@ World Map {data-navmenu="World Map"}
 ***
 
 
-<center>**`r map_page_title_1`**</center>
+```{r world map page titles}
+
+title_wm_cumulative <- paste("World Map - Spread of Coronavirus SARS-CoV-2",
+                        "(Data source [[@JHU2020a]](#bib),",
+                        "see also [[@JHU2020]](#bib))")
+title_wm_cum_100k <- paste("World Map -",  title_cum_100k)
+title_wm_mean_daily <- paste("World Map -",  title_mean_daily)
+title_wm_cfr <- paste("World Map -",  title_cfr)
+
+```
+
+<center>**`r title_wm_cumulative`**</center>
 
 ###
 
@@ -60,7 +71,7 @@ World Map / Inhabitants {data-navmenu="World Map"}
 ***
 ***
 
-<center>**`r map_page_title_2`**</center> 
+<center>**`r title_wm_cum_100k`**</center> 
 
 ###
 
@@ -97,7 +108,7 @@ World Map / Hot Spots {data-navmenu="World Map"}
 ***
 ***
 
-<center>**`r map_page_title_3`**</center>
+<center>**`r title_wm_mean_daily`**</center>
 
 ###
 
@@ -138,7 +149,7 @@ World Map / CFR {data-navmenu="World Map"}
 ***
 ***
 
-<center>**`r map_page_title_4`** [see Bar Chart - CFR](#cfr)</center>
+<center>**`r title_wm_cfr`** [see Bar Chart - CFR](#cfr)</center>
 
 ###
 

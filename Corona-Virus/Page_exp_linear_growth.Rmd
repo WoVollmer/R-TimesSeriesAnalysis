@@ -59,13 +59,14 @@ labels_scale <- c(0.1, 0.5, 1, 5, 100, 1000, 5000, 10000, 50000, 100000,
 ```{r plot log10scale w/o date filter, fig.width = 14, fig.asp = 0.8}
 
 # logscale plot w/o date filter
-data <- corona_data %>% ungroup() %>% group_by(Case_Type) %>% 
+# ylim min setting by Cases rsp. Cases_100k > ymin; ylim for facet not usable
+data <- corona_data %>% 
   dplyr::filter(Country %in% compare_countries[c(2:4, 7:10)] & 
-                  Cases >= 10) %>% 
+                  Cases >= 100 & Cases_100k > 0.3) %>% 
   dplyr::select(Date, Country, Case_Type, Cases, Cases_100k)
 
 plot_1 <- ggts_logscale(data, y = Cases) + 
-  scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
+  scale_y_continuous(breaks = log10(labels_scale), labels = labels_scale) +
   labs(title = "Cumulative Cases") +
   geom_line(size = 1) +
   facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
@@ -73,7 +74,7 @@ plot_1 <- ggts_logscale(data, y = Cases) +
 
 ##  plot per 100,000 inhabitants
 plot_2 <- ggts_logscale(data, x = Date, y = Cases_100k) + 
-  scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
+  scale_y_continuous(breaks = log10(labels_scale), labels = labels_scale) +
   labs(title = "Cumulative Cases / 100k Inhabitants") +
   geom_line(size = 1) +
   facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
@@ -117,7 +118,7 @@ Column
 ```{r plot daily log10scale w/o date filter, fig.width = 14, fig.asp = 0.8}
 
 # logscale plot w/o date filter
-data <- corona_data %>% ungroup() %>% group_by(Case_Type) %>% 
+data <- corona_data %>% # ungroup() %>% group_by(Case_Type) %>% 
   dplyr::filter(Country %in% compare_countries[c(2:4, 7:10)] & 
                   Mean_Daily_Cases_100k > 0.01) %>% 
   dplyr::select(Date, Country, Case_Type, 
@@ -125,7 +126,7 @@ data <- corona_data %>% ungroup() %>% group_by(Case_Type) %>%
 
 plot_1 <- ggts_logscale(data, y = Mean_Daily_Cases) +
   geom_line(size = 1) +
-  scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
+  scale_y_continuous(breaks = log10(labels_scale), labels = labels_scale) +
   labs(title = "Mean_Daily Cases") +
   facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
              strip.position = "left")
@@ -133,7 +134,7 @@ plot_1 <- ggts_logscale(data, y = Mean_Daily_Cases) +
 ##  plot per 100,000 inhabitants
 plot_2 <- ggts_logscale(data, x = Date, y = Mean_Daily_Cases_100k) + 
   geom_line(size = 1) +
-  scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
+  scale_y_continuous(breaks = log10(labels_scale), labels = labels_scale) +
   labs(title = "Mean_Daily Cases / 100k Inhabitants") +
   facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
              strip.position = "left") 
@@ -195,26 +196,19 @@ selected countries: **`r compare_countries`** and **World** in total
 ### `r country_select` - Trend with Forecast on a linear scale
 
 
-```{r corona tsibble range_reg_short}
+```{r corona range_reg_long}
 
+# # provide tsbl of range_reg_short for linear regression of log data
+# corona_range_reg_short <- corona_data %>% 
+#   group_by(Case_Type) %>% 
+#   dplyr::filter(Country %in% c("World", compare_countries) & 
+#            Date >= last_date - range_reg_short + 1) %>% 
+#            # Case_Type != "Recovered" & Cases >= 10) %>% 
+#   dplyr::select(Date, Country, Case_Type, Cases)
 
-# provide tsbl of range_reg_short for linear regression of log data
-corona_range_reg_short_tsbl <- corona_data %>% 
-  group_by(Case_Type) %>% 
-  dplyr::filter(Country %in% c("World", compare_countries) & 
-           Date >= last_date - range_reg_short + 1) %>% 
-           # Case_Type != "Recovered" & Cases >= 10) %>% 
-  dplyr::select(Date, Country, Case_Type, Cases)
-
-
-
-```
-
-```{r corona tsibble range_reg_long}
 
 # provide tsbl of range_reg_long for linear regression of daily log data
-
-corona_range_reg_long_tsbl <- corona_data %>% 
+corona_range_reg_long <- corona_data %>% 
   group_by(Case_Type) %>% 
   dplyr::filter(Country %in% c("World", compare_countries) & 
            Date >= last_date + 1 - range_reg_long) 
@@ -225,14 +219,14 @@ corona_range_reg_long_tsbl <- corona_data %>%
 ```{r example, fig.width = 10, fig.height = 5}
 
 
-fit_corona <- corona_range_reg_long_tsbl %>%  
+fit_corona <- corona_range_reg_long %>%  
   model(TSLM(log(Mean_Daily_Cases) ~ Date)) 
 fc_corona <- fit_corona %>% 
   fabletools::forecast(h = "14 days") 
 
 fc_corona %>%  
   dplyr::filter(Country == country_select) %>% 
-  autoplot(corona_range_reg_long_tsbl) +
+  autoplot(corona_range_reg_long) +
   ggtitle(paste(country_select, "- Cases and 14-days Forecast (linear y-scale)"),
           subtitle = paste(
             "Forecast is based on regression of past ",
@@ -247,7 +241,7 @@ fc_corona %>%
 ```
 
 
-### Forecast Plot - next `r range_forcast` days {data-height=150}
+### Forecast Plot - next `r range_fc_long` days {data-height=150}
 
 The plot shows the daily cases forecast increase in case of unchecked 
 exponential growth. 
@@ -266,8 +260,8 @@ Column {data-width=600}
 
 # gg_plot <- ggts_logscale(corona_data_range_reg)  +
 #   geom_smooth(method="lm", aes(col = Country), lty = "dashed", se=FALSE)
-gg_plot <- ggts_logscale(corona_range_reg_long_tsbl, y = Mean_Daily_Cases)  +
-  geom_smooth(method="lm", aes(col = Country), lty = "dashed", se=FALSE)
+gg_plot <- ggts_logscale(corona_range_reg_long, y = Mean_Daily_Cases)  +
+  geom_smooth(method="lm", aes(col = Country), lty = "dashed", se=FALSE) 
   
 gg_plot +
   scale_y_continuous(breaks = log10(labels_scale), label = labels_scale) +
@@ -344,10 +338,9 @@ Column
 
 ```{r daily forecast linear model, fig.asp = fig_asp_trend}
 
-forecast_range <- 7
-forecast_days <- paste(forecast_range, "days")
+forecast_days <- paste(range_fc_short, "days")
 
-fit_daily_corona <- corona_range_reg_long_tsbl %>%
+fit_daily_corona <- corona_range_reg_long %>%
   group_by(Case_Type) %>% 
   model(Exp_Growth = TSLM(log(Mean_Daily_Cases) ~ Date),
         Linear_Growth = TSLM(Mean_Daily_Cases ~ Date)) 
@@ -357,10 +350,10 @@ fc_daily_corona <- fit_daily_corona %>%
 
 fc_daily_corona %>%  
   dplyr::filter(Country == country_select) %>% 
-  autoplot(corona_range_reg_long_tsbl) +
+  autoplot(corona_range_reg_long) +
   labs(title = paste(
     country_select, " - Forecast of Mean Daily Cases for the next ", 
-    forecast_range, "-days"),
+    range_fc_short, "-days"),
     subtitle = paste(
       "Forecast is based on regression of past ",
       range_reg_long, " days")) +
@@ -375,7 +368,7 @@ fc_daily_corona %>%
 
 ```{r daily forecast exp growth, fig.asp = fig_asp_trend}
 
-fit_cum_corona <- corona_range_reg_long_tsbl %>%
+fit_cum_corona <- corona_range_reg_long %>%
   group_by(Case_Type) %>% 
   model(Exp_Growth = TSLM(log(Cases) ~ Date),
         Linear_Growth = TSLM(Cases ~ Date)) 
@@ -387,10 +380,10 @@ fc_cum_corona <- fit_cum_corona %>%
 fc_cum_corona %>%  
   
   dplyr::filter(Country == country_select) %>% 
-  autoplot(corona_range_reg_long_tsbl) +
+  autoplot(corona_range_reg_long) +
   labs(title = paste(
     country_select, " - Forecast of Cumulative Cases for the next ", 
-    forecast_range, "-days"),
+    range_fc_short, "-days"),
     subtitle = paste(
       "Forecast is based on regression of past ",
       range_reg_long, " days")) +

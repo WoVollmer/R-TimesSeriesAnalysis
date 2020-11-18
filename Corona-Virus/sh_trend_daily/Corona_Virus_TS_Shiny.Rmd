@@ -13,26 +13,11 @@ runtime: shiny
 knitr::opts_chunk$set(eval = TRUE, echo = FALSE, warning = FALSE,
                       message = FALSE, fig.width = 7, fig.asp = 0.618)
 
-library(flexdashboard)
 library(tidyverse)
-library(magrittr)
-library(lubridate)
-library(slider) # for rolling analysis using window functions
-library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages
-library(slider) # sliding window functions - rolling averages, cumulative sums
-library(DT)      # R interface to the JavaScript library DataTables
-library(patchwork) # package for composing plots
-           # https://www.data-imaginist.com/2019/patch-it-up-and-send-it-out/
-# library(gghighlight)
-# # https://cran.r-project.org/web/packages/gghighlight/vignettes/gghighlight.html
-# # library(gridExtra)
-# # library(janitor)
-# library(plotly)
-library(highcharter)
 library(dygraphs)  # R interface to the dygraphs JavaScript charting library
-library(checkmate) # to provide informative error messages
-library(pkgTS) # TimeSeries Funcstion - own R package on GitHub
-               # devtools::install_github("WoVollmer/pkgTS")
+library(shiny)
+library(pkgTS)     # TimeSeries Functions - own R package on GitHub
+                   # devtools::install_github("WoVollmer/pkgTS")
 
 ```
 
@@ -56,7 +41,6 @@ library(pkgTS) # TimeSeries Funcstion - own R package on GitHub
 # rm(list=ls()) # deletes all existing objects / variables !!
 # Prog.Start <- Sys.time()
 
-
 theme_replace(
   plot.title = element_text(
     hjust = 0.5, face = "bold.italic", color = "darkcyan", size = 12),
@@ -66,31 +50,6 @@ theme_replace(
 x_axis_theme <- element_text(size = 14)
 ```
 
-
-```{r settings}
-device <- "desktop" # "notebook"  # to define setwd() and data path
-# defined as params  metadata in YAML header
-# device <- params$device
-
-compare_countries <- c("Austria", "France", "Germany", "Italy", "India",
-                       "South Korea", "Spain",  "United States of America")
-countries <- c("China", compare_countries)
-countries_exp_growth <- c("World", "China", "Austria", "France", "Germany", "Italy", 
-                       "South Korea", "Spain",  "United States of America")
-country_select <- "Germany"
-
-span <- 7 #  for rolling mean over 7 days
-q <- floor(span/2) # since 2q +1 = span !
-
-range_reg <- 7   # important - no Cases value = 0 are allowed => log(0) = inf !
-# changed from 9 -> 7 days, 
-# but whole week is necessary to get rid of weekly fluctuations
-range_forcast <- 14  # 14days forecast => unclass(last_date + 1 + range_forcast -1)
-range_daily_reg <- 21  # one week is to short, confidence level to large !!
-range_cfr <- 14  # 14days cfr past period length
-lag_n <- 11  # average confirmed lag - for all countries
-
-```
 
 ```{r path, eval = FALSE}
 
@@ -152,8 +111,6 @@ shinyAppDir(
 
 
 ```{r  Time Series Diagram Worldwide, fig.width = fig_width_trend, fig.asp = fig_asp_trend}
-
-library(shiny)
 
 shinyApp(
   
@@ -311,7 +268,8 @@ shinyApp(
       
       # change tibble in xts object
       index <- data_repronum$Date
-      data_repronum  %<>% select(-Country, -Date, -repronum.se) 
+      data_repronum  <- data_repronum %>% 
+        select(-Country, -Date, -repronum.se) 
       
       data_xts <- xts::xts(data_repronum, order.by = index)
       
