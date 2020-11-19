@@ -13,17 +13,21 @@ params:
 ---
 
 
-Doubling Time / Forecast Accuracy {data-navmenu="Forecast" #doubling}
-=====================================
-
-***
-***
+```{r config with rds data, child = 'Corona_Virus_config.Rmd', eval = FALSE}
+```
 
 ```{r}
 
 fig_asp_trend <- 0.35 # aspect ratio for trend plots
 
 ```
+
+
+Doubling Time / Forecast Accuracy {data-navmenu="Forecast" #doubling}
+=====================================
+
+***
+***
 
 ```{r corona range_reg_long for forecast}
 
@@ -415,18 +419,29 @@ plot_deaths_forecast
 ```
 
 
-### Case Fatality Rate (CFR) Trend  {data-height=200}
+### Case Fatality Rate (CFR in %) - Trend as of mid March (the first deaths occur) {data-height=250}
 
-```{r}
-corona_data_wide %>% 
-  select(Country, Date, contains("CFR")) %>% 
-  dplyr::filter(Country %in% countries_to_forecast & 
-                  Date >= "2020-03-01") %>% 
-  ggplot(aes(x = Date, y = CFR_past_period, col = Country)) + 
-  geom_line() + ylim(0, 10) +
-  theme(legend.position = "bottom")
+```{r plot CFR_past_period and CFR_total}
+
+data <- corona_data_wide %>% 
+  as_tibble() %>%  # gghighlight() does not work with a tsibble
+  dplyr::filter(Country %in% countries_to_forecast & Date >= "2020-03-15")
+
+p_templ <- ggplot2::ggplot(data, aes(Date, col = Country)) +
+  ylab("")
+
+p1 <- p_templ %+% geom_line(aes(y = CFR_past_period)) +
+  ylim(0, 10) +
+  gghighlight(label_params = list(alpha = 0.8)) +
+  ggtitle(paste("CFR past period (in %) with", lag_n, "lag-days"))
+p2 <- p_templ %+% geom_line(aes(y = CFR_total)) +
+  ylim(0, 15) + 
+  gghighlight(label_params = list(alpha = 0.8)) +
+  ggtitle(paste("CFR total (in %) with", lag_n, "lag-days"))
+
+p1 / p2
+
 ```
-
 
 Column {data-width=600}
 -------------------------------------
