@@ -52,57 +52,46 @@ library(dygraphs)  # R interface to the dygraphs JavaScript charting library
 library(checkmate) # to provide informative error messages
 library(pkgTS) # TimeSeries Funcstion - own R package on GitHub
                # devtools::install_github("WoVollmer/pkgTS")
-
+               # provides function files
+               # - ggts_corona.R # ggplot2 time series corona functions 
+               # - uts_corona.R  # utility time series corona functions
 ```
 
-```{r setwd change, eval = FALSE}
+```{r setwd change, eval = TRUE}
 
-# knit: changes working dir => path of *.RMD file => setwd() not needed !
-# R code run: RStudio project R_TimeSeriesAnalysis needs 
-# relative working dir change (eval = FALSE needed for knitr runs!!) 
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+# setwd() not needed for knit run: changes working dir => path of *.RMD file 
+# setwd() needed for R code run for relative source() paths
 
-setwd("./Corona-Virus/") 
+source("./Corona_raw_data.R") # provides function to read and process the 
+      # raw time series data of the John Hopkins University Corona Hopkins
+      # reads and adds the UN population data from "./world_population_un.RDS"
 
 ```
 
 ```{r data path desktop vs. notebook, eval = TRUE}
-# device <- "desktop" # "notebook"  # to define setwd() and data path
+# device <- "desktop" # "notebook"  # to define raw data data path
 # defined as params  metadata in YAML header
 device <- params$device
 
-gen_from_raw_data <- TRUE
+gen_from_raw_data <- TRUE 
 
 if (device == "desktop") {
   data_path <- 
     "D:/Wolfgang/WoDocs/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
-  setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
 } else if (device == "notebook") {
   data_path <- 
     "C:/Wolfgang/Programs-R/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
   # attention: for "notebook" & "linux" TimesSer.. (Time + plural-s) is needed
   #                       (whyever) not TimeSer..
-  setwd("C:/Wolfgang/Programs-R/R-TimesSeriesAnalysis/Corona-Virus")
 } else if (device == "linux") {
   data_path <- 
     "/home/wolfgang-ubuntu/GitHub/COVID-19/csse_covid_19_data/csse_covid_19_time_series"
-    setwd("/home/wolfgang-ubuntu/Programs-R/R-TimesSeriesAnalysis/Corona-Virus")
 } else {
   stop("no valid device outlined")
 }
 
 ```
-
-
-```{r source function and population data}
-# source function ggts_corona.R and uts_corona.R 
-#                            - if not in package has to come after setwd()
-# sources are part of library(pkgTS)
-#     all needed function files via library(pgkTS)
-#     - ggts_corona.R # ggplot2 functions for time series plots
-#     - uts_corona.R  # utility functions for corona analysis
-
-```
-
 
 
 ```{r initialization, eval = TRUE, include = FALSE}
@@ -159,7 +148,6 @@ lag_n <- 12  # average lag for confirmed -> death - for all countries
 
 ```{r read hopkins raw data and process, eval = gen_from_raw_data}
 
-source("./Corona_raw_data.R")
 corona_data <- read_and_process_raw_data(data_path, eu = countries_eu)
 
 # add country population numbers and rolling mean to data
@@ -172,10 +160,8 @@ corona_data <- add_popul_rolling_mean(corona_data)
 if (gen_from_raw_data) {
   saveRDS(corona_data, "./corona_data.RDS")
 } else {
-  corona_data <- readRDS("corona_data.RDS")
+  corona_data <- readRDS("./corona_data.RDS")
 }
-
-# corona_data <- readRDS("corona_data.RDS")
 
 first_date <- min(corona_data$Date)
 last_date <- max(corona_data$Date)
