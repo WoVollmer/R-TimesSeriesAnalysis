@@ -40,12 +40,19 @@ Following data/files are required to run R Markdown file
       - *time\_series\_covid19\_recovered\_global.csv* (note: not used
         since data not consistend and w/o real value add)
 
-### Files from this GitHub repository
+### GitHub repository files
 
 <https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Corona-Virus>
 
   - `Corona_Virus_TS_Dashboard.Rmd` R Markdown file for dashboard
     creation
+  - R Markdown child files for separate dashboard pages
+      - *`Page_world_map.Rmd`*
+      - *`Page_bar_chart.Rmdd`*
+      - *`Page_cumulative_and_daily_trend.Rmd`*
+      - *`Page_exp_linear_growth.Rmd`*
+  - `Corona_raw_data.R` provides function to read and process the time
+    series raw data of the John Hopkins University Corona Hopkins
   - `world_population_un.RDS` R object file providing UN world
     population data
   - `References_Corona.bib` Bibtex file providing the references with
@@ -65,7 +72,7 @@ analysis.
 
 R installation by
 
-  - `install.packages("devtools")`
+  - `library("devtools")`
   - `devtools::install_github("WoVollmer/pkgTS")`
 
 The used R function files are
