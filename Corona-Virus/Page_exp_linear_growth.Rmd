@@ -24,7 +24,7 @@ fig_asp_trend <- 0.35
 
 ```
 
-Cumulated Cases on log10 scale {data-navmenu="Exp Linear Growth"}
+Cumulated Cases on log10 / linear scale {data-navmenu="Exp Linear Growth"}
 =====================================
 
 ***
@@ -46,7 +46,7 @@ reduced slope of the cumulative cases again.
 Column
 -------------------------------------
 
-### Virus Spread - Cumulative Cases on log10 scale
+### Virus Spread - Cumulative Cases (absolute on log10 / relative on linear scale)
 
 ```{r}
 
@@ -56,42 +56,12 @@ labels_scale <- c(0.1, 0.5, 1, 5, 100, 1000, 5000, 10000, 50000, 100000,
 ```
 
 
-```{r plot log10scale w/o date filter, fig.width = 14, fig.asp = 0.8, eval = FALSE}
-
-# logscale plot w/o date filter
-# ylim min setting by Cases rsp. Cases_100k > ymin; ylim for facet not usable
-data <- corona_data %>% 
-  dplyr::filter(Country %in% compare_countries[c(2:4, 7:10)] & 
-                  Cases >= 100 & Cases_100k > 0.3) %>% 
-  dplyr::select(Date, Country, Case_Type, Cases, Cases_100k)
-
-plot_1 <- ggts_logscale(data, y = Cases) + 
-  scale_y_continuous(breaks = log10(labels_scale), labels = labels_scale) +
-  labs(title = "Cumulative Cases") +
-  geom_line(size = 1) +
-  facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
-             strip.position = "left")
-
-##  plot per 100,000 inhabitants
-plot_2 <- ggts_logscale(data, x = Date, y = Cases_100k) + 
-  scale_y_continuous(breaks = log10(labels_scale), labels = labels_scale) +
-  labs(title = "Cumulative Cases / 100k Inhabitants") +
-  geom_line(size = 1) +
-  facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
-             strip.position = "left") 
-
-
-plot_1 + plot_2 + 
-  plot_annotation(title = "Virus Spread - Selected Countries") +
-  plot_layout(guides = 'collect') & theme(legend.position = 'bottom')
-
-```
 
 ```{r plot log10scale w gghighlight, fig.width = 14, fig.asp = 0.8}
 
 data <- corona_data_wide %>% 
   as_tibble() %>%  # gghighlight() does not work with a tsibble
-  dplyr::filter(Country %in% compare_countries[c(2:4, 7:10)] & 
+  dplyr::filter(Country %in% compare_countries[c(1:4, 7:10)] & 
                   Deaths_100k > 0.2 & Mean_Daily_Deaths_100k > 0.01) 
 # min values definition required for log scale
 # even negative values are given (due to data corrections)
@@ -101,28 +71,36 @@ p_templ <- ggplot2::ggplot(data, aes(Date, col = Country)) +
   ylab("")
 
 p1 <- p_templ %+% geom_line(aes(y = log10(Confirmed)), size = 1) +
-  gghighlight(label_params = list(alpha = 0.8)) +
+  gghighlight(label_params = list(fill = "NA")) +
   ggtitle("Confirmed on log scale")
-p2 <- p_templ %+% geom_line(aes(y = log10(Conf_100k)), size = 1) +
-  gghighlight(label_params = list(alpha = 0.8)) +
-  ggtitle("Confirmed / 100k Inhabitant on log scale")
+# p2 <- p_templ %+% geom_line(aes(y = log10(Conf_100k)), size = 1) +
+#   gghighlight(label_params = list(fill = "NA")) +
+#   ggtitle("Confirmed / 100k Inhabitants on log scale")
+p2 <- p_templ %+% geom_line(aes(y = (Conf_100k)), size = 1) +
+  gghighlight(label_params = list(fill = "NA")) +
+  scale_y_continuous(breaks = waiver(), labels = waiver()) +
+  ggtitle("Confirmed / 100k Inhabitants on linear scale")
 p3 <- p_templ %+% geom_line(aes(y = log10(Deaths)), size = 1) +
-  gghighlight(label_params = list(alpha = 0.8)) +
+  gghighlight(label_params = list(fill = "NA")) +
   ggtitle("Deaths on log scale")
-p4 <- p_templ %+% geom_line(aes(y = log10(Deaths_100k)), size = 1) +
-  gghighlight(label_params = list(alpha = 0.8)) +
-  ggtitle("Deaths / 100k Inhabitants on log scale")
+# p4 <- p_templ %+% geom_line(aes(y = log10(Deaths_100k)), size = 1) +
+#   gghighlight(label_params = list(fill = "NA")) +
+#   ggtitle("Deaths / 100k Inhabitants on log scale")
+p4 <- p_templ %+% geom_line(aes(y = (Deaths_100k)), size = 1) +
+  gghighlight(label_params = list(fill = "NA")) +
+  scale_y_continuous(breaks = waiver(), labels = waiver()) +
+  ggtitle("Deaths / 100k Inhabitants on linear scale")
 
 
 (p1 + p2) / (p3 + p4) +
   plot_annotation(title = 
                     "Virus Spread - Cumulative Cases for Selected Countries") +
-  plot_layout(guides = 'collect') & theme(legend.position = 'bottom')
+  plot_layout(guides = 'collect') & theme(legend.position = "")
 
 ```
 
 
-Daily Cases on log10 scale {data-navmenu="Exp Linear Growth"}
+Daily Cases on log10 / linear scale {data-navmenu="Exp Linear Growth"}
 =====================================
 
 ***
@@ -146,58 +124,36 @@ the slope becomes negative.
 Column
 -------------------------------------
 
-### Virus Spread - Daily Cases on log10 scale
+### Virus Spread - Daily Cases (absolute on log10 / relative on linear scale)
 
-```{r plot daily log10scale w/o date filter, fig.width = 14, fig.asp = 0.8, eval = FALSE}
-
-# logscale plot w/o date filter
-data <- corona_data %>% # ungroup() %>% group_by(Case_Type) %>% 
-  dplyr::filter(Country %in% compare_countries[c(2:4, 7:10)] & 
-                  Mean_Daily_Cases_100k > 0.01) %>% 
-  dplyr::select(Date, Country, Case_Type, 
-                Mean_Daily_Cases, Mean_Daily_Cases_100k)
-
-plot_1 <- ggts_logscale(data, y = Mean_Daily_Cases) +
-  geom_line(size = 1) +
-  scale_y_continuous(breaks = log10(labels_scale), labels = labels_scale) +
-  labs(title = "Mean_Daily Cases") +
-  facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
-             strip.position = "left")
-
-##  plot per 100,000 inhabitants
-plot_2 <- ggts_logscale(data, x = Date, y = Mean_Daily_Cases_100k) + 
-  geom_line(size = 1) +
-  scale_y_continuous(breaks = log10(labels_scale), labels = labels_scale) +
-  labs(title = "Mean_Daily Cases / 100k Inhabitants") +
-  facet_wrap(vars(Case_Type), ncol = 1, scales = "free_y",
-             strip.position = "left") 
-
-plot_1 + plot_2 + 
-  plot_annotation(title = "Virus Spread - Selected Countries") +
-  plot_layout(guides = 'collect') & theme(legend.position = 'bottom')
-
-```
 
 ```{r plot daily log10scale w gghighlight, fig.width = 14, fig.asp = 0.8}
 
 p1 <- p_templ %+% geom_line(aes(y = log10(Mean_Daily_Conf)), size = 1) +
-  gghighlight(label_params = list(alpha = 0.8)) +
+  gghighlight(label_params = list(fill = "NA")) +
   ggtitle("Mean Daily Confirmed on log scale")
-p2 <- p_templ %+% geom_line(aes(y = log10(Mean_Daily_Conf_100k)), size = 1) +
-  gghighlight(label_params = list(alpha = 0.8)) +
-  ggtitle("Mean Daily Conf / 100k Inhabitant on log scale")
+# p2 <- p_templ %+% geom_line(aes(y = log10(Mean_Daily_Conf_100k)), size = 1) +
+#   gghighlight(label_params = list(fill = "NA")) +
+#   ggtitle("Mean Daily Conf / 100k Inhabitants on log scale")
+p2 <- p_templ %+% geom_line(aes(y = (Mean_Daily_Conf_100k)), size = 1) +
+  gghighlight(label_params = list(fill = "NA")) +
+  scale_y_continuous(breaks = waiver(), labels = waiver()) +
+  ggtitle("Mean Daily Conf / 100k Inhabitants on linear scale")
 p3 <- p_templ %+% geom_line(aes(y = log10(Mean_Daily_Deaths)), size = 1) +
-  gghighlight(label_params = list(alpha = 0.8)) +
+  gghighlight(label_params = list(fill = "NA")) +
   ggtitle("Mean Daily Deaths on log scale")
-p4 <- p_templ %+% geom_line(aes(y = log10(Mean_Daily_Deaths_100k)), size = 1) +
-  gghighlight(label_params = list(alpha = 0.8)) +
-  ggtitle("Mean Daily Deaths / 100k Inhabitants on log scale")
-
+# p4 <- p_templ %+% geom_line(aes(y = log10(Mean_Daily_Deaths_100k)), size = 1) +
+#   gghighlight(label_params = list(fill = "NA")) +
+#   ggtitle("Mean Daily Deaths / 100k Inhabitants on log scale")
+p4 <- p_templ %+% geom_line(aes(y = (Mean_Daily_Deaths_100k)), size = 1) +
+  gghighlight(label_params = list(fill = "NA")) +
+  scale_y_continuous(breaks = waiver(), labels = waiver()) +
+  ggtitle("Mean Daily Deaths / 100k Inhabitants on linear scale")
 
 (p1 + p2) / (p3 + p4) +
   plot_annotation(title = 
                     "Virus Spread - Mean Daily Cases for Selected Countries") +
-  plot_layout(guides = 'collect') & theme(legend.position = 'bottom')
+  plot_layout(guides = 'collect') & theme(legend.position = "")
 
 ```
 
@@ -283,10 +239,11 @@ fc_corona <- fit_corona %>%
 fc_corona %>%  
   dplyr::filter(Country == country_select) %>% 
   autoplot(corona_range_reg_long) +
-  ggtitle(paste(country_select, "- Cases and 14-days Forecast (linear y-scale)"),
+  ggtitle(paste0(country_select, " - ", range_fc_long,
+                 "-days Forecast of expected Cases (linear scale)"),
           subtitle = paste(
-            "Forecast is based on regression of past ",
-            range_reg_long, " days")) +
+            "Forecast is based on regression over the past",
+            range_reg_long, "days")) +
   labs(x = "Days") +
   # scale_y_log10() +
   scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
@@ -297,7 +254,7 @@ fc_corona %>%
 ```
 
 
-### Forecast Plot - next `r range_fc_long` days {data-height=150}
+### `r range_fc_long`-day Forecast plot of expected Cases {data-height=150}
 
 The plot shows the daily cases forecast increase in case of unchecked 
 exponential growth. 
@@ -334,13 +291,13 @@ p_templ <- p_templ %+% data
 p1 <- p_templ %+% aes(y = log10(Mean_Daily_Conf)) +
   geom_line( size = 1) +
   geom_smooth(method="lm", aes(col = Country), lty = "dashed", se=FALSE) +
-  gghighlight(label_params = list(segment.alpha = 0.8)) +
+  gghighlight(label_params = list(fill = "NA")) +
   ylab("") +
   ggtitle("Mean Daily Confirmed on log scale")
 p3 <- p_templ %+% aes(y = log10(Mean_Daily_Deaths)) +
   geom_line(size = 1) +
   geom_smooth(method="lm", aes(col = Country), lty = "dashed", se=FALSE) +
-  gghighlight(label_params = list(alpha = 0.8)) +
+  gghighlight(label_params = list(fill = "NA")) +
   ylab("") +
   ggtitle("Mean Daily Deaths on log scale")
 
@@ -416,7 +373,8 @@ Note: for case numbers of German federal states see [[@RKI2020]](#bib).
 
 Column
 -------------------------------------
-### Daily Rolling Mean Cases - Comparison Exponential and Linear Growth
+### Comparison Exponential and Linear Growth
+
 
 ```{r daily forecast linear model, fig.asp = fig_asp_trend}
 
@@ -430,15 +388,10 @@ fit_daily_corona <- corona_range_reg_long %>%
 fc_daily_corona <- fit_daily_corona %>% 
   fabletools::forecast(h = forecast_days) 
 
-fc_daily_corona %>%  
+p1 <- fc_daily_corona %>%  
   dplyr::filter(Country == country_select) %>% 
   autoplot(corona_range_reg_long) +
-  labs(title = paste(
-    country_select, " - Forecast of Mean Daily Cases for the next ", 
-    range_fc_short, "-days"),
-    subtitle = paste(
-      "Forecast is based on regression of past ",
-      range_reg_long, " days")) +
+  labs(title = "Expected Mean Daily Cases") +
   scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
   facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
              strip.position = "left")
@@ -446,9 +399,9 @@ fc_daily_corona %>%
 ```
 
 
-### Cumulative Cases - Comparison Exponential and Linear Growth
 
-```{r daily forecast exp growth, fig.asp = fig_asp_trend}
+
+```{r daily forecast exp growth, fig.asp = 1}
 
 fit_cum_corona <- corona_range_reg_long %>%
   group_by(Case_Type) %>% 
@@ -459,19 +412,21 @@ fc_cum_corona <- fit_cum_corona %>%
   fabletools::forecast(h = forecast_days) 
 
 
-fc_cum_corona %>%  
-  
+p2 <- fc_cum_corona %>%  
   dplyr::filter(Country == country_select) %>% 
   autoplot(corona_range_reg_long) +
-  labs(title = paste(
-    country_select, " - Forecast of Cumulative Cases for the next ", 
-    range_fc_short, "-days"),
-    subtitle = paste(
-      "Forecast is based on regression of past ",
-      range_reg_long, " days")) +
+  labs(title = "Expected cumulative Cases") +
   scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
   facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
              strip.position = "left")
+
+p1 / p2 +
+  plot_annotation(title = paste0(
+    country_select, " - ", range_fc_short, 
+    "-day Forecast with Exponential rsp. Linear Growth"),
+    subtitle = paste("Forecast is based on regression over the previous",
+                     range_reg_long, "days")) +
+  plot_layout(guides = 'collect') & theme(legend.position = 'bottom')
 
 ```
 

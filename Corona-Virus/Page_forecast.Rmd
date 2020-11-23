@@ -133,7 +133,7 @@ of contacts of an infectious person per day, the probability of transmission upo
 With the current uncertainty of the average duration of the infectivity duration, $R_0$ can therefore be estimated from the doubling time only to a very limited extent.
 See also [[@CMMID2020]](#bib).
 
-### Germany - Forecast Daily Rolling Mean Cases based on past `r range_reg_long` days {data-height=225}
+### Germany - Forecast Mean Daily Cases based on regression of past `r range_reg_long` days {data-height=225}
 
 
 ```{r forecast daily exp model, fig.asp = fig_asp_trend}
@@ -142,12 +142,12 @@ See also [[@CMMID2020]](#bib).
 fc_corona_short %>%  
   dplyr::filter(Country == country_select & .model == "Exp_Growth") %>% 
   autoplot(corona_range_reg_long) +
-  labs(title = paste(
-    country_select, " - Forecast of Mean Daily Cases for the next ", 
-    range_fc_short, "-days"),
+  labs(title = paste0(
+    country_select, " - ", range_fc_short, 
+    "-day Forecast of expected Mean Daily Cases"),
     subtitle = paste(
-      "Forecast is based on regression of past ",
-      range_reg_long, " days")) +
+      "Forecast is based on regression over the past",
+      range_reg_long, "days")) +
   scale_x_date(date_labels = "%b %d", date_breaks = "7 days") +
   facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
              strip.position = "left")
@@ -178,7 +178,7 @@ corona_data_total <- corona_data %>%
 
 ```
 
-### Germany - Forecast Accuracy Check Daily Rolling Mean Cases for the past `r range_fc_short` days {data-height=225}
+### Germany - Forecast accuracy check of expected Mean Daily Cases for the past `r range_fc_short` days {data-height=225}
 
 ```{r daily forecast accuracy, fig.asp = fig_asp_trend}
 
@@ -196,9 +196,10 @@ fc_corona_train <- fit_corona_train %>%
 fc_corona_train %>%
   autoplot(corona_data_total) +
   labs(title = paste(
-    country_select, "- Forecast based on regression of previous",
-    range_reg_long, "days"),
-    subtitle = "Forecast (blue line) vs. Data (black line)") +
+    country_select, 
+    "- Forecast is based on regression over the previous", 
+    range_reg_long, "days"), 
+    subtitle = "Forecasted (blue line) vs. actual Mean Daily Cases (black line)") +
   facet_wrap(~ Case_Type, ncol = 2,  scales = "free_y",
              strip.position = "left") +
   scale_x_date(date_labels = "%b %d", date_breaks = "7 days")
@@ -396,7 +397,7 @@ for (country in countries_to_forecast) {
                dplyr::filter(Date >= last_date - 20)) + 
     labs(y = "Daily Deaths",
          subtitle = 
-           paste(country, "w/ avg. Confirmed -> Death:", lag_days, "lag-days"))
+           paste(country, "- Mean Confirmed -> Death:", lag_days, "lag-days"))
   save_plot_fit[[country]] <- plot_fit
   country_table_new <- c(Country = country, 
                          lag_Confirmed = lag_days, 
@@ -411,7 +412,7 @@ for (country in countries_to_forecast) {
 plot_deaths_forecast <- 
   save_plot_fit$Germany / save_plot_fit$Italy / save_plot_fit$Spain + 
   plot_annotation(
-    title = "Forecast Mean Daily Deaths for next 10 days") +
+    title = paste0(lag_days -2, "-day Forecast of Mean Daily Deaths")) +
   plot_layout(guides = 'collect') &
   theme(legend.position='bottom')
 plot_deaths_forecast 

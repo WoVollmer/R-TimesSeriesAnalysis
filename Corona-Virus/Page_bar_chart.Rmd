@@ -301,7 +301,8 @@ title <- paste("Case Fatality Rate (in %) - assuming a time lag of", lag_n,
 ```{r}
 
 DT::datatable(corona_data_last_wide %>% 
-                select(Country,  Date, CFR_past_period, CFR_total, CFR_unlagged),  
+                dplyr::select(Country, Date, 
+                              CFR_past_period, CFR_total, CFR_unlagged),  
               options = list(pageLength = 25, scrollY = "300px"))
 
 ```
@@ -312,7 +313,8 @@ DT::datatable(corona_data_last_wide %>%
 ```{r CFR Table selected countries}
 
 knitr::kable(corona_data_last_wide %>% 
-               select(Country,  Date, contains("CFR")) %>% 
+               dplyr::select(Country, Date, 
+                             CFR_past_period, CFR_total, CFR_unlagged) %>% 
                dplyr::filter(Country %in% compare_countries),
              digits = 2)
 
