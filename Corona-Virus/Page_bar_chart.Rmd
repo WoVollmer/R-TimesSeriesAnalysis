@@ -13,7 +13,7 @@ params:
 ---
 
 
-```{r config with rds data, child = 'Corona_Virus_config.Rmd', eval = TRUE}
+```{r config with rds data, child = 'Corona_Virus_config.Rmd', eval=FALSE}
 ```
 
 
