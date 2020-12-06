@@ -12,7 +12,12 @@ params:
   device: "desktop"
 ---
 
-Bar Chart {data-navmenu="Bar Chart"}
+
+```{r config with rds data, child = 'Corona_Virus_config.Rmd', eval = TRUE}
+```
+
+
+Bar Chart / Cumulative {data-navmenu="Bar Chart"}
 =====================================
 
 ***
@@ -94,7 +99,7 @@ DT::datatable(corona_last_abs_wide,
 ```
 
 
-Bar Chart / Inhabitants {data-navmenu="Bar Chart"}
+Bar Chart / Cum/100k {data-navmenu="Bar Chart"}
 =====================================
 
 ***
@@ -152,7 +157,7 @@ DT::datatable(corona_last_rel_wide,
 
 ```
 
-Bar Chart / Hot Spots {data-navmenu="Bar Chart"}
+Bar Chart / Daily/100k {data-navmenu="Bar Chart"}
 =====================================
 
 ***

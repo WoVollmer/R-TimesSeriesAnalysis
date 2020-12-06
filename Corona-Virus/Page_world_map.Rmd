@@ -12,8 +12,11 @@ params:
   device: "desktop"
 ---
 
+```{r config with rds data, child = 'Corona_Virus_config.Rmd', eval = FALSE}
+```
 
-World Map {data-navmenu="World Map"}
+
+World Map / Cumulative {data-navmenu="World Map"}
 =====================================  
 
 ***
@@ -65,7 +68,7 @@ hc_world_map_plot(
 ```
 
 
-World Map / Inhabitants {data-navmenu="World Map"}
+World Map / Cum/100k {data-navmenu="World Map"}
 =====================================
 
 ***
@@ -102,7 +105,7 @@ hc_world_map_plot(
 
 
 
-World Map / Hot Spots {data-navmenu="World Map"}
+World Map / Daily/100k {data-navmenu="World Map"}
 =====================================
 
 ***

@@ -427,20 +427,25 @@ plot_deaths_forecast
 data <- corona_data_wide %>% 
   as_tibble() %>%  # gghighlight() does not work with a tsibble
   dplyr::filter(Country %in% countries_to_forecast & Date >= "2020-03-15")
-
+max_y <- 1.1 * data %>% 
+  filter(Date >= last_date - 12 * 7) %$% 
+  max(CFR_past_period)
 p_templ <- ggplot2::ggplot(data, aes(Date, col = Country)) +
   ylab("")
 
 p1 <- p_templ %+% geom_line(aes(y = CFR_past_period)) +
-  ylim(0, 10) +
-  gghighlight(label_params = list(alpha = 0.8)) +
-  ggtitle(paste("CFR past period (in %) with", lag_n, "lag-days"))
+  ylim(0, max_y) +
+  xlim(last_date - 12 * 7, NA) +
+  gghighlight(label_params = list(fill = "NA")) +
+  ggtitle(paste("CFR past period (in %) with", lag_n, 
+                "lag-days (past 3 months)"))
 p2 <- p_templ %+% geom_line(aes(y = CFR_total)) +
   ylim(0, 15) + 
-  gghighlight(label_params = list(alpha = 0.8)) +
+  gghighlight(label_params = list(fill = "NA")) +
   ggtitle(paste("CFR total (in %) with", lag_n, "lag-days"))
 
 p1 / p2
+
 
 ```
 

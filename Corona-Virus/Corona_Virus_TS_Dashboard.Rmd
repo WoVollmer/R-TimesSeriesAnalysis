@@ -57,19 +57,25 @@ library(pkgTS) # TimeSeries Funcstion - own R package on GitHub
                # - uts_corona.R  # utility time series corona functions
 ```
 
-```{r setwd change, eval = TRUE}
+```{r setwd change, eval = FALSE}
+
+# note: only Rstudio Api => not running as Rscript batch file
+# Rscript -e "rmarkdown::render('Corona_Virus_TS_Dashboard.Rmd'))"
+# needs beforehand correct "cd" / "Set-Location"
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
-# setwd() not needed for knit run: changes working dir => path of *.RMD file 
-# setwd() needed for R code run for relative source() paths
-
-source("./Corona_raw_data.R") # provides function to read and process the 
-      # raw time series data of the John Hopkins University Corona Hopkins
-      # reads and adds the UN population data from "./world_population_un.RDS"
+# setwd() not needed for knit run: changes working dir to path of *.RMD file 
+# setwd() only needed for R code within R-Studio for relative source() paths
 
 ```
 
 ```{r data path desktop vs. notebook, eval = TRUE}
+#
+#
+source("./Corona_raw_data.R") # provides function to read and process the 
+      # time series raw data of the John Hopkins University Corona Hopkins
+      # reads and adds the UN population data from "./world_population_un.RDS"
+
 # device <- "desktop" # "notebook"  # to define raw data data path
 # defined as params  metadata in YAML header
 device <- params$device
@@ -274,15 +280,18 @@ The data are visualized on their Dashboard
 
 **Code Source**
 
-GitHub link for repository of 
+GitHub repository link for
 
-* *Corona_Virus_TS_Dashboard.Rmd* R Markdown source file
-    + *Page_world_map.Rmd* R Markdown child file
-    + *Page_bar_chart.Rmdd* R Markdown child file
-    + *Page_cumulative_and_daily_trend.Rmd* R Markdown child file
-    + *Page_exp_linear_growth.Rmd* R Markdown child file
-* *world_population_un.RDS* R object file with UN world population data
-* *References_Corona.bib* Bibtex file providing the references with the Bibtexkeys
+* `Corona_Virus_TS_Dashboard.Rmd` R Markdown file for dashboard creation
+* R Markdown child files for separate dashboard pages
+    + *`Page_world_map.Rmd`*
+    + *`Page_bar_chart.Rmdd`*
+    + *`Page_cumulative_and_daily_trend.Rmd`*
+    + *`Page_exp_linear_growth.Rmd`*
+* `Corona_raw_data.R` provides function to read and process the time series 
+raw data of the John Hopkins University Corona Hopkins
+* `world_population_un.RDS` R object file providing UN world population data
+* `References_Corona.bib` Bibtex file providing the references with the Bibtexkeys
 
 <https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Corona-Virus>
 

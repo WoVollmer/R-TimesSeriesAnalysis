@@ -13,6 +13,11 @@ params:
 ---
 
 
+
+```{r config with rds data, child = 'Corona_Virus_config.Rmd', eval = FALSE}
+```
+
+
 Cumulative and Daily Trend {data-orientation=rows data-navmenu="Cumulative and Daily Trend" }
 =====================================
 
@@ -22,7 +27,7 @@ Cumulative and Daily Trend {data-orientation=rows data-navmenu="Cumulative and D
 
 ```{r}
 
-fig_width_trend <- 10 # fig.width = fig_width_trend 7
+fig_width_trend <- 12 # fig.width = fig_width_trend 7
 fig_asp_trend <- 0.35 # aspect ratio for trend plots
 
 weeks <- 12
