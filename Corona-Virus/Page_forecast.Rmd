@@ -220,11 +220,16 @@ Column {data-width=400}
 
 The number of confirmed cases is an early predictor of the number of deaths.
 The number of today's deaths is already determined by the infections about by 
-$\sim19$ days ago or respectively by the confirmed cases about by $\sim11$ days
+$\sim19$ days ago or respectively by the confirmed cases about by $\sim12$ days
 ago [see Bar Chart - CFR](#cfr).
 
-The country specific case fatality rate (CFR, proportion of deaths from 
-confirmed cases) indicates the country specific testing rate and may depend on quality/capacity of hospitals. 
+The country-specific case fatality rate (CFR, proportion of deaths from 
+confirmed cases) and changes over time can be an indicator of different
+
+* test rates
+* infection penetration into vulnerable groups
+* average age of the population
+* quality/capacity of the health system. 
 
 Overall a rough conclusion on the country specific **underreporting rate** 
 (lack of diagnostic confirmation; proportion of all infected to confirmed cases)
