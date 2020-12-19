@@ -228,12 +228,15 @@ Column {data-width=300}
 
 ###
 
-```{r Top n Bar Chart CFR_past_period}
+```{r Top n Bar Chart CFR_mean_daily}
 
 # plot bar chart CFR Confirmed Mean / Deaths Mean
-abscissa <- "CFR_past_period"
+abscissa <- "CFR_mean_daily"
 title <- paste(abscissa, "- Case Fatality Rate (in %)")
-hc_bar_chart_country(corona_data_last_wide, y = abscissa, title = title, n = 15)
+hc_bar_chart_country(corona_data_last_wide  %>% 
+                       dplyr::filter(CFR_mean_daily != Inf),
+# filter mean deaths > 0 but mean_conf = 0 => x/0 = Inf
+                     y = abscissa, title = title, n = 15)
 
 ```
 
@@ -295,31 +298,32 @@ be country independent and only rough estimates exist (RKI: bottom of existing e
 
 ```{r CFR Table}
 
-title <- paste("Case Fatality Rate (in %) - assuming a time lag of", lag_n, 
-               "days between Confirmed => Death for",
-               "CFR_past_period (period of ", range_cfr, "days) and CFR_total")
+title <- paste("Case Fatality Rate (in %) - for CFR_mean_daily (mean of past", 
+               span, "days) and CFR_total assuming a mean time lag of", lag_n, 
+               "days between Confirmed => Death")
 
 ```
 
-### `r title` {data-height=430}
+### `r title` {data-height=350}
 
 ```{r}
 
+
 DT::datatable(corona_data_last_wide %>% 
-                dplyr::select(Country, Date, 
-                              CFR_past_period, CFR_total, CFR_unlagged),  
+              dplyr::select(Country, Date, 
+                              CFR_mean_daily, CFR_total, CFR_unlagged),  
               options = list(pageLength = 25, scrollY = "300px"))
 
 ```
 
-### Case Fatality Rate (in %) - selected countries {data-height=200}
+### Case Fatality Rate (in %) - selected countries {data-height=350}
 
 
 ```{r CFR Table selected countries}
 
 knitr::kable(corona_data_last_wide %>% 
                dplyr::select(Country, Date, 
-                             CFR_past_period, CFR_total, CFR_unlagged) %>% 
+                             CFR_mean_daily, CFR_total, CFR_unlagged) %>% 
                dplyr::filter(Country %in% compare_countries),
              digits = 2)
 

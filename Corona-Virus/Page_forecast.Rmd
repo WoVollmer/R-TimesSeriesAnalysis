@@ -420,32 +420,35 @@ plot_deaths_forecast
 ```
 
 
-### Case Fatality Rate (CFR in %) - Trend as of mid March (the first deaths occur) {data-height=250}
+### Case Fatality Rate mean daily (CFR in %, past 4 months) {data-height=250}
 
-```{r plot CFR_past_period and CFR_total}
+```{r plot CFR_mean_daily and CFR_total}
+
+cfr_weeks <- 16
+cfr_months <- cfr_weeks %/% 4
 
 data <- corona_data_wide %>% 
   as_tibble() %>%  # gghighlight() does not work with a tsibble
   dplyr::filter(Country %in% countries_to_forecast & Date >= "2020-03-15")
 max_y <- 1.1 * data %>% 
-  filter(Date >= last_date - 12 * 7) %$% 
-  max(CFR_past_period)
+  filter(Date >= last_date - cfr_weeks  * 7) %$% 
+  max(CFR_mean_daily)
 p_templ <- ggplot2::ggplot(data, aes(Date, col = Country)) +
   ylab("")
 
-p1 <- p_templ %+% geom_line(aes(y = CFR_past_period)) +
+p1 <- p_templ %+% geom_line(aes(y = CFR_mean_daily)) +
   ylim(0, max_y) +
-  xlim(last_date - 12 * 7, NA) +
+  xlim(last_date - cfr_weeks * 7, NA) +
   gghighlight(label_params = list(fill = "NA")) +
-  ggtitle(paste("CFR past period (in %) with", lag_n, 
-                "lag-days (past 3 months)"))
+  ggtitle(paste("CFR mean daily (in %) with", lag_n, 
+                "lag-days (past", cfr_months, "months)"))
 p2 <- p_templ %+% geom_line(aes(y = CFR_total)) +
   ylim(0, 15) + 
   gghighlight(label_params = list(fill = "NA")) +
   ggtitle(paste("CFR total (in %) with", lag_n, "lag-days"))
 
-p1 / p2
-
+# p1 / p2
+p1
 
 ```
 
@@ -473,7 +476,7 @@ Arima model fit:
 
 # `r coef(fit_best)$.model[1]`
 
-fit_best_germany  %>% 
+fit_best_germany  %>%  
   gg_tsresiduals() +
   labs(title = paste("Germany -  Forecast Residuals w/ Correlogram and Histogram"),
        subtitle = paste("Model: ARIMA w/ lagged predictor; lag_days:", lag_germany))

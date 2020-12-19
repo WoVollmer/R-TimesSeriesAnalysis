@@ -156,13 +156,13 @@ World Map / CFR {data-navmenu="World Map"}
 
 ###
 
-```{r World Map CFR_past_period}
+```{r World Map CFR_mean_daily}
 # see https://code.highcharts.com/mapdata/
 
-title <- paste("CFR_past_period", "- Case Fatality Rate (in %)")
+title <- paste("CFR_mean_daily", "- Case Fatality Rate (in %)")
 hc_world_map_plot(
   dplyr::filter(corona_data_last_wide, Country != "World"), 
-  value = "CFR_past_period", title = title)
+  value = "CFR_mean_daily", title = title)
 
 ```
 

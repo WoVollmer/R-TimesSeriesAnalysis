@@ -191,24 +191,33 @@ corona_data_wide <- uts_get_corona_data_wide(corona_data)
 ## `cfr_table` - calculate lagged Case Fatality Rate (CFR in %) ---------------
 #   calculation requires wide format only 
 #   assuming a time lag of `lag_n`-days (~12) between Confirmed => Death
-#   - CFR_past_period : of past range_cfr (=14) days
+#   ## - CFR_past_period : of past range_cfr (=14) days
+#   - CFR_mean_daily : of rolling mean daily (=7) days
 #        (=> lag by range_cfr+1 needed 
 #            to subtract last_day value - day before past period value)
 #   - CFR_total
 #   - CFR_unlagged (unlagged total)
 
-corona_data_wide <- corona_data_wide %>% 
-  mutate(confirmed_lag = lag(Confirmed, lag_n),
-         CFR_total = round(Deaths / confirmed_lag * 100, digits = 1),
-         CFR_unlagged = round(Deaths / Confirmed * 100, digits = 1)) %>% 
-  mutate(confirmed_lag_range_cfr = lag(confirmed_lag, range_cfr + 1),
-         deaths_lag_range_cfr = lag(Deaths, range_cfr + 1),
-         confirmed_past_period = confirmed_lag - confirmed_lag_range_cfr,
-         deaths_past_period = Deaths - deaths_lag_range_cfr,
-         CFR_past_period = round(
-           deaths_past_period / confirmed_past_period * 100, digits = 1))  %>% 
-  dplyr::select(!contains("_lag"), -confirmed_past_period, -deaths_past_period) 
+# corona_data_wide <- corona_data_wide %>% 
+#   mutate(confirmed_lag = lag(Confirmed, lag_n),
+#          CFR_total = round(Deaths / confirmed_lag * 100, digits = 1),
+#          CFR_unlagged = round(Deaths / Confirmed * 100, digits = 1)) %>% 
+#   mutate(confirmed_lag_range_cfr = lag(confirmed_lag, range_cfr + 1),
+#          deaths_lag_range_cfr = lag(Deaths, range_cfr + 1),
+#          confirmed_past_period = confirmed_lag - confirmed_lag_range_cfr,
+#          deaths_past_period = Deaths - deaths_lag_range_cfr,
+#          CFR_past_period = round(
+#            deaths_past_period / confirmed_past_period * 100, digits = 1))  %>% 
+#   dplyr::select(!contains("_lag"), -confirmed_past_period, -deaths_past_period) 
 
+corona_data_wide <- corona_data_wide %>%
+  mutate(confirmed_lag = lag(Confirmed, lag_n),
+    Mean_Daily_Conf_lag = lag(Mean_Daily_Conf, lag_n),
+         CFR_total = round(Deaths / confirmed_lag * 100, digits = 1),
+         CFR_unlagged = round(Deaths / Confirmed * 100, digits = 1)) %>%
+  mutate(CFR_mean_daily = round(
+           Mean_Daily_Deaths / Mean_Daily_Conf_lag * 100, digits = 1))  %>%
+  dplyr::select(!contains("_lag"))
 
 # used by world map and bar chart page
 corona_data_last_wide <- corona_data_wide %>%
@@ -222,9 +231,10 @@ corona_data_last_wide <- corona_data_wide %>%
 
 title_cum_100k <- "Cumulative Cases per 100,000 Inhabitants"
 title_mean_daily <- "Mean daily cases over the past seven days per 100,000 Inhabitants"
-title_cfr <- paste("Case Fatality Rate - CFR of past", range_cfr, 
-                "days and CFR_total assuming a time lag of", lag_n, 
-                "days between Confirmed => Death")
+title_cfr <- paste("Case Fatality Rate - CFR of mean daily (over past", 
+                   span, "days)",  
+                   "and CFR_total (cumulated) assuming a time lag of", lag_n, 
+                   "days between Confirmed => Death")
 
 ```
 
@@ -239,7 +249,7 @@ title_cfr <- paste("Case Fatality Rate - CFR of past", range_cfr,
 ```
 
 
-```{r Add Page_bar_chart, child = 'Page_bar_chart.Rmd'}
+```{r Add Page_bar_chart, child = 'Page_bar_chart.Rmd', eval=TRUE}
 ```
 
 

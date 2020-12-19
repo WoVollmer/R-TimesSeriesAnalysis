@@ -28,6 +28,9 @@ read_raw_data <- function(data_path) {
   corona <- corona %>% 
     mutate(Date = as.Date(Date, format = "%m/%d/%y")) %>% 
     rename(Country = `Country/Region`) 
+  
+  # take out numbers of cruise linets
+  corona <- corona %>% filter(Country != "Diamond Princess" & Country != "MS Zaandam")
 }
 
 
