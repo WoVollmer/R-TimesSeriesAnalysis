@@ -35,7 +35,7 @@ knitr::opts_chunk$set(
   collapse = TRUE
 )
 
-city <- params$city
+city  <- params$city
 temp_precip_selected <- params$temp_precip_both
 
 eval_visualization <- TRUE
