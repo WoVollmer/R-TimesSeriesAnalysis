@@ -88,12 +88,11 @@ forecast_table <- coefs %>%
          beta_1 = Date) %>% 
   mutate(T_doubling = (log(2) / beta_1),
          Reg_last_day = exp(beta_0 + unclass(last_date) * beta_1),
-         FC_next_day = exp(beta_0 + unclass(last_date + 1) * beta_1),
-         FC_14days = exp(beta_0 + unclass(last_date + 1 + range_fc_long - 1) 
-                         * beta_1)) %>% 
+         FC_7days = exp(beta_0 + unclass(last_date + range_fc_short) * beta_1),
+         FC_14days = exp(beta_0 + unclass(last_date + range_fc_long) * beta_1)) %>% 
   arrange(Case_Type) %>% 
   select(Country, Case_Type, T_doubling, Reg_last_day, 
-         FC_next_day, FC_14days)
+         FC_7days, FC_14days)
 
 knitr::kable(forecast_table,  digits = c(0, 0, 1, 0, 0),
              format.args = list(big.mark = "'"),

@@ -12,14 +12,24 @@ params:
   device: "desktop"
 ---
 
-```{r setup, include=FALSE}
+```{r knitr setup, include=FALSE}
 knitr::opts_chunk$set(eval = TRUE, echo = FALSE, warning = FALSE,      
                       message = FALSE, fig.width = 7, fig.asp = 0.618)
 
 # csl: "./../Bibliography/bluebook-law-review.csl"
 # csl: bluebook-law-review.csl
 # csl: harvard1.csl
-# csl: ieee.csl
+# csl: 
+
+eval_map <- TRUE
+eval_bar_chart <- TRUE
+eval_cum_daily <- TRUE
+eval_exp_growth <- TRUE
+eval_forecast <- TRUE
+
+```
+
+```{r setup, include=FALSE}
 
 #===============================================================================
 #
@@ -99,14 +109,7 @@ if (device == "desktop") {
 
 ```
 
-
-```{r initialization, eval = TRUE, include = FALSE}
-
-# variables clean up, library() and	source() statements ----------------------
-# deletes params$device => not allowed
-# rm(list=ls()) # deletes all existing objects / variables !!
-
-# Prog.Start <- Sys.time()
+```{r ggplot theme, include = FALSE}
 
 theme_replace(
   plot.title = element_text(
@@ -115,8 +118,8 @@ theme_replace(
     hjust = 0.5, face = "italic", color = "darkcyan")
 )
 x_axis_theme <- element_text(size = 14)
-```
 
+```
 
 ```{r settings}
 
@@ -141,7 +144,7 @@ q <- floor(span/2) # since 2q +1 = span !
 
 range_reg_short <- 7 # days; at least one week is necessary to get rid of weekly 
     # fluctuations, important - no case values = 0 are allowed => log(0) = inf !
-range_reg_long <- 21 # days; 2 or 3 weeks if one week is to short
+range_reg_long <- 14 # days; 2 or 3 weeks if one week is to short
                            # e.g. confidence levels to large !!
 # whole week is necessary to get rid of weekly fluctuations
 range_fc_short <- 7  # days forecast => unclass(last_date + 1 + range_forcast -1)
@@ -198,18 +201,6 @@ corona_data_wide <- uts_get_corona_data_wide(corona_data)
 #   - CFR_total
 #   - CFR_unlagged (unlagged total)
 
-# corona_data_wide <- corona_data_wide %>% 
-#   mutate(confirmed_lag = lag(Confirmed, lag_n),
-#          CFR_total = round(Deaths / confirmed_lag * 100, digits = 1),
-#          CFR_unlagged = round(Deaths / Confirmed * 100, digits = 1)) %>% 
-#   mutate(confirmed_lag_range_cfr = lag(confirmed_lag, range_cfr + 1),
-#          deaths_lag_range_cfr = lag(Deaths, range_cfr + 1),
-#          confirmed_past_period = confirmed_lag - confirmed_lag_range_cfr,
-#          deaths_past_period = Deaths - deaths_lag_range_cfr,
-#          CFR_past_period = round(
-#            deaths_past_period / confirmed_past_period * 100, digits = 1))  %>% 
-#   dplyr::select(!contains("_lag"), -confirmed_past_period, -deaths_past_period) 
-
 corona_data_wide <- corona_data_wide %>%
   mutate(confirmed_lag = lag(Confirmed, lag_n),
     Mean_Daily_Conf_lag = lag(Mean_Daily_Conf, lag_n),
@@ -244,24 +235,23 @@ title_cfr <- paste("Case Fatality Rate - CFR of mean daily (over past",
 
 ```
 
-
-```{r Add Page_world_map, child = 'Page_world_map.Rmd'}
+```{r Add world_map, child = 'Page_world_map.Rmd', eval=eval_map}
 ```
 
 
-```{r Add Page_bar_chart, child = 'Page_bar_chart.Rmd', eval=TRUE}
+```{r Add bar_chart, child = 'Page_bar_chart.Rmd', eval=eval_bar_chart}
 ```
 
 
-```{r Add Page_cumulative_and_daily_trend., child = 'Page_cumulative_and_daily_trend.Rmd'}
+```{r Add cum_daily, child = 'Page_cumulative_and_daily_trend.Rmd', eval=eval_cum_daily}
 ```
 
 
-```{r Add Page_exp_linear_growth, child = 'Page_exp_linear_growth.Rmd'}
+```{r Add exp_growth, child = 'Page_exp_linear_growth.Rmd', eval=eval_exp_growth}
 ```
 
 
-```{r Add Page_forecast, child = 'Page_forecast.Rmd'}
+```{r Add forecast, child = 'Page_forecast.Rmd', eval=eval_forecast}
 ```
 
 

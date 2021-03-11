@@ -18,6 +18,11 @@ library(dygraphs)  # R interface to the dygraphs JavaScript charting library
 library(shiny)
 library(pkgTS)     # TimeSeries Functions - own R package on GitHub
                    # devtools::install_github("WoVollmer/pkgTS")
+library(magrittr)
+library(gghighlight) 
+# https://cran.r-project.org/web/packages/gghighlight/vignettes/gghighlight.html
+# library(gridExtra)
+# library(janitor)
 
 ```
 
@@ -83,6 +88,30 @@ last_date <- max(corona_data$Date)
 corona_data_wide <- uts_get_corona_data_wide(corona_data)
 
 # View(corona_data_wide %>% filter(Date == last_date))
+# 
+
+
+```
+
+```{r adding cfr data}
+
+range_cfr <- 14  # 14days cfr past period length
+lag_n <- 12  # average lag for confirmed -> death - for all countries
+
+corona_data_wide <- corona_data_wide %>%
+  mutate(confirmed_lag = lag(Confirmed, lag_n),
+    Mean_Daily_Conf_lag = lag(Mean_Daily_Conf, lag_n),
+         CFR_total = round(Deaths / confirmed_lag * 100, digits = 1),
+         CFR_unlagged = round(Deaths / Confirmed * 100, digits = 1)) %>%
+  mutate(CFR_mean_daily = round(
+           Mean_Daily_Deaths / Mean_Daily_Conf_lag * 100, digits = 1))  %>%
+  dplyr::select(!contains("_lag"))
+
+# used by world map and bar chart page
+corona_data_last_wide <- corona_data_wide %>%
+  dplyr::filter(Date == last_date) %>% 
+  as_tibble()
+
 ```
 
 ## Cumulative and Daily Trend
@@ -96,7 +125,9 @@ country <- "World"
 fig_width_trend <- 10
 fig_asp_trend <- 0.9
 
-weeks <- 12
+weeks <- 12 # default number of weeks for Cumulative and Daily Cases over Time
+min_weeks <- 4  # min number of weeks for Cumulative and Daily Cases over Time
+max_weeks <- 50 # max number of weeks for Cumulative and Daily Cases over Time
 
 ```
 
@@ -124,10 +155,10 @@ shinyApp(
                       selected = "World")),
              # Input: Specify the number of weeks for plot ----
              # numericInput("weeks", "Number of Weeks for plot range:", 6, 
-             #              min = 2, max = 28),
+             #              min_weeks, max = max_weeks),
              column(width = 6,
                     sliderInput("weeks", "Number of Weeks for plot range:", 
-                                weeks, min = 2, max = 40))),
+                                value = weeks, min = min_weeks, max = max_weeks))),
     plotOutput("trend_plot")
   ),
   
@@ -161,7 +192,7 @@ shinyApp(
              #              min = 2, max = 28),
              column(width = 6,
                     sliderInput("weeks", "Number of Weeks for plot range:", 
-                                weeks, min = 2, max = 40))),
+                                value = weeks, min = min_weeks, max = max_weeks))),
     plotOutput("trend_plot")
   ),
   
@@ -281,3 +312,56 @@ shinyApp(
 )
 ```
 
+
+
+```{r  shiny CFR select country}
+
+countries_to_forecast <- c("Germany", "Italy", "Israel", "Spain", 
+                           "United Kingdom", "United States of America")
+
+shinyApp(
+  
+  ui = fluidPage(
+    # Input: Selct Country for plot ----
+    titlePanel("Case Fatality Rate (CFR in %) - Country"),
+    fluidRow(column(width = 6,
+                    selectInput(
+                      "country", label = "Select Country:",
+                      choices = unique(corona_data$Country), 
+                      selected = "Germany"))),
+    # Input: Specify the number of weeks for plot ----
+    # numericInput("weeks", "Number of Weeks for plot range:", 6),
+    # column(width = 6,
+    #        sliderInput("weeks", "Number of Weeks for plot range:", 
+    #                    weeks, min = min_weeks, max = max_weeks))),
+    plotOutput("trend_plot")
+  ),
+  
+  server = function(input, output) {
+    output$trend_plot <- renderPlot({
+      countries_to_forecast <- c(countries_to_forecast, input$country)
+      cfr_weeks <- 16
+      cfr_months <- cfr_weeks %/% 4
+      
+      data <- corona_data_wide %>% 
+        as_tibble() %>%  # gghighlight() does not work with a tsibble
+        dplyr::filter(Country %in% countries_to_forecast & Date >= "2020-03-15")
+      max_y <- 1.1 * data %>% 
+        filter(Date >= last_date - cfr_weeks  * 7) %$% 
+        max(CFR_mean_daily)
+      
+      ggplot2::ggplot(data, aes(Date, col = Country)) +
+        ylab("") +  geom_line(aes(y = CFR_mean_daily)) +
+        ylim(0, max_y) +
+        xlim(last_date - cfr_weeks * 7, NA) +
+        gghighlight(label_params = list(fill = "NA")) +
+        ggtitle(paste("CFR mean daily (in %) with", lag_n, 
+                      "lag-days (past", cfr_months, "months)"))
+      
+    })
+  },
+  
+  options = list(height = 550)
+)
+
+```
