@@ -216,7 +216,10 @@ The daily confirmed cases are related to the left y-axes, the daily death cases
 are related to the right y-axes. This clearly outlines the 12 days delay relation between daily confirmed and death cases and also  the roughly the factor 
 of ~1/25 (~4%).
 
+Note: **[Age group dependet 7-Day Incidence]**(https://wovollmer.github.io/github.io/age_group_incidences.html) 
+plots for **Germany** are largely provided weekly.
 
+The age group specific incidence data is provided weekly, every Tuesday evening [RKI - COVID-19-Fälle nach Altersgruppe und Meldewoche](https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Altersverteilung.html) - provided weekly, every Tuesday evening
 
 
 

@@ -55,8 +55,6 @@ labels_scale <- c(0.1, 0.5, 1, 5, 100, 1000, 5000, 10000, 50000, 100000,
 
 ```
 
-
-
 ```{r plot log10scale w gghighlight, fig.width = 14, fig.asp = 0.8}
 
 data <- corona_data_wide %>% 
@@ -94,7 +92,7 @@ p4 <- p_templ %+% geom_line(aes(y = (Deaths_100k)), size = 1) +
 
 (p1 + p2) / (p3 + p4) +
   plot_annotation(title = 
-                    "Virus Spread - Cumulative Cases for Selected Countries") +
+                    "Virus Spread - Cumulative Cases from Selected Countries") +
   plot_layout(guides = 'collect') & theme(legend.position = "")
 
 ```
@@ -152,7 +150,7 @@ p4 <- p_templ %+% geom_line(aes(y = (Mean_Daily_Deaths_100k)), size = 1) +
 
 (p1 + p2) / (p3 + p4) +
   plot_annotation(title = 
-                    "Virus Spread - Mean Daily Cases for Selected Countries") +
+                    "Virus Spread - Mean Daily Cases from Selected Countries") +
   plot_layout(guides = 'collect') & theme(legend.position = "")
 
 ```
@@ -303,7 +301,7 @@ p3 <- p_templ %+% aes(y = log10(Mean_Daily_Deaths)) +
 
 p1 + p3 +
   plot_annotation(title = 
-                    "Mean Daily Cases for Selected Countries",
+                    "Mean Daily Cases from Selected Countries",
                   subtitle = paste("Past", range_reg_long, 
                                    "days with Linear Regression of log data")) +
   plot_layout(guides = 'collect') & theme(legend.position = 'bottom')

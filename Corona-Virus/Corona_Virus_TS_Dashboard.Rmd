@@ -46,7 +46,6 @@ library(flexdashboard)
 library(tidyverse)
 library(magrittr)
 library(lubridate)
-library(slider) # for rolling analysis using window functions
 library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages & some tidyverse
 library(slider) # sliding window functions - rolling averages, cumulative sums
 library(DT)      # R interface to the JavaScript library DataTables

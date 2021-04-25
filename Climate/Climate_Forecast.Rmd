@@ -13,12 +13,12 @@ output:
 urlcolor: blue
 papersize: a4
 params:
-  city: "Giessen"
+  city: "Hohenpeissenberg"
   temp_precip: "temp" 
   
 knit: (
   function(inputFile, encoding) { 
-    city <- "Temp_Giessen" 
+    city <- "Temp_Hohenpeissenberg" 
   
     rmarkdown::render( 
       input       = inputFile, 

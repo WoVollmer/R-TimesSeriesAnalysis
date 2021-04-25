@@ -11,8 +11,8 @@ output:
     toc_depth: 3
   html_document: default
 params:
-  city: "England"
-  temp_precip_both: "temp"    
+  city: "Basel"
+  temp_precip_both: "both"    
 
 ---
 

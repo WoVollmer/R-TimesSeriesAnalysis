@@ -1,0 +1,259 @@
+---
+title: "Age group dependent 7-Day Incidences for Germany"
+subtitle: "based on weekly data published by RKI"
+author: "Wolfgang Vollmer"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    toc: FALSE
+  pdf_document:
+    fig_caption: TRUE
+    number_sections: TRUE
+    toc: FALSE
+    toc_depth: 3
+urlcolor: blue
+papersize: a4
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(eval= TRUE, echo = FALSE, warning = FALSE,      
+                      message = FALSE, fig.width = 8, fig.asp = 0.618)
+
+knitr::opts_chunk$set(comment = "#>",  collapse = TRUE)
+
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+```
+
+```{r include = FALSE}
+
+library(tidyverse)
+library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages & some tidyverse
+library(readxl)
+library(gghighlight)
+library(RColorBrewer) 
+library(ggiraph) # <-- interaction to ggplot2 https://davidgohel.github.io/ggiraph
+library(htmlwidgets)
+library(patchwork)
+
+# data downloaded from RKI
+file <- "C:/Users/Wolfgang/Downloads/Altersverteilung.xlsx"
+
+theme_replace(
+  plot.title = element_text(
+    hjust = 0.5, face = "bold.italic", color = "darkcyan", size = 12),
+  plot.subtitle = element_text(
+    hjust = 0.5, face = "italic", color = "darkcyan")
+)
+x_axis_theme <- element_text(size = 14)
+
+# ggplot titles
+title <- "Germany - Age group dependent 7-Day Incidences"
+subtitle <- "- weekly new infections / 100,000 inhabitants"
+
+
+
+```
+
+Data source:
+the age group specific incidence data is provided weekly, every Tuesday evening [RKI - COVID-19-Fälle nach Altersgruppe und Meldewoche](https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Altersverteilung.html).
+
+Attention: unfortunately RKI is changing more or less frequently table sheet name and even rownames of column "Altersgruppe".
+
+```{r data reading and select highlighting}
+age_data <- read_xlsx(file, sheet = "7-Tages-Inzidenz", col_names = TRUE)
+
+age_data_long <- age_data %>%
+  pivot_longer(cols = -Altersgruppe,
+               names_to = "Calendar_Week",
+               values_to = "Age_Incidence") %>% 
+  separate(Calendar_Week, sep = "_", into = c("Year", "CW")) %>% 
+  mutate(Year = as.integer(Year),
+         CW = as.integer(CW)) %>% 
+  rename(Age_group = Altersgruppe) %>% 
+  unite("Year_Week", Year, CW, sep = " W") 
+
+age_data_long$Year_Week <- yearweek(age_data_long$Year_Week)
+
+age_data_long$Age_group <- as.factor(age_data_long$Age_group) %>% 
+  recode("Gesamt" = "all") %>% 
+  fct_relevel("0 - 4", "5 - 9", "10 - 14" )
+
+age_data_long <- age_data_long %>% 
+  filter(Year_Week >= yearweek("2020 W40"))
+
+age_data_last <- age_data_long %>% 
+  filter(Year_Week >= yearweek("2021 W05"))
+
+# define age groups to be highlighted 
+highlight <- c("all",  "90+", "85 - 89", "80 - 84", "75 - 79", "70 - 74", 
+               "65 - 69", "60 - 64",  "10 - 14", "5 - 9", "0 - 4")
+# highlight %in% unique(age_data_long$Age_group)
+
+```
+
+## Line and Heatmap plot from the beginning of October (CW40) 2020
+
+```{r data long reordered}
+
+# Lasagna plot!
+
+# Sort with respect to value of last calendar week
+no_weeks <- length(unique(age_data_long$Year_Week))
+age_data_reord <- age_data_long %>% 
+  mutate(Age_group = fct_reorder(.f = Age_group, .x = Age_Incidence, 
+                                 # .fun = mean, na.rm = TRUE))
+                                 .fun = function(x) max(x[no_weeks])))
+```
+
+```{r produce spaghetti plot long reordered}
+
+#produce spaghetti plot:
+
+gg_spaghetti <- ggplot(age_data_long,
+                       aes(x = Year_Week, y = Age_Incidence, col = Age_group)) +
+  # geom_point() +
+  geom_line() +
+  ylab("weekly new infections per 100,000 inhabitants") +
+  guides(colour = guide_legend(reverse = TRUE)) +
+  ggtitle(title, subtitle = subtitle)
+
+gg_spaghetti <- gg_spaghetti + 
+  geom_line_interactive(aes(tooltip = Age_group, data_id = Age_group)) +
+    geom_point_interactive(
+    aes(tooltip = Age_Incidence, data_id = Age_group), #<-- !!
+    alpha = .5)
+
+# ggiraph::girafe(code = print(gg_spaghetti), #<-- !!
+#                 width_svg = 8, height_svg = 5,
+#                 # define CSS properties of interactive elements
+#                 options = list( 
+#                   # alpha transparency =.1 for non-highlighted ("inverse hover")
+#                   opts_hover_inv(css = "opacity:0.3;"),  
+#                   # set line/border color and thickness for highlighted
+#                   opts_hover(css = "stroke:black;stroke-width:3;") ))
+
+```
+
+```{r produce lasagna plot long reordered}
+
+#produce lasagna plot:
+gg_lasagna <- ggplot(age_data_long, 
+                     aes(x = Year_Week, y = Age_group, 
+                         fill = Age_Incidence)) + 
+  geom_raster() + # geom_tile() ~ = geom_raster
+  scale_fill_viridis_c("Incidence", option = "C", direction = -1) + 
+  # scale_fill_gradientn(, colors = brewer.pal(6, "YlOrBr")) +
+  labs(x = "Calendar week", y = "Age group / years", 
+       caption = 
+         "(Age groups ordered by age plus incidence data of all)") + 
+  ggtitle(title, subtitle = subtitle)
+# gg_lasagna
+
+gg_lasagna <- gg_lasagna +
+  geom_tile_interactive(    #<-- !!
+    aes(tooltip = Age_Incidence, data_id = Age_group), 
+    colour = 'transparent')
+#<-- !! define grouping variable tooltip (text/value) and for hover-highlight
+
+# ggiraph::girafe(ggobj = gg_lasagna)
+
+# ggiraph::girafe(code = print(gg_lasagna), #<-- !!
+#                 width_svg = 8, height_svg = 5,
+#                 # define CSS properties of interactive elements
+#                 options = list( 
+#                   # alpha transparency =.1 for non-highlighted ("inverse hover")
+#                   opts_hover_inv(css = "opacity:0.3;"),  
+#                   # set line/border color and thickness for highlighted
+#                   opts_hover(css = "stroke:black;stroke-width:2;") ))
+
+```
+
+
+```{r combined-interactive-patchwork plot long reordered}
+girafe(code = print(gg_spaghetti / gg_lasagna),
+       width_svg = 8, height_svg = 10,
+                # define CSS properties of interactive elements
+                options = list( 
+                  # alpha transparency =.1 for non-highlighted ("inverse hover")
+                  opts_hover_inv(css = "opacity:0.3;"),  
+                  # set line/border color and thickness for highlighted
+                  opts_hover(css = "stroke:black;stroke-width:2;") ))
+
+```
+
+## Line and Heatmap plot from the beginning of February (CW05) 2021
+
+```{r data short reordered}
+
+# Lasagna plot!
+
+# Sort with respect to value of last calendar week
+no_weeks <- length(unique(age_data_last$Year_Week))
+age_data_reord <- age_data_last %>% 
+  mutate(Age_group = fct_reorder(.f = Age_group, .x = Age_Incidence, 
+                                 # .fun = mean, na.rm = TRUE))
+                                 .fun = function(x) max(x[no_weeks])))
+```
+
+```{r produce spaghetti plot short reordered}
+
+#produce spaghetti plot:
+
+gg_spaghetti <- ggplot(age_data_reord,
+                       aes(x = Year_Week, y = Age_Incidence, col = Age_group)) +
+  # geom_point() +
+  geom_line() +
+  ylab("weekly new infections per 100,000 inhabitants") +
+  ggtitle(title, subtitle = subtitle)
+
+gg_spaghetti <- gg_spaghetti + 
+  geom_line_interactive(aes(tooltip = Age_group, data_id = Age_group)) +
+    geom_point_interactive(
+    aes(tooltip = Age_Incidence, data_id = Age_group), #<-- !!
+    alpha = .5)
+
+# ggiraph::girafe(ggobj = gg_spaghetti)
+```
+
+```{r produce lasagna plot short reordered}
+
+#produce lasagna plot:
+gg_lasagna <- ggplot(age_data_reord, 
+                     aes(x = Year_Week, y = Age_group, 
+                         fill = Age_Incidence)) + 
+  geom_raster() + # geom_tile() ~ = geom_raster
+  scale_fill_viridis_c("Incidence", option = "C", direction = -1) + 
+  # scale_fill_gradientn(, colors = brewer.pal(6, "YlOrBr")) +
+  labs(x = "Calendar week", y = "Age group / years", 
+       caption = 
+         "(Age groups ordered by descending incidence values of last week)") +
+  ggtitle(title, subtitle = subtitle) 
+# gg_lasagna
+
+gg_lasagna <- gg_lasagna +
+  geom_tile_interactive(    #<-- !!
+    aes(tooltip = Age_Incidence, data_id = Age_group), 
+    colour = 'transparent')
+#<-- !! define grouping variable tooltip (text/value) and for hover-highlight
+
+# ggiraph::girafe(ggobj = gg_lasagna)
+
+```
+
+
+```{r combined-interactive-patchwork plot short reordered}
+girafe(code = print(gg_spaghetti / gg_lasagna),
+       width_svg = 8, height_svg = 10,
+                # define CSS properties of interactive elements
+                options = list( 
+                  # alpha transparency =.1 for non-highlighted ("inverse hover")
+                  opts_hover_inv(css = "opacity:0.3;"),  
+                  # set line/border color and thickness for highlighted
+                  opts_hover(css = "stroke:black;stroke-width:2;") ))
+
+```
+
+
+
+

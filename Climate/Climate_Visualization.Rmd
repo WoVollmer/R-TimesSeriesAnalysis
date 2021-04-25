@@ -11,14 +11,14 @@ output:
     toc_depth: 3
   html_document: default
 params:
-  city: "England"
-  temp_precip_both: "temp"    
+  city: "Mauna Loa"
+  temp_precip_both: "both"    
 urlcolor: blue
 papersize: a4
 
 knit: (
   function(inputFile, encoding) { 
-    city <- "Temperature_England" 
+    city <- "CO2_Mauna_Loa" 
   
     rmarkdown::render( 
       input       = inputFile, 
