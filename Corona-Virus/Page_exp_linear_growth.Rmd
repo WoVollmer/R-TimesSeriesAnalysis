@@ -13,7 +13,7 @@ params:
 ---
 
 
-```{r config with rds data, child = 'Corona_Virus_config.Rmd', eval = FALSE}
+```{r config with rds data, child = 'Corona_Virus_config.Rmd', eval=FALSE}
 ```
 
 
@@ -60,6 +60,7 @@ labels_scale <- c(0.1, 0.5, 1, 5, 100, 1000, 5000, 10000, 50000, 100000,
 data <- corona_data_wide %>% 
   as_tibble() %>%  # gghighlight() does not work with a tsibble
   dplyr::filter(Country %in% compare_countries[c(1:4, 7:10)] & 
+                  Mean_Daily_Conf > 0.01 &
                   Deaths_100k > 0.2 & Mean_Daily_Deaths_100k > 0.01) 
 # min values definition required for log scale
 # even negative values are given (due to data corrections)
@@ -68,35 +69,77 @@ p_templ <- ggplot2::ggplot(data, aes(Date, col = Country)) +
   scale_y_continuous(breaks = log10(labels_scale), labels = labels_scale) +
   ylab("")
 
-p1 <- p_templ %+% geom_line(aes(y = log10(Confirmed)), size = 1) +
+p1 <- p_templ + geom_line(aes(y = log10(Confirmed)), size = 1) +
   gghighlight(label_params = list(fill = "NA")) +
-  ggtitle("Confirmed on log scale")
+  ggtitle("Confirmed on log scale") 
 # p2 <- p_templ %+% geom_line(aes(y = log10(Conf_100k)), size = 1) +
 #   gghighlight(label_params = list(fill = "NA")) +
 #   ggtitle("Confirmed / 100k Inhabitants on log scale")
-p2 <- p_templ %+% geom_line(aes(y = (Conf_100k)), size = 1) +
+p2 <- p_templ + geom_line(aes(y = Conf_100k), size = 1) +
   gghighlight(label_params = list(fill = "NA")) +
   scale_y_continuous(breaks = waiver(), labels = waiver()) +
-  ggtitle("Confirmed / 100k Inhabitants on linear scale")
-p3 <- p_templ %+% geom_line(aes(y = log10(Deaths)), size = 1) +
+  ggtitle("Confirmed / 100k Inhabitants on linear scale")  
+p3 <- p_templ + geom_line(aes(y = log10(Deaths)), size = 1) +
   gghighlight(label_params = list(fill = "NA")) +
-  ggtitle("Deaths on log scale")
+  ggtitle("Deaths on log scale") 
 # p4 <- p_templ %+% geom_line(aes(y = log10(Deaths_100k)), size = 1) +
 #   gghighlight(label_params = list(fill = "NA")) +
 #   ggtitle("Deaths / 100k Inhabitants on log scale")
-p4 <- p_templ %+% geom_line(aes(y = (Deaths_100k)), size = 1) +
+p4 <- p_templ + geom_line(aes(y = Deaths_100k), size = 1) +
   gghighlight(label_params = list(fill = "NA")) +
   scale_y_continuous(breaks = waiver(), labels = waiver()) +
-  ggtitle("Deaths / 100k Inhabitants on linear scale")
+  ggtitle("Deaths / 100k Inhabitants on linear scale") 
 
-
-(p1 + p2) / (p3 + p4) +
-  plot_annotation(title = 
-                    "Virus Spread - Cumulative Cases from Selected Countries") +
-  plot_layout(guides = 'collect') & theme(legend.position = "")
+# (p1 + p2) / (p3 + p4) +
+#   plot_annotation(title =
+#                     "Virus Spread - Cumulative Cases from Selected Countries") +
+#   plot_layout(guides = 'collect') & theme(legend.position = "")
 
 ```
 
+```{r plot log10scale w ggirafe, fig.width = 14, fig.asp = 0.8}
+
+p1_inter <- p1 + geom_line_interactive(aes(y = log10(Confirmed), tooltip = Country, data_id = Country))
+p2_inter <- p2 + geom_line_interactive(aes(y = Conf_100k, tooltip = Country, data_id = Country))
+p3_inter <- p3 + geom_line_interactive(aes(y = log10(Deaths), tooltip = Country, data_id = Country))
+p4_inter <- p4 + geom_line_interactive(aes(y = Deaths_100k, tooltip = Country, data_id = Country))
+        
+#  ggiraph::girafe(ggobj = p1_inter)
+
+girafe(code = print((p1_inter + p2_inter) / (p3_inter + p4_inter) +
+                      plot_annotation(title =
+                    "Virus Spread - Cumulative Cases from Selected Countries") +
+  plot_layout(guides = 'collect') & theme(legend.position = "")),
+       width_svg = 14, height_svg = 10,
+                # define CSS properties of interactive elements
+                options = list( 
+                  # alpha transparency =.1 for non-highlighted ("inverse hover")
+                  opts_hover_inv(css = "opacity:0.3;"),  
+                  # set line/border color and thickness for highlighted
+                  opts_hover(css = "stroke:black;stroke-width:2;") ))
+
+
+```
+
+
+```{r, eval=FALSE}
+
+gg_spaghetti <- gg_spaghetti + 
+  geom_line_interactive(aes(tooltip = Age_group, data_id = Age_group)) +
+    geom_point_interactive(
+    aes(tooltip = Age_Incidence, data_id = Age_group), #<-- !!
+    alpha = .5)
+
+girafe(code = print(gg_spaghetti / gg_lasagna),
+       width_svg = 8, height_svg = 10,
+                # define CSS properties of interactive elements
+                options = list( 
+                  # alpha transparency =.1 for non-highlighted ("inverse hover")
+                  opts_hover_inv(css = "opacity:0.3;"),  
+                  # set line/border color and thickness for highlighted
+                  opts_hover(css = "stroke:black;stroke-width:2;") ))
+
+```
 
 Daily Cases on log10 / linear scale {data-navmenu="Exp Linear Growth"}
 =====================================
@@ -127,31 +170,55 @@ Column
 
 ```{r plot daily log10scale w gghighlight, fig.width = 14, fig.asp = 0.8}
 
-p1 <- p_templ %+% geom_line(aes(y = log10(Mean_Daily_Conf)), size = 1) +
+p1 <- p_templ + geom_line(aes(y = log10(Mean_Daily_Conf)), size = 1) +
   gghighlight(label_params = list(fill = "NA")) +
   ggtitle("Mean Daily Confirmed on log scale")
 # p2 <- p_templ %+% geom_line(aes(y = log10(Mean_Daily_Conf_100k)), size = 1) +
 #   gghighlight(label_params = list(fill = "NA")) +
 #   ggtitle("Mean Daily Conf / 100k Inhabitants on log scale")
-p2 <- p_templ %+% geom_line(aes(y = (Mean_Daily_Conf_100k)), size = 1) +
+p2 <- p_templ + geom_line(aes(y = Mean_Daily_Conf_100k), size = 1) +
   gghighlight(label_params = list(fill = "NA")) +
   scale_y_continuous(breaks = waiver(), labels = waiver()) +
   ggtitle("Mean Daily Conf / 100k Inhabitants on linear scale")
-p3 <- p_templ %+% geom_line(aes(y = log10(Mean_Daily_Deaths)), size = 1) +
+p3 <- p_templ + geom_line(aes(y = log10(Mean_Daily_Deaths)), size = 1) +
   gghighlight(label_params = list(fill = "NA")) +
   ggtitle("Mean Daily Deaths on log scale")
 # p4 <- p_templ %+% geom_line(aes(y = log10(Mean_Daily_Deaths_100k)), size = 1) +
 #   gghighlight(label_params = list(fill = "NA")) +
 #   ggtitle("Mean Daily Deaths / 100k Inhabitants on log scale")
-p4 <- p_templ %+% geom_line(aes(y = (Mean_Daily_Deaths_100k)), size = 1) +
+p4 <- p_templ + geom_line(aes(y = Mean_Daily_Deaths_100k), size = 1) +
   gghighlight(label_params = list(fill = "NA")) +
   scale_y_continuous(breaks = waiver(), labels = waiver()) +
   ggtitle("Mean Daily Deaths / 100k Inhabitants on linear scale")
 
-(p1 + p2) / (p3 + p4) +
-  plot_annotation(title = 
+# (p1 + p2) / (p3 + p4) +
+#   plot_annotation(title =
+#                     "Virus Spread - Mean Daily Cases from Selected Countries") +
+#   plot_layout(guides = 'collect') & theme(legend.position = "")
+
+```
+
+```{r plot daily log10scale w ggirafe, fig.width = 14, fig.asp = 0.8}
+
+p1_inter <- p1 + geom_line_interactive(aes(y = log10(Mean_Daily_Conf), tooltip = Country, data_id = Country))
+p2_inter <- p2 + geom_line_interactive(aes(y = Mean_Daily_Conf_100k, tooltip = Country, data_id = Country))
+p3_inter <- p3 + geom_line_interactive(aes(y = log10(Mean_Daily_Deaths), tooltip = Country, data_id = Country))
+p4_inter <- p4 + geom_line_interactive(aes(y = Mean_Daily_Deaths_100k, tooltip = Country, data_id = Country))
+        
+#  ggiraph::girafe(ggobj = p4_inter)
+
+girafe(code = print((p1_inter + p2_inter) / (p3_inter + p4_inter) +
+                      plot_annotation(title =
                     "Virus Spread - Mean Daily Cases from Selected Countries") +
-  plot_layout(guides = 'collect') & theme(legend.position = "")
+  plot_layout(guides = 'collect') & theme(legend.position = "")),
+       width_svg = 14, height_svg = 10,
+                # define CSS properties of interactive elements
+                options = list( 
+                  # alpha transparency =.1 for non-highlighted ("inverse hover")
+                  opts_hover_inv(css = "opacity:0.3;"),  
+                  # set line/border color and thickness for highlighted
+                  opts_hover(css = "stroke:black;stroke-width:2;") ))
+
 
 ```
 

@@ -209,17 +209,17 @@ plot_dygraph_daily(data_xts, country_select, last_date, weeks = weeks)
 
 ### Rolling Mean of daily Cases {data-width=300} 
 
-The *7-day Rolling Mean/Moving Average* of the Daily Confirmed and Death Cases 
+The *7-days Rolling Mean/Moving Average* of the Daily Confirmed and Death Cases 
 smooths out the short-term weekly fluctuations (weekend).
 
 The daily confirmed cases are related to the left y-axes, the daily death cases 
 are related to the right y-axes. This clearly outlines the 12 days delay relation between daily confirmed and death cases and also  the roughly the factor 
 of ~1/25 (~4%).
 
-Note: **[Age group dependet 7-Day Incidence]**(https://wovollmer.github.io/github.io/age_group_incidences.html) 
+**Note: [Age group dependent 7-Day Incidence](https://wovollmer.github.io/github.io/age_group_incidences.html) 
 plots for **Germany** are largely provided weekly.
 
-The age group specific incidence data is provided weekly, every Tuesday evening [RKI - COVID-19-Fälle nach Altersgruppe und Meldewoche](https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Altersverteilung.html) - provided weekly, every Tuesday evening
+The age group specific incidence data [RKI - COVID-19-Fälle nach Altersgruppe und Meldewoche](https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Altersverteilung.html) - is provided weekly, every Tuesday evening.
 
 
 

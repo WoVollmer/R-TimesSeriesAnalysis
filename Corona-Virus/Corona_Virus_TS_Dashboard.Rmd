@@ -57,6 +57,7 @@ library(gghighlight)
 # library(janitor)
 library(plotly)
 library(highcharter)
+library(ggiraph) # <-- interaction to ggplot2 https://davidgohel.github.io/ggiraph
 library(dygraphs)  # R interface to the dygraphs JavaScript charting library
 library(checkmate) # to provide informative error messages
 library(pkgTS) # TimeSeries Funcstion - own R package on GitHub

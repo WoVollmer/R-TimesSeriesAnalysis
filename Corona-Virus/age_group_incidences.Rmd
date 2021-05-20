@@ -16,23 +16,36 @@ urlcolor: blue
 papersize: a4
 ---
 
-```{r include = FALSE}
+```{r, include = FALSE}
 knitr::opts_chunk$set(eval= TRUE, echo = FALSE, warning = FALSE,      
                       message = FALSE, fig.width = 8, fig.asp = 0.618)
 
 knitr::opts_chunk$set(comment = "#>",  collapse = TRUE)
 
+```
+
+```{r setwd change, include = FALSE}
+
+# note: only Rstudio Api => not running as Rscript batch file
+# Rscript -e "rmarkdown::render('Corona_Virus_TS_Dashboard.Rmd'))"
+# needs beforehand correct "cd" / "Set-Location"
+
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+# setwd() not needed for knit run: changes working dir to path of *.RMD file 
+# setwd() only needed for R code within R-Studio for relative source() paths
+
 ```
 
 ```{r include = FALSE}
 
 library(tidyverse)
+library(magrittr)
 library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages & some tidyverse
 library(readxl)
 library(gghighlight)
 library(RColorBrewer) 
 library(ggiraph) # <-- interaction to ggplot2 https://davidgohel.github.io/ggiraph
+# https://rdrr.io/cran/ggiraph/man/geom_bar_interactive.html
 library(htmlwidgets)
 library(patchwork)
 
@@ -58,7 +71,7 @@ subtitle <- "- weekly new infections / 100,000 inhabitants"
 Data source:
 the age group specific incidence data is provided weekly, every Tuesday evening [RKI - COVID-19-Fälle nach Altersgruppe und Meldewoche](https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Altersverteilung.html).
 
-Attention: unfortunately RKI is changing more or less frequently table sheet name and even rownames of column "Altersgruppe".
+Attention: unfortunately RKI is changing more or less frequently table sheet *7-Tages-Inzidenz* name and even sometimes rownames of column *Altersgruppe*.
 
 ```{r data reading and select highlighting}
 age_data <- read_xlsx(file, sheet = "7-Tages-Inzidenz", col_names = TRUE)
@@ -82,15 +95,68 @@ age_data_long$Age_group <- as.factor(age_data_long$Age_group) %>%
 age_data_long <- age_data_long %>% 
   filter(Year_Week >= yearweek("2020 W40"))
 
-age_data_last <- age_data_long %>% 
-  filter(Year_Week >= yearweek("2021 W05"))
-
 # define age groups to be highlighted 
 highlight <- c("all",  "90+", "85 - 89", "80 - 84", "75 - 79", "70 - 74", 
                "65 - 69", "60 - 64",  "10 - 14", "5 - 9", "0 - 4")
 # highlight %in% unique(age_data_long$Age_group)
 
 ```
+
+
+```{r}
+
+last_weeks <- 12
+last_months <- last_weeks %/% 4
+
+start_week <- age_data_long %$% 
+  max(Year_Week) - last_weeks
+
+# age_data_last <- age_data_long %>% 
+#   filter(Year_Week >= yearweek("2021 W05"))
+
+age_data_last <- age_data_long %>% 
+  filter(Year_Week >= yearweek(start_week))
+
+```
+
+
+```{r age group population}
+file <- "./World_Population/Altersverteilung_Einwohner.xlsx"
+age_population <- read_xlsx(file, sheet = "Population", col_names = TRUE) %>% 
+  rename(Age_group = Altersgruppe) %>% 
+  mutate("Population / m" = round(Population / 1e6, digits = 2))
+age_population$Population <- as.integer(age_population$Population)
+
+age_population$Age_group <- as.factor(age_population$Age_group) %>% 
+  recode("Gesamt" = "all") %>% 
+  fct_relevel("0 - 4", "5 - 9", "10 - 14" )
+
+# age_population
+pop_total <- 
+  age_population %>% 
+  filter(Age_group == "all") %>% select(`Population / m`) %>% 
+  round(digits = 1)
+  
+
+```
+
+
+```{r}
+gg_population <- ggplot(age_population %>% filter(Age_group != "all"), 
+       aes(x = `Population / m`, y = Age_group, fill = Age_group)) +
+  geom_col() +
+  theme(legend.position = "none") +
+  ggtitle(paste("Germany - Population per age group (total: ",
+                pop_total, "million)")) +
+  labs(x = "Population / million", y = "Age group / years") +
+      geom_col_interactive(aes(tooltip = `Population / m`))
+
+# x <- ggiraph::girafe(ggobj = gg_population)
+# if( interactive() ) {
+#   print(x)
+# } else print(gg_population)
+```
+
 
 ## Line and Heatmap plot from the beginning of October (CW40) 2020
 
@@ -182,18 +248,25 @@ girafe(code = print(gg_spaghetti / gg_lasagna),
 
 ```
 
-## Line and Heatmap plot from the beginning of February (CW05) 2021
+## Line and Heatmap plot of past `r last_weeks` weeks (as of `r as.character(start_week)`)
 
 ```{r data short reordered}
 
 # Lasagna plot!
 
 # Sort with respect to value of last calendar week
-no_weeks <- length(unique(age_data_last$Year_Week))
-age_data_reord <- age_data_last %>% 
-  mutate(Age_group = fct_reorder(.f = Age_group, .x = Age_Incidence, 
-                                 # .fun = mean, na.rm = TRUE))
-                                 .fun = function(x) max(x[no_weeks])))
+# no_weeks <- length(unique(age_data_last$Year_Week))
+# age_data_reord <- age_data_last %>%
+#   mutate(Age_group = fct_reorder(.f = Age_group, .x = Age_Incidence,
+#                                  # .fun = mean, na.rm = TRUE))
+#                                  .fun = function(x) max(x[no_weeks])))
+
+age_data_reord <-  age_data_last %>%
+  mutate(Age_group =
+           fct_reorder2(.f = Age_group, .x = Year_Week,
+                        .y = Age_Incidence, .desc = FALSE))
+
+
 ```
 
 ```{r produce spaghetti plot short reordered}
@@ -205,8 +278,9 @@ gg_spaghetti <- ggplot(age_data_reord,
   # geom_point() +
   geom_line() +
   ylab("weekly new infections per 100,000 inhabitants") +
-  ggtitle(title, subtitle = subtitle)
-
+  guides(col = guide_legend(reverse = TRUE)) +
+  ggtitle(title, subtitle = subtitle) 
+  
 gg_spaghetti <- gg_spaghetti + 
   geom_line_interactive(aes(tooltip = Age_group, data_id = Age_group)) +
     geom_point_interactive(
@@ -254,6 +328,18 @@ girafe(code = print(gg_spaghetti / gg_lasagna),
 
 ```
 
+
+```{r age group population plot, fig.width = 4, fig.asp = 2*0.618}
+girafe(code = print(gg_population),
+       width_svg = 8, height_svg = 5,
+                # define CSS properties of interactive elements
+                options = list( 
+                  # alpha transparency =.1 for non-highlighted ("inverse hover")
+                  opts_hover_inv(css = "opacity:0.3;"),  
+                  # set line/border color and thickness for highlighted
+                  opts_hover(css = "stroke:black;stroke-width:2;")) )
+
+```
 
 
 

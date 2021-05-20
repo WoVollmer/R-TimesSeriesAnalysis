@@ -4,6 +4,7 @@ author: "Wolfgang Vollmer"
 date: '`r Sys.Date()`'
 link-citations: yes
 cite-color: "green"
+
 output: html_document
 runtime: shiny
 ---
@@ -316,7 +317,7 @@ shinyApp(
 
 ```{r  shiny CFR select country}
 
-countries_to_forecast <- c("Germany", "Italy", "Israel", "Spain", 
+countries_to_forecast <- c("Germany", "Italy", "EU", "Spain", 
                            "United Kingdom", "United States of America")
 
 shinyApp(
@@ -340,7 +341,7 @@ shinyApp(
   server = function(input, output) {
     output$trend_plot <- renderPlot({
       countries_to_forecast <- c(countries_to_forecast, input$country)
-      cfr_weeks <- 16
+      cfr_weeks <- 12
       cfr_months <- cfr_weeks %/% 4
       
       data <- corona_data_wide %>% 
@@ -365,3 +366,4 @@ shinyApp(
 )
 
 ```
+
