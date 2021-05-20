@@ -19,7 +19,6 @@ knitr::opts_chunk$set(eval = TRUE, echo = FALSE, warning = FALSE,
 # csl: "./../Bibliography/bluebook-law-review.csl"
 # csl: bluebook-law-review.csl
 # csl: harvard1.csl
-# csl: 
 
 eval_map <- TRUE
 eval_bar_chart <- TRUE
