@@ -345,6 +345,8 @@ shinyApp(
       cfr_months <- cfr_weeks %/% 4
       
       data <- corona_data_wide %>% 
+        
+        
         as_tibble() %>%  # gghighlight() does not work with a tsibble
         dplyr::filter(Country %in% countries_to_forecast & Date >= "2020-03-15")
       max_y <- 1.1 * data %>% 
