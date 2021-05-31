@@ -14,6 +14,8 @@ output:
     toc_depth: 3
 urlcolor: blue
 papersize: a4
+params:
+  device: "desktop"
 ---
 
 ```{r, include = FALSE}
@@ -49,9 +51,6 @@ library(ggiraph) # <-- interaction to ggplot2 https://davidgohel.github.io/ggira
 library(htmlwidgets)
 library(patchwork)
 
-# data downloaded from RKI
-file <- "C:/Users/Wolfgang/Downloads/Altersverteilung.xlsx"
-
 theme_replace(
   plot.title = element_text(
     hjust = 0.5, face = "bold.italic", color = "darkcyan", size = 12),
@@ -64,7 +63,25 @@ x_axis_theme <- element_text(size = 14)
 title <- "Germany - Age group dependent 7-Day Incidences"
 subtitle <- "- weekly new infections / 100,000 inhabitants"
 
+```
 
+
+```{r data path desktop vs. notebook, eval = TRUE}
+# device <- "desktop" # "notebook"  # to define setwd() and data path
+# defined as params  metadata in YAML header
+device <- params$device
+
+# data downloaded from RKI to /Downloads
+if (device == "desktop") {
+  # data downloaded from RKI
+  file <- "C:/Users/Wolfgang/Downloads/Altersverteilung.xlsx"
+  # setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
+} else if (device == "linux") {
+  file <- "/home/wolfgang-ubuntu/Downloads/Altersverteilung.xlsx"
+  # setwd("/home/wolfgang-ubuntu/Programs-R/R-TimesSeriesAnalysis/Corona-Virus")
+} else {
+  stop("no valid device outlined")
+}
 
 ```
 
