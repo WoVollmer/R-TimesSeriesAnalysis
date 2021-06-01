@@ -14,6 +14,8 @@ output:
     toc_depth: 3
 urlcolor: blue
 papersize: a4
+params:
+  device: "desktop"
 ---
 
 ```{r, include = FALSE}
@@ -42,20 +44,18 @@ library(tidyverse)
 library(magrittr)
 library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages & some tidyverse
 library(readxl)
-library(gghighlight)set_github_pat
+library(gghighlight)
 library(RColorBrewer) 
 library(ggiraph) # <-- interaction to ggplot2 https://davidgohel.github.io/ggiraph
 # https://rdrr.io/cran/ggiraph/man/geom_bar_interactive.html
 library(htmlwidgets)
 library(patchwork)
 
-# data downloaded from RKI
-file <- "C:/Users/Wolfgang/Downloads/Altersverteilung.xlsx"
 
 theme_replace(
   plot.title = element_text(
     hjust = 0.5, face = "bold.italic", color = "darkcyan", size = 12),
-  plot.subtitle = set_github_patelement_text(
+  plot.subtitle = element_text(
     hjust = 0.5, face = "italic", color = "darkcyan")
 )
 x_axis_theme <- element_text(size = 14)
@@ -63,6 +63,26 @@ x_axis_theme <- element_text(size = 14)
 # ggplot titles
 title <- "Germany - Age group dependent 7-Day Incidences"
 subtitle <- "- weekly new infections / 100,000 inhabitants"
+
+```
+
+```{r data path desktop vs. notebook, eval = TRUE}
+
+# device <- "desktop" # "notebook"  # to define setwd() and data path
+# defined as params  metadata in YAML header
+device <- params$device
+
+# data downloaded from RKI to /Downloads
+if (device == "desktop") {
+  # data downloaded from RKI
+  file <- "C:/Users/Wolfgang/Downloads/Altersverteilung.xlsx"
+  # setwd("D:/Wolfgang/Programs-R/R-TimeSeriesAnalysis/Corona-Virus")
+} else if (device == "linux") {
+  file <- "/home/wolfgang-ubuntu/Downloads/Altersverteilung.xlsx"
+  # setwd("/home/wolfgang-ubuntu/Programs-R/R-TimesSeriesAnalysis/Corona-Virus")
+} else {
+  stop("no valid device outlined")
+}
 
 ```
 
