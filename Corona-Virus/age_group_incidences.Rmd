@@ -9,7 +9,7 @@ output:
     toc: FALSE
   pdf_document:
     fig_caption: TRUE
-    number_sections: TRUE
+    number_sectionset_github_pats: TRUE
     toc: FALSE
     toc_depth: 3
 urlcolor: blue
@@ -34,7 +34,6 @@ knitr::opts_chunk$set(comment = "#>",  collapse = TRUE)
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
-
 ```
 
 ```{r include = FALSE}
@@ -43,7 +42,7 @@ library(tidyverse)
 library(magrittr)
 library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages & some tidyverse
 library(readxl)
-library(gghighlight)
+library(gghighlight)set_github_pat
 library(RColorBrewer) 
 library(ggiraph) # <-- interaction to ggplot2 https://davidgohel.github.io/ggiraph
 # https://rdrr.io/cran/ggiraph/man/geom_bar_interactive.html
@@ -56,7 +55,7 @@ file <- "C:/Users/Wolfgang/Downloads/Altersverteilung.xlsx"
 theme_replace(
   plot.title = element_text(
     hjust = 0.5, face = "bold.italic", color = "darkcyan", size = 12),
-  plot.subtitle = element_text(
+  plot.subtitle = set_github_patelement_text(
     hjust = 0.5, face = "italic", color = "darkcyan")
 )
 x_axis_theme <- element_text(size = 14)
@@ -64,8 +63,6 @@ x_axis_theme <- element_text(size = 14)
 # ggplot titles
 title <- "Germany - Age group dependent 7-Day Incidences"
 subtitle <- "- weekly new infections / 100,000 inhabitants"
-
-
 
 ```
 
@@ -88,6 +85,7 @@ age_data_long <- age_data %>%
   unite("Year_Week", Year, CW, sep = " W") 
 
 age_data_long$Year_Week <- yearweek(age_data_long$Year_Week)
+
 
 age_data_long$Age_group <- as.factor(age_data_long$Age_group) %>% 
   recode("Gesamt" = "all") %>% 
