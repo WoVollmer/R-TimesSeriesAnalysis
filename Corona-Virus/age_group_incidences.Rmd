@@ -31,10 +31,11 @@ knitr::opts_chunk$set(comment = "#>",  collapse = TRUE)
 # note: only Rstudio Api => not running as Rscript batch file
 # Rscript -e "rmarkdown::render('Corona_Virus_TS_Dashboard.Rmd'))"
 # needs beforehand correct "cd" / "Set-Location"
-
-setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 # setwd() not needed for knit run: changes working dir to path of *.RMD file 
 # setwd() only needed for R code within R-Studio for relative source() paths
+
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+
 
 ```
 
