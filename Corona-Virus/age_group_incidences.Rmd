@@ -24,7 +24,7 @@ knitr::opts_chunk$set(comment = "#>",  collapse = TRUE)
 
 ```
 
-```{r setwd change, include = FALSE}
+```{r setwd change, eval = FALSE, include = FALSE}
 
 # note: only Rstudio Api => not running as Rscript batch file
 # Rscript -e "rmarkdown::render('Corona_Virus_TS_Dashboard.Rmd'))"
