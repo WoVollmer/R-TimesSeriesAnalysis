@@ -317,7 +317,7 @@ shinyApp(
 
 ```{r  shiny CFR select country}
 
-countries_to_forecast <- c("Germany", "Italy", "EU", "Spain", 
+countries_to_forecast <- c("Germany", "Italy", "Spain", 
                            "United Kingdom", "United States of America")
 
 shinyApp(
