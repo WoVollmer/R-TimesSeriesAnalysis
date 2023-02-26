@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# Corona Virus Dashboard
+# Evaluations of Temperature, Precipitation and CO2 Times Series 
 
 The **Climate Visualization** rsp. **Forecast** RMD files provide
 climate time series analysis of *Temperature*, *Precipitation* or *CO2*
