@@ -5,7 +5,7 @@ output:
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# Corona Virus Dashboard
+# Evaluations of Temperature, Precipitation and CO2 Times Series
 
 
 ```{r setup, include = FALSE}
