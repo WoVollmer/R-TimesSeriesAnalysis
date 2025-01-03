@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# Corona Virus Dashboard
+# Climate Data Analysis and Corona Virus Dashboard
 
 The **R-TimeSeriesAnalysis** folder provides R/RMD files for time series
 analysis.
@@ -17,7 +17,7 @@ My own R package `pkgTS` for TimeSeries Functions is stored on GitHub
 
 `library(pkgTS)`
 
------
+------------------------------------------------------------------------
 
 Any remarks?  
 Please let me know or provide some hints.
