@@ -19,7 +19,8 @@ knitr::opts_chunk$set(
 
 ```
 
-The **Climate Visualization** rsp. **Forecast** RMD files provide climate time series analysis of *Temperature*, *Precipitation* or *CO2* data.
+The **Climate Visualization** rsp. **Forecast** RMD files provide climate time series analysis.
+For **Mauna Loa** from *CO2* data, for **Basel / Davos / Cottbus/ Giessen/ Hohenpeissenberg/ Mannheim/ Potsdam** from *Temperature & Precipitation* data and for England of long-term *Temperature* data.
 
 See provided PDF files.
 
