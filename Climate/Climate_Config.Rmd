@@ -30,8 +30,7 @@ temp_precip_selected <- params$temp_precip_both
 ## Plot and Analyze                                                           ##
 ## Yearly/Monthly CO2 or Climate Temperature / Precipitation Data             ##
 ##                                                                            ##
-##                                              Wolfgang Vollmer, March 2021  ##
-##                                                                            ##
+##                                            Wolfgang Vollmer, January 2026  ##
 ################################################################################
 
 ######  variables clean up, library() and	source() statements
@@ -44,6 +43,8 @@ suppressMessages(library(tidyverse))
 suppressMessages(library(magrittr))
 library(lubridate)
 library(fpp3)  # tsibble, tsibbledata, fable, and feasts packages & some tidyverse
+library(ggtime) # gg_subseries() was soft deprecated in feasts 0.4.2. 
+                # => Please use ggtime::gg_subseries() instead.
 library(stlplus) # Enhanced Seasonal Decomposition of Time Series by Loess
 library(DT)      # R interface to the JavaScript library DataTables
 library(rlang)
@@ -133,11 +134,12 @@ if (city == "Mauna Loa") {
   title_rmd <- paste(city, "- Atmospheric Carbon Dioxide Analysis")
   topic <- "Mauna Loa CO2 Concentrations"
   y_label <- expression(paste(CO[2], " Concentration / ppm"))
+  y_label_inv <-  y_label
   y_label_text <- "CO2 Concentration / ppm"
   
 } else {
   measure <- str_to_title(match.arg(temp_precip_selected, temp_precip_both))
-  span <- 30  # width of the rolling window in years, CO2: => 6|7 years
+  span <- 30  # width of the rolling window in years, CO2: => 7 years
   season_window <- 31  # odd, seasonal structure long running  # Precip to be checked
   trend_window <- 19   # to allow more rapid changes    
   
@@ -145,6 +147,8 @@ if (city == "Mauna Loa") {
     measure <- "Temperature and Precipitation"
     y_label <- expression(paste("Precipitation / mm/Month    ", 
                                 "   Temperature / ", degree*C))
+    y_label_inv <-  expression(paste("Temperature / ", degree*C, 
+                                "   Precipitation / mm/Month"))
     y_label_text <- "Temperature / degree C and Monthly Precipitation / mm"
   } else {
     if (measure == "Temperature") {
@@ -296,7 +300,10 @@ data_monthly <- data_monthly %>%  group_by(City, Measure)
 ```
 
 
-```{r}
+```{r eval = FALSE}
+# settings beore manual run
 
+city <-  "Basel" # "Giessen" #
+temp_precip_selected  <- "both"
 ```
 

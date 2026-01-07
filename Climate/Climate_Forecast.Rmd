@@ -13,12 +13,12 @@ output:
 urlcolor: blue
 papersize: a4
 params:
-  city: "Hohenpeissenberg"
-  temp_precip: "temp" 
+  city: "Mannheim"
+  temp_precip: "both" 
   
 knit: (
   function(inputFile, encoding) { 
-    city <- "Temp_Hohenpeissenberg" 
+    city <- "Mannheim"
   
     rmarkdown::render( 
       input       = inputFile, 
@@ -28,6 +28,12 @@ knit: (
 
 
 ```{r setup, include=FALSE}
+################################################################################
+## Plot and Analyze                                                           ##
+## Yearly/Monthly CO2 or Climate Temperature / Precipitation Data             ##
+##                                                                            ##
+##                                            Wolfgang Vollmer, January 2026  ##
+################################################################################
 knitr::opts_chunk$set(eval = TRUE, echo = FALSE, warning = FALSE,      
                       message = FALSE, fig.width = 7, fig.asp = 0.618)
 
@@ -55,24 +61,23 @@ setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 ```{r Add config and data, child = 'Climate_Config.Rmd', eval=TRUE}
 ```
 
+```{r,  include=FALSE}
 
-```{r, eval = TRUE}
-
-if (length(measure_analysis)  > 1) { 
-  stop(paste(paste(city, collapse = ", "), 
-             "- support of both measures, ", measure, ", is not implemented")) 
-}
+# if (length(measure_analysis)  > 1) { 
+#   stop(paste(paste(city, collapse = ", "), 
+#              "- support of both measures, ", measure, ", is not implemented")) 
+# }
 
 key <- c("City", "Measure")   # all data have to have "City" & "Measure" column
 # key <- c("Measure") # w/o City reduces "strip" naming w/ facet_wrap/grid
 
 ```
 
-```{r get data w interpolated}
+```{r get data w interpolated, include=FALSE}
 
 # ETS / ARIMA models does not allow NAs
 # 
-# allways only the the count column is used 
+# always only the the count column is used 
 # => if interpolated values exist => they are included in count column
 get_data_w_interpolated <- FALSE
 
@@ -94,14 +99,21 @@ if (get_data_w_interpolated) {
  # 1 Basel Temperature   1864 Jan  1864 Jan    -5.5  -5.5 NA 
 
 data_yearly <- uts_gen_yearly_seasonal_avg(data_monthly) %>% 
-  as_tsibble(index = Year, key = key)
+  as_tsibble(index = Year, key = key) %>% 
+  select(count = Year_avg) # select w/ renaming: select(count = Year_avg)
 # A tsibble: 157 x 8 [1Y]
 # Key:       City, Measure [1]
 # Groups:    City, Measure [1]
- #   City  Measure      Year Winter_avg Spring_avg Summer_avg Fall_avg Year_avg
+ #   City  Measure      Year Winter_avg Spring_avg Summer_avg Fall_avg  count
  #   <chr> <fct>       <dbl>      <dbl>      <dbl>      <dbl>    <dbl>    <dbl>
  # 1 Basel Temperature  1864     NA           9.1        16.3     8.07     7.7 
 
+measure_nr <- nrow(data_monthly %>% distinct(Measure))
+measure <- tibble(data_monthly) %>% distinct(Measure)
+measure <- as.character(as_vector(measure))
+
+city <- as_vector(city)
+city_measure <- paste(city, measure)
 
 ```
 
@@ -112,9 +124,13 @@ data_yearly <- uts_gen_yearly_seasonal_avg(data_monthly) %>%
 ##### dafault settings for Temperature/Precipitation to be adjusted
 
 test_data_year_range <- 10
-forecast_horison <- paste(test_data_year_range, "years", collapse = ", ")
-training_data_year_start <- last_year - 5*test_data_year_range
+forecast_test_data_range <- paste(test_data_year_range, "years", collapse = ", ")
+training_data_year_start <- last_year - 6*test_data_year_range 
 training_data_year_end   <- last_year - test_data_year_range
+# start always with > training_data_year_start 
+# for last_year = 2025:
+# data_test  from 2016 - 2025
+# data_train from 1966 - 2015
 
 if (training_data_year_start < first_year) { 
   stop(paste("First year of data", first_year, 
@@ -135,7 +151,12 @@ not stationary — the trend and seasonality will affect the value of the time s
 at different times. On the other hand, a white noise series is stationary — 
 it does not matter when you observe it, it should look much the same at any point in time.
 
-Stationary time series will have no predictable patterns in the long-term. Time plots will show the series to be roughly horizontal (although some cyclic behaviour is possible), with constant variance.
+Stationary time series will have no predictable patterns in the long-term. 
+Time plots will show the series to be roughly horizontal 
+(although some cyclic behaviour is possible), with constant variance.
+
+If ${y_t}$ is a *stationary* time series, then for all $s$, the distribution of  
+$(y_t, ..., y_{t+s})$ does not depend on $t$.
 
 If Time Series data with seasonality are non-stationary
 
@@ -158,11 +179,11 @@ Useful (but not necessary):
 
 ```{r gen plot differencing, eval = eval_stat_diff, fig.width = 7, fig.height = 8}
 data_diff <- data_monthly %>% 
-  mutate(diff_sd0_d1 = difference(count, 1),
-         diff_sd1_d0 = difference(count, 12),
-         diff_sd1_d1 = (difference(count, 12) %>% difference(1)),
-         diff_sd1_d2 = 
-           (difference(count, 12) %>% difference(1)  %>% difference(1)))
+  mutate(diff_sd1_d0 = difference(count, 12),
+         # diff_sd0_d1 = difference(count, 1),
+         diff_sd1_d1 = (difference(count, 12) %>% difference(1)))
+         # diff_sd1_d2 = 
+         #   (difference(count, 12) %>% difference(1)  %>% difference(1)))
   # diff_sd1_d2 = difference(difference(difference(count, 12), 1), 1)
   # are identical
        
@@ -178,6 +199,45 @@ data_diff %>%
        title = "Seasonal difference and further differences to obtain stationary")
 
 ```
+\newpage
+
+
+### Unitroot KPSS Test - fix number of seasonal differences/differences required
+
+* For **ARIMA model** use Unitroot KPSS Test to fix number of differences
+    + unitroot_nsdiffs() to determine *D* (the number of seasonal differences to use)
+    + unitroot_ndiffs() to determine *d* (the number of ordinary differences to use)
+    + The selection of the other model parameters (p,q,P and Q) are all determined by minimizing the AICc
+
+* kpss test of stationary of the differentiated data 
+(with seasonal and ordinary differences) used in the **ARIMA model**
+    + stationary times series: the distribution of $(y_t, ..., y_{t-s})$ does not depend on $t$.  
+    + *Null Hypothesis* $H_0$: stationary is given in the time series: data are stationary and non seasonal  
+        + for $p<\alpha = 0.05$ : reject $H_0$
+        + for $p>>\alpha = 0.05$ : conclude: differentiated data are stationary and non seasonal
+
+* kpss test of stationary w/ unitroot_nsdiffs & unitroot_ndiff provides 
+    + minimum number of seasonal & ordinariel differences required for a stationary series
+    + first fix required seasonal differences and then apply ndiffs to the seasonally differenced data
+    + returns 1 => for stationarity one seasonal difference rsp. difference is required
+
+```{r Unitroot KPSS test, eval = eval_stat_diff}
+
+
+cat("  ndiffs gives the number of differences required and \n",
+    "nsdiffs gives the number of seasonal differences required \n",
+            "- to make a series stationary (test is based on the KPSS test\n\n")
+# returns 1 => one difference/seasonal difference is required for stationarity
+# returns 0 =>  no further difference/seasonal difference is required for stationarity
+cat("unitroot_kpss test to define seasonal (nsdiffs) and ordinary (ndiffs) differences\n")
+data_monthly %>%  
+  features(count, list(unitroot_kpss, unitroot_nsdiffs, unitroot_ndiffs))
+
+cat("unitroot_kpss test on (difference(count, 12) + difference())\n")
+data_monthly %>%
+  features((difference(count, 12) %>% difference(1)), unitroot_kpss, lag = 10)
+
+```
 
 ### Ljung-Box Test - independence/white noise of the time series
 
@@ -185,11 +245,16 @@ The Ljung-Box Test becomes important when checking independence/white noise of
 the forecasts residuals of the fitted ETS rsp. ARIMA models. There we have to 
 check whether the forecast errors are normally distributed with mean zero
 
-Null Hypothesis of independence/white noise in a given time series  
-          => $H_0$ to be rejected for $p<\alpha = 0.05$  
-=> data in the given time series are dependent  
-=> even differenced data are dependent if $p<\alpha = 0.05$  
-=> independence/white noise of residuals of fitted models to be verified 
+* augment(fit) |> features(.innov, ljung_box, lag=x, dof=y) (Ch. 5.4 Residaul diagnostics)
+    + portmanteau test suggesting that the residuals are white noise
+    + *Null Hypothesis* $H_0$: independence/white noise for residuals, i.e. each 
+    autocorrelation in the time series residuals of the model for lag l is close to zero.  
+        + for $p<\alpha = 0.05$ : reject H_0
+        + for $p>>\alpha = 0.05$ : conclude: the residuals are not distinguishable from a white noise series
+    + lag = 2*m (period of season, e.g. m=12 for monthly season) | no season: lag=10
+    + dof = p + q + P + Q (for ARIMA models only, degree of freedom)
+
+Time series with trend and/or seasonality is not stationary. Tests are to be taken on the residuals of the fitted models.
 
 ```{r Ljung–Box test, eval = eval_stat_diff}
 # Ljung-Box statistic - testing if a time series is white noise
@@ -200,66 +265,37 @@ Null Hypothesis of independence/white noise in a given time series
 #    => differenced data are needed to get stationary
 
 cat("Ljung–Box test with (count), w/o differences\n")
-data_diff %>%
+data_monthly %>%
   features(count, ljung_box, lag = 10)
 
 cat("Ljung–Box test on (difference(count, 12))\n")
-data_diff %>%
-  features(diff_sd1_d0, ljung_box, lag = 10)
+data_monthly %>%
+  features(difference(count, 12), ljung_box, lag = 10)
 
 cat("Ljung–Box test on (difference(count, 12) + difference())\n")
-data_diff %>%
-  features(diff_sd1_d1, ljung_box, lag = 10)
+data_monthly %>%
+  features((difference(count, 12) %>% difference(1)), ljung_box, lag = 10)
 
 ```
 
-### Unitroot KPSS Test - fix number of seasonal differences/differences required
 
-kpss test of stationary  
-Null Hypothesis of stationary in a given time series  
-          => $H_0$ to be rejected for $p<\alpha = 0.05$  
-          
-unitroot_nsdiffs/ndiff  provides minimum number of seasonal differences/differences required for a stationary series. First fix required seasonal differences and then apply ndiffs to the seasonally differenced data.
+### ACF (Autocorrelation Function) Plots of Differences
 
-* returns 1 => for stationarity one seasonal difference rsp. difference is required
-
-```{r Unitroot KPSS test, eval = eval_stat_diff}
-
-
-cat("ndiffs gives the number of differences required rsp. \n",
-    "nsdiffs gives the number of seasonal differences required to make \n",
-            "a series stationary (test is based on the KPSS test\n\n")
-# returns 1 => one difference/seasonal difference is required for stationarity
-# returns 0 =>  no further difference/seasonal difference is required for stationarity
-cat("kpss test, nsdiffs & ndiffs on (count), w/o differences\n")
-data_diff %>%  features(count, 
-                        list(unitroot_kpss, unitroot_nsdiffs, unitroot_ndiffs))
-cat("kpss test, nsdiffs & ndiffs on  (difference(count, 12)\n")
-data_diff %>% features(diff_sd1_d0,
-                        list(unitroot_kpss, unitroot_nsdiffs, unitroot_ndiffs))
-cat("kpss test, nsdiffs & ndiffs on (difference(count, 12) %>% difference(1))\n")
-data_diff %>% features(diff_sd1_d1,
-                        list(unitroot_kpss, unitroot_nsdiffs, unitroot_ndiffs))
-
-
-```
-
-### ACF Plots of Differences
 
 ```{r ACF Difference Plots, eval = eval_stat_diff}
-plot_1 <- data_diff %>% ACF(count) %>% autoplot() +
+plot_1 <- data_monthly %>% ACF(count) %>% autoplot() +
   ggtitle("ACF(count)")
-plot_2 <- data_diff %>% ACF(diff_sd0_d1) %>% autoplot() +
+plot_2 <- data_monthly %>% ACF(difference(count, 1)) %>% autoplot() +
   ggtitle("ACF(difference(count, 1)")
-plot_3 <- data_diff %>% ACF(diff_sd1_d0) %>% autoplot() +
+plot_3 <- data_monthly %>% ACF(difference(count, 12)) %>% autoplot() +
   ggtitle("ACF(difference(count, 12))")
-plot_4 <- data_diff %>% ACF(diff_sd1_d1) %>% autoplot() +
+plot_4 <- data_monthly %>% ACF(difference(count, 12) %>% difference(1)) %>% autoplot() +
   ggtitle("ACF(difference(12) + difference())")
 gridExtra::grid.arrange(plot_1, plot_2, plot_3, plot_4)
 
 ```
 
-### Time Series, ACF and PACF Plots of Differences - for ARIMA p, q check
+### Time Series, ACF and PACF (Partial) Plots of Differences - for ARIMA p, q check
 
 ```{r Triplet Time Series ACF PACF Difference Plots, eval = eval_stat_diff}
 
@@ -271,52 +307,50 @@ for (i in unique(key_data(data_monthly)[[1]])) {     # City
   for (j in unique(key_data(data_monthly)[[2]])) {   # Measure
     data <- data_monthly %>% filter(City == i, Measure == j)
     
+    # sum of residuals w/o difference
+    print(
+      as_tibble(data) %>%
+        mutate(diff_count = count) %>% 
+        summarise(Sum = sum(diff_count, na.rm = TRUE),
+                  Mean = mean(diff_count, na.rm = TRUE)))
     print(
       data %>% 
         gg_tsdisplay(count, plot_type='partial') +
         ggtitle("Time Series, ACF & PACF for (count) ",
                 paste(i, "-", j))
     )
+    
     # sum of residuals with difference(count, 12)
     print(
       as_tibble(data) %>%
         mutate(diff_count = difference(count, 12)) %>% 
         summarise(Sum = sum(diff_count, na.rm = TRUE),
                   Mean = mean(diff_count, na.rm = TRUE)))
-    
     print(
       data %>% 
         gg_tsdisplay(difference(count, 12), plot_type='partial') +
         ggtitle("Time Series, ACF & PACF for (difference(count, 12))",
                 paste(i, "-", j))
     )
-    # sum of residuals with difference(count, 12)
+    
+    # sum of residuals with difference(count, 12) %>% difference(1)
     print(
       as_tibble(data) %>%
-        mutate(diff_count = difference(count, 12)) %>% 
+        mutate(diff_count = difference(count, 12) %>% difference(1)) %>% 
         summarise(Sum = sum(diff_count, na.rm = TRUE),
                   Mean = mean(diff_count, na.rm = TRUE)))
-    
     # if seasonally difference data appear to be non-stationary
     # => take an additional first seasonal difference
     print(
       data %>% 
-        gg_tsdisplay(difference(count, 12) %>% difference(), plot_type='partial') +
-        ggtitle("Time Series, ACF & PACF for (difference(count, 12) + difference())",
+        gg_tsdisplay(difference(count, 12) %>% difference(1), plot_type='partial') +
+        ggtitle("Time Series, ACF & PACF for (difference(count, 12) + difference(1))",
                 paste(i, "-", j))
-    )
-    
-    # sum of residuals with difference(count, 12) + difference(1)
-    print(
-      as_tibble(data) %>%
-        mutate(diff_count = (difference(count, 12)) %>%  difference()) %>% 
-        summarise(Sum = sum(diff_count, na.rm = TRUE),
-                  Mean = mean(diff_count, na.rm = TRUE))
     )
   }
 }            
 ```
-
+\newpage
 
 # ExponenTial Smoothing (ETS) Forecasting Models
 
@@ -380,24 +414,48 @@ Indead, a multiplicative seasonal term results in "exploding" forecasts.
 
 Since monthly data are strongly seasonal **seasonal term  "A"** is chosen.
 
+\newpage
+
 ## ETS Models and their componentes
 
-```{r Forecasting with ETS models, eval = eval_ets}
-print("model(ETS(count)) => provides best automatically chosen model")
-# filtering e.g. < 2010 allows generating of test data 2010-2019
-fit_ets_aut <- filter(data_monthly, 
-                      year(Year_Month) > training_data_year_start) %>%
-  model(ETS(count))
-glance(fit_ets_aut)
-report(fit_ets_aut)
+**ETS model with automatically selected $ETS(A|M,N|A|M,N|A|M)$**
 
+
+```{r Forecasting with default ETS and ARIMA model, eval = eval_ets}
+print("model(ETS(count)) => provides default / best automatically chosen model")
+# filtering e.g. < 2010 allows generating of test data 2010-2019
+fit_def <- filter(data_monthly, year(Year_Month) > training_data_year_start) %>%
+  model(
+    # ARIMA = ARIMA(count),
+    ETS = ETS(count)
+    )
+fit_def
+
+fit_ets_def <- fit_def %>% select(City, Measure, ETS)
+# fit_arima_def <- fit_def %>% select(City, Measure, ARIMA)
+
+# report( fit_ets_def)
+for(i in 1:measure_nr) {
+  print(city_measure[i])
+  report(fit_ets_def %>% filter(Measure == measure[i]))
+  # report(fit_arima_def %>% filter(Measure == measure[i]))
+}
+
+glance(fit_def) %>% select(-sigma2, -log_lik, -AMSE)
+
+```
+
+
+**Fit of different pre-defined $ETS(A|M,N|A|M,N|A|M)$ models**
+
+```{r Forecasting with ETS models, eval = eval_ets}
 
 # cat('model(ETS(count ~ error("A"))) => provides best automatically chosen model \n',
 #     'w/ pre-conditon error = "A"') 
-# fit_ets_aut<- filter(data_monthly, year(Year_Month) > training_data_year_start) %>%
+#  fit_ets_def<- filter(data_monthly, year(Year_Month) > training_data_year_start) %>%
 #   model(ETS(count ~ error("A")))
-# glance(fit_ets_aut)
-# report(fit_ets_aut)
+# glance( fit_ets_def)
+# report( fit_ets_def)
 
 # fit$"ETS(count)"
 # model_ets <- fit[[3]] #  fit$"ETS(count)"
@@ -429,20 +487,40 @@ fit_ets_all <-
 # augment(fit_ets) # adds columns to the original data such as predictions, residuals 
              #                     and cluster assignments
 
-cat("Model Selection by Information Criterion - lowest AIC, AICc, BIC\n")
-glance(fit_ets_all) %>% arrange(AICc, AIC, BIC)  
-                       # provides a one-row summary of model-level statistics.
+
+
+```
+
+**Model Selection by Information Criterion - lowest AIC, AICc, BIC**
+
+Best model fit with
+
+* CV, AIC, AICc and BIC with the lowest values
+* Adjusted $R^2$ the model with the highest value.
+
+
+```{r ETS model selection, eval = eval_ets}
+# cat("Model Selection by Information Criterion - lowest AIC, AICc, BIC\n")
+glance(fit_ets_all) %>% arrange(AICc, AIC, BIC) %>% select(-sigma2, -log_lik) 
+                       
 # glance(fit_ets_all) %>% summarise(min(AIC), min(AICc), min(BIC))
-# report(fit_ets_all) # only working for single modles !
+# report(fit_ets_all) # only working for single models !
 
 # components(fit_ets_all)
 
 # plot of ETS components
-components(fit_ets_all) %>%
+for(i in 1:measure_nr) {
+  plot <- components(fit_ets_all) %>% filter(Measure == measure[i]) %>% 
+  filter(.model == "ETS_ANA" | .model == "ETS_MNA" | .model == "ETS_AAA" | .model == "ETS_MAA") %>% 
   autoplot() +
-  ggtitle("Model - Components") 
+  ggtitle(paste(measure[i], "ETS Model - Components"))
+  print(plot)
+}
+
+
 
 ```
+
 
 ### Residual Accuracy with one-step-ahead fitted residuals - check RMSE, MAE
 
@@ -459,7 +537,7 @@ Residual accuracy can be computed directly from models as the one-step-ahead fit
 # check forecast method that minimises for lowest 
 # MAE (Mean absolute error, will lead to forecasts of the median) and 
 # RMSE (Root mean squared error, lead to forecasts of the mean)
-fit_ets_all %>% accuracy() %>% arrange(RMSE, MAE)
+fit_ets_all %>% accuracy() %>% arrange(RMSE, MAE) %>% select(1:MAE)
 
 ```
 
@@ -471,7 +549,7 @@ fit_ets_all %>% accuracy() %>% arrange(RMSE, MAE)
 #                           (useful if x is a series of residuals)
 cat("Null Hypothesis of independence/white noise for residuals - for p < 0.05: reject H_0\n")
 augment(fit_ets_all) %>%
-  features(.resid, ljung_box, lag = 36, dof = 6) %>% arrange(desc(lb_pvalue))
+  features(.resid, ljung_box, lag = 24, dof = 3) %>% arrange(desc(lb_pvalue))
 
 ```
 
@@ -495,7 +573,9 @@ fit_ets_all <- dplyr::select(fit_ets_all, City, Measure, ETS_ANA, ETS_AAA, ETS_A
 # plot of ETS components
 components(fit_ets_all) %>%
   autoplot() +
-  ggtitle("Model - Components")
+  ggtitle("Model - Components") # +
+   # guides(colour=guide_legend(title=paste(city, "\n", measure_analysis, "\n",
+   #                                        "Model")))
 
 ```
 
@@ -503,7 +583,7 @@ components(fit_ets_all) %>%
 ### Forecast Accuracy with Training/Test Data
 
 ```{r ETS forecasts accuracy, eval = eval_ets}
-# forecast_horison
+# forecast_test_data_range
 # training_data_year_start 
 # training_data_year_end
 # 
@@ -523,7 +603,7 @@ fit_ets_train <- filter(data_monthly,
 # for evaluating accuracy on forecasts to be provided:
 # - a complete dataset that includes the future data and 
 # - data used to train the model.
-fc_ets_train <- fit_ets_train %>% fabletools::forecast(h = forecast_horison) # long running
+fc_ets_train <- fit_ets_train %>% fabletools::forecast(h = forecast_test_data_range) # long running
 
 # forecasts accuracy
 # for evaluating accuracy on forecasts to be provided:
@@ -533,7 +613,7 @@ fc_ets_train <- fit_ets_train %>% fabletools::forecast(h = forecast_horison) # l
 # fc_ets_train %>% accuracy(data_monthly) need trainings data
 accuracy(fc_ets_train, 
          filter(data_monthly, year(Year_Month) > training_data_year_start)) %>% 
-  arrange(RMSE, MAE)
+  arrange(RMSE, MAE) %>% select(1:MAE)
 
 # with further data filtering only xlims are adapted, no forecast impact
 # level = prediction interval in % or NULL
@@ -561,6 +641,8 @@ model_ets <- as.character(format(fit_ets$ets))
 
 ```
 
+\newpage
+
 ## Forecasting with selected ETS model `r model_ets`
 
 ### Forecast Plot of selected ETS model
@@ -576,7 +658,7 @@ fit_ets %>%
   ggtitle("Model - Components", as.character(format(fit_ets$ets)))
 
 # calculate forecasts beyond last_year
-# to take forecast_horison required for training forecast only,
+# to take forecast_test_data_range required for training forecast only,
 #       beyond forecast could be different, longer periods of time need more run time
 
 # calculate forecasts
@@ -617,12 +699,12 @@ Required checks to be ready for forecasting:
 plot_1 <- filter(residuals(fit_ets), .model == "ets") %>%  
   ACF(.resid, lag.max = 36) %>% autoplot() +
   labs(title = "ACF Correlogram - Forecast Residuals",  subtitle = model_ets) +
-    facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free",
+    facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free_y",
              strip.position = "left")
 plot_2 <- filter(residuals(fit_ets), .model == "ets") %>%
   PACF(.resid, lag.max = 36) %>% autoplot() +
   labs(title = "PACF - Forecast Residuals", subtitle ="ets") +
-    facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free",
+    facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free_y",
              strip.position = "left")
 gridExtra::grid.arrange(plot_1, plot_2)
 ```
@@ -656,14 +738,23 @@ if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) {
 }
 ```
 
-### Histogram of forecast residuals with overlaid normal curve
+### Ljung-Box Test and Histogram of forecast residuals with overlaid normal curve
+
+
+```{r Ljung-Box Test ETS, eval = eval_ets_arima}
+
+cat("Null Hypothesis of independence/white noise for residuals - for p < 0.05: reject H_0\n")
+augment(fit_ets) %>% filter(year(Year_Month) >= year_filter) %>% 
+  features(.resid, ljung_box, lag = 24)
+
+```
 
 ```{r Ljung-Box Tests ETS residuals, eval = eval_ets}
 
 # check for independence/white noise of residuals => ljung_box test
 
 # check: is the forecast errors are more or less normally distributed 
-# with roughly centred on zero (mean zero)?
+# with roughly centered on zero (mean zero)?
 # => plot histogram of forecast errors, with an overlaid normal curve with 
 #    same mean zero and standard deviation
 #    
@@ -675,11 +766,6 @@ for (i in unique(key_data(data)[[1]])) {     # City
     
     data_filtered <- filter(augment(fit_ets), year(Year_Month) >= year_filter & 
                               City == i, Measure == j)
-    cat("Null Hypothesis of independence/white noise for residuals - for p < 0.05: reject H_0\n")
-    white_noise <- data_filtered %>%
-      features(.resid, ljung_box, lag = 36, dof = 6)
-    print(white_noise)
-    
     plot_histo <- ggts_histo_forecast_resid(data_filtered) +
       labs(title = paste("Histogram of Forecast Residuals -", i, j),  
            subtitle = model_ets)
@@ -693,6 +779,7 @@ for (i in unique(key_data(data)[[1]])) {     # City
 
 ```
 
+\newpage
 
 # ARIMA Forecasting Models - AutoRegressive-Integrated Moving Average
 
@@ -721,90 +808,138 @@ Seasonal ARIMA models are usually denoted ARIMA(p,d,q)(P,D,Q)m, where m refers
 to the number of periods in each season, and the uppercase P,D,Q refer to the autoregressive, differencing, and moving average terms for the seasonal part of 
 the ARIMA model.
 
+**$ARIMA(pdq)(PDQ)$ model with automatically selected $(pdq)(PDQ)$ values**
 
-```{r Seasonal ARIMA automatically w/o stepwise, approx, eval = FALSE}
+```{r Seasonal ARIMA automatically, approx, eval = FALSE}
+# ```{r Seasonal ARIMA automatically, approx, eval = eval_arima}
+
 # Seasonal ARIMA - find an appropriate ARIMA model with long running approach
 # only for first manual check to include in the model list, needs long time
 
 #  automatically select pdq() and PDQ()
-fit_arima_aut<- data_monthly %>% model(arima = ARIMA(count,
-                              stepwise = FALSE, approximation = FALSE))
-glance(fit_arima_aut)
-report(fit_arima_aut)
-# needs much time longer !! (w/ mean = w/ constant)
-#
-# for Muna Loa provides:   ARIMA(1,1,1)(0,1,1)[12]  w/ AICc: 370.
-# w/ stepwise & approx:    ARIMA(1,1,1)(1,1,2)[12]  w/ AICc: 374.
-# 
-# for Basel Temperature:   ARIMA(1,0,0)(2,1,0)[12]  w/ AICc: 8022.
-# w/ stepwise & approx:    ARIMA(2,0,0)(1,1,0)[12]  w/ AICc: 8219.
-# 
-# for Basel Precipitation: ARIMA(3,0,1)(2,0,0)[12] w/ mean w/ AICc: 18906.
-# w/ stepwise & approx:    ARIMA(0,0,2)(2,0,0)[12] w/ mean w/ AICc: 18915.
+fit_arima_def <- data_monthly %>% 
+  model(default = ARIMA(count)) # , stepwise = FALSE, approximation = FALSE))
+  # model(arima = ARIMA(count ~ pdq(, 0, ) + PDQ( , 1, )))
+  # pre-defined: d=0, D=1
+report(fit_arima_def)
+glance(fit_arima_def) %>% select(City:BIC)
 
-#  automatically select pdq() and PDQ() w/ predined d=D=1
-#  also only for manual check to include in the model list,
-fit_arima_aut<- data_monthly %>% 
-  model(arima = ARIMA(count ~ pdq(, 0, ) + PDQ( , 1, )))
-glance(fit_arima_aut)  
-report(fit_arima_aut)   # AICc=7559.2 smaller => better for pdq(0,1,2) instead pdq((0,1,1)
-fit_arima_aut%>% gg_tsresiduals(lag_max= 36) + 
-  ggtitle("Model w/ automatically selected pdq() and PDQ()", 
-          as.character(format(fit_arima_aut$arima)))
+# error if  length(measure) > 1 !!
+fit_arima_def %>% gg_tsresiduals(lag_max = 36) +
+  ggtitle("Model w/ automatically selected pdq() and PDQ()",
+          as.character(format(fit_arima_def$default)))
+
+
+for(i in 1:measure_nr) {
+  print(city_measure[i])
+  fit_ets_sel <- 
+    fit_ets_def %>% filter(Measure == measure[i]) %>% slice(1) %>% select(3) %>% pull()
+  fit_arima_sel<- 
+    fit_arima%>% filter(Measure == measure[i]) %>% slice(1) %>% select(3) %>% pull()
+    
+  plot_ets <- fit_ets_def %>% filter(Measure == measure[i]) %>% 
+    ggtime::gg_tsresiduals(lag_max = 24) + 
+    # lag = 2*m (lenght of seasonal period), w/o seasonal: use lag = 10
+    labs(title = paste(measure[i], "Residuals for fit model ", fit_ets_sel))
+  print(plot_ets)
+  
+  plot_arima <- fit_arima_def %>% filter(Measure == measure[i]) %>% 
+    ggtime::gg_tsresiduals(lag_max = 24) + 
+    # lag = 2*m (lenght of seasonal period), w/o seasonal: use lag = 10
+    labs(title = paste(measure[i], "Residuals for fit model ", fit_arima_sel))
+  print(plot_arima)
+}
+
 ```
 
 
-```{r Seasonal ARIMA for Data_Monthly, eval = eval_arima}
+```{r Seasonal ARIMA for Data_Monthly default, eval = eval_arima}
 # Seasonal ARIMA - find an appropriate ARIMA model
+
 
 #  automatically select pdq() and PDQ()
 # fit_arima_all<- data_monthly %>% model(arima = ARIMA(count,
 #                               stepwise = FALSE, approximation = FALSE))
-# needs much time longer !!
+# setting stepwise=FALSE and approximation=FALSE 
+#    => R work extra hard to find a good model
 #
-# for Muna Loa provides: ARIMA(1,1,1)(0,1,1)[12]  w/ AICc: 370.
-# w/ stepwise & approx:  ARIMA(1,1,1)(1,1,2)[12]  w/ AICc: 374.
+# for Muna Loa provides: ARIMA(1,1,1)(0,1,1)[12]  w/ AICc: 402.
+# w/ stepwise & approx:  ARIMA(0,1,2)(1,1,2)[12]  w/ AICc: 402.
 # 
-# for Basel Temperature: ARIMA(1,0,0)(2,1,0)[12]  w/ AICc: 8022.
-# w/ stepwise & approx:  ARIMA(2,0,0)(1,1,0)[12]  w/ AICc: 8219.
+# for Basel Temperature: ARIMA(3,0,0)(1,1,1)[12]  w/ AICc: 2814.
+# w/ stepwise & approx:  ARIMA(1,0,2)(2,1,1)[12]  w/ AICc: 2814.
 #
-# for Basel Precipitation: ARIMA(1,0,0)(2,1,0)[12]  w/ AICc: 8022.
-# w/ stepwise & approx:    ARIMA(0,0,2)(2,0,0)[12] w/ mean w/ AICc: 18915.
+# for Basel Precipitation: ARIMA(1,0,0)(2,0,0)[12] w/ mean w/ AICc: NA
+# w/ stepwise & approx:    ARIMA(0,0,1)(0,0,2)[12] w/ mean w/ AICc: 71xy
 
-fit_arima_aut <- data_monthly %>% 
-  # filter(Measure == "Temperature") %>% 
-  model(arima = ARIMA(count))
-glance(fit_arima_aut)  
-report(fit_arima_aut)   # AICc=7559.2 smaller => better for pdq(0,1,2) instead pdq((0,1,1)
+```
 
-# error if  length(measure) > 1 !!
-fit_arima_aut %>% gg_tsresiduals(lag_max = 36) +
-  ggtitle("Model w/ automatically selected pdq() and PDQ()",
-          as.character(format(fit_arima_aut$arima)))
 
+**Fit of different pre-defined $ARIMA(pdq)(PDQ)$ models**
+
+```{r Seasonal ARIMA for Data_Monthly, eval = eval_arima}
 
 # model fit period of time:
 #         > training_data_year_start - until last data = last_year (1970-2019)
 fit_arima_all <- 
   filter(data_monthly, year(Year_Month) > training_data_year_start) %>%
-  model(ARIMA_111_112 = ARIMA(count ~ pdq(1,1,1) + PDQ(1,1,2)), 
-        ARIMA_111_012 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,2)),# best for CO2
-        ARIMA_010_110 = ARIMA(count ~ pdq(0,1,0) + PDQ(1,1,0)),
-        ARIMA_012_012 = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,2)),
-        ARIMA_210_110 = ARIMA(count ~ pdq(2,1,0) + PDQ(1,1,0)), 
-        ARIMA_211_011 = ARIMA(count ~ pdq(2,1,1) + PDQ(0,1,1)), # # best for CO2
-        ARIMA_111_010 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,0)),
-        ARIMA_110_010 = ARIMA(count ~ pdq(1,1,0) + PDQ(0,1,0)), # best Temp w/ d=D = 1
-        ARIMA_012_010 = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,0)),
-        ARIMA_100_210 = ARIMA(count ~ pdq(1,0,0) + PDQ(2,1,0)), # best for Temp
-        ARIMA_100_110 = ARIMA(count ~ 1 + pdq(2,0,0) + PDQ(1,1,0)),
-        ARIMA_200_110 = ARIMA(count ~ 1 + pdq(2,0,0) + PDQ(1,1,0)), # 2nd best for Temp
-        ARIMA_301_200 = ARIMA(count ~ 1 + pdq(3,0,1) + PDQ(2,0,0)), # 2nd best for Temp
-        ARIMA_002_200 = ARIMA(count ~ pdq(0,0,2) + PDQ(2,0,0))) # best for Precip
+  model(
+# default_long = ARIMA(count),
+    arima_012_112 = ARIMA(count ~ pdq(0,1,2) + PDQ(1,1,2)), # CO2 opt short run
+    arima_102_211 = ARIMA(count ~ pdq(1,0,2) + PDQ(2,1,1)), # Temperature opt short run
+    arima_001_002 = ARIMA(count ~ pdq(0,0,1) + PDQ(0,0,2)), # Precip opt short run
+# default_long = ARIMA(count, stepwise = FALSE, approx = FALSE),
+    arima_111_011 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,1)), 
+      # CO2 opt long run & 1.best CO2 & 1.best Temperature  & 2.best Precip
+    arima_100_200 = ARIMA(count ~ pdq(1,0,2) + PDQ(2,1,1)), # Precip opt long run
+    arima_300_111 = ARIMA(count ~ pdq(3,0,0) + PDQ(1,1,1)), # Temperature opt long run
+    # default with D=d=1    
+    arima_x1y_m1n = ARIMA(count ~ pdq(,1,) + PDQ(,1,)), # default with D=d=1
+# CO2 best glance(fit) |> arrange(AICc) |> select(.model:BIC)
+      # arima_111_011 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,1)), 
+      # CO2 opt long run & 1.best CO2 & 1.best Temperature & 2.best Precip
+    arima_012_011 = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,1)), 
+      # 2.best CO2 & 2.best Temperature & 1.best Precip
+    arima_111_012 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,2)), 
+    # 3.best CO2 & 3.best Temperature & 3.best Precip
+# Temperature best glance(fit) |> arrange(AICc) |> select(.model:BIC)
+      # arima_111_011 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,1)), 
+      # CO2 opt long run & 1.best CO2 & Temperature
+      # arima_012_011 = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,1)), 
+      # 2.best CO2 & 2.best Temperature & 1.best Precip
+        # arima_111_012 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,2)), 
+        # 3.best CO2 &  3.best Temperature & 3.best Precip
+# Precipitation best glance(fit) |> arrange(AICc) |> select(.model:BIC)     
+##  1 arima_012_011  1229.  -3546. 7099. 7099. 7118.
+##  2 arima_111_011  1229.  -3546. 7099. 7099. 7118.
+##  3 arima_111_012  1230.  -3545. 7101. 7101. 7124
+        # arima_002_200 = ARIMA(count ~ pdq(0,0,2) + PDQ(2,0,0)), 
+        # arima_012_012 = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,2)), 
+        arima_010_110 = ARIMA(count ~ pdq(0,1,0) + PDQ(1,1,0)),
+        arima_210_110 = ARIMA(count ~ pdq(2,1,0) + PDQ(1,1,0)), 
+        arima_211_011 = ARIMA(count ~ pdq(2,1,1) + PDQ(0,1,1)), # # best for CO2
+        arima_111_010 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,0)),
+        arima_110_010 = ARIMA(count ~ pdq(1,1,0) + PDQ(0,1,0)), # best Temp w/ d=D = 1
+        arima_012_010 = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,0)),
+        arima_100_210 = ARIMA(count ~ pdq(1,0,0) + PDQ(2,1,0)), 
+        arima_100_110_c = ARIMA(count ~ 1 + pdq(2,0,0) + PDQ(1,1,0)),
+        arima_200_011 = ARIMA(count ~ pdq(2,0,0) + PDQ(1,1,0)),  
+        arima_200_110_c  = ARIMA(count ~ 1 + pdq(2,0,0) + PDQ(1,1,0)), # 2nd best for Temp
+        )
 
 cat("Model Selection by Information Criterion - lowest AIC, AICc, BIC\n", 
 "choose p, q parameter accordingly - but only for same d, D values \n")
-glance(fit_arima_all) %>% arrange(AICc, AIC, BIC)  # provides a one-row summary of model-level statistics.
+for(i in 1:measure_nr) {
+  print(
+    glance(fit_arima_all) %>% 
+      arrange(AICc, AIC, BIC) %>%  
+      select(City:BIC)  %>% 
+      filter(Measure == measure[i]) %>% 
+      slice(1:8)
+  )
+}
+
+# provides a one-row summary of model-level statistics.
 # glance(fit_arima_all) %>% summarise(min(AIC), min(AICc), min(BIC))
 # report(fit_arima_all) # only working for single models !
 
@@ -837,8 +972,17 @@ Residual accuracy can be computed directly from models as the one-step-ahead fit
 # check forecast method that minimises for lowest 
 # MAE (Mean absolute error, will lead to forecasts of the median) and 
 # RMSE (Root mean squared error, lead to forecasts of the mean)
-fit_arima_all %>% accuracy() %>% arrange(RMSE, MAE)
 
+for(i in 1:measure_nr) {
+  print(
+    fit_arima_all %>% 
+      accuracy() %>% 
+      arrange(RMSE, MAE) %>% 
+      select(1:MAE) %>% 
+      filter(Measure == measure[i]) %>% 
+      slice(1:8)
+  )
+}
 
 ```
 
@@ -848,9 +992,19 @@ fit_arima_all %>% accuracy() %>% arrange(RMSE, MAE)
 
 # ljung_box Test: dof - Degrees of freedom of the fitted model 
 #                           (useful if x is a series of residuals)
+# dof = sum(p,q,P,Q) => should be 4 (not 6)
 cat("Null Hypothesis of independence/white noise for residuals - for p < 0.05: reject H_0\n")
-augment(fit_arima_all) %>%
-  features(.resid, ljung_box, lag = 36, dof = 6) %>% arrange(desc(lb_pvalue))
+
+for(i in 1:measure_nr) {
+  print(
+    augment(fit_arima_all) %>%
+      features(.resid, ljung_box, lag = 24, dof = 3) %>% 
+      arrange(desc(lb_pvalue)) %>% 
+      filter(Measure == measure[i]) %>% 
+      slice(1:8)
+  )
+}
+
 
 ```
 
@@ -864,7 +1018,7 @@ augment(fit_arima_all) %>%
 # - a complete dataset that includes the future data and 
 # - data used to train the model
 
-# forecast_horison
+# forecast_test_data_range
 # training_data_year_start 
 # training_data_year_end 
 # 
@@ -874,44 +1028,55 @@ augment(fit_arima_all) %>%
 fit_arima_train <- filter(data_monthly, 
                         year(Year_Month) > training_data_year_start  &
                           year(Year_Month) <= training_data_year_end) %>%
-  model(ARIMA_111_112 = ARIMA(count ~ pdq(1,1,1) + PDQ(1,1,2)), 
-        ARIMA_111_012 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,2)),# best for CO2
-        ARIMA_010_110 = ARIMA(count ~ pdq(0,1,0) + PDQ(1,1,0)),
-        ARIMA_012_012 = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,2)),
-        ARIMA_210_110 = ARIMA(count ~ pdq(2,1,0) + PDQ(1,1,0)), 
-        ARIMA_211_011 = ARIMA(count ~ pdq(2,1,1) + PDQ(0,1,1)), # # best for CO2
-        ARIMA_111_010 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,0)),
-        ARIMA_110_010 = ARIMA(count ~ pdq(1,1,0) + PDQ(0,1,0)), # best Temp w/ d=D = 1
-        ARIMA_012_010 = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,0)),
-        ARIMA_100_210 = ARIMA(count ~ pdq(1,0,0) + PDQ(2,1,0)), # best for Temp
-        ARIMA_100_110 = ARIMA(count ~ 1 + pdq(2,0,0) + PDQ(1,1,0)),
-        ARIMA_200_110 = ARIMA(count ~ 1 + pdq(2,0,0) + PDQ(1,1,0)), # 2nd best for Temp
-        ARIMA_301_200 = ARIMA(count ~ 1 + pdq(3,0,1) + PDQ(2,0,0)), # 2nd best for Temp
-        ARIMA_002_200 = ARIMA(count ~ pdq(0,0,2) + PDQ(2,0,0))) # best for Precip
+  model(
+    # default = ARIMA(count, stepwise = FALSE, approx = FALSE),
+        # arima_x1y_m1n = ARIMA(count ~ pdq(,1,) + PDQ(,1,)), # default with D=d=1
+        # arima_002_200 = ARIMA(count ~ pdq(0,0,2) + PDQ(2,0,0)), # best for Precip
+        # arima_012_012 = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,2)),
+        arima_012_011 = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,1)),
+        # arima_102_211 = ARIMA(count ~ pdq(1,0,2) + PDQ(2,1,1)), # Temperature opt short run
+        arima_111_011 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,1)), # CO2 opt long run, best Temperature
+        # arima_111_112 = ARIMA(count ~ pdq(1,1,1) + PDQ(1,1,2)), # CO2 opt short run
+        # arima_111_012 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,2)),
+        # arima_010_110 = ARIMA(count ~ pdq(0,1,0) + PDQ(1,1,0)),
+        # arima_210_110 = ARIMA(count ~ pdq(2,1,0) + PDQ(1,1,0)), 
+        arima_211_011 = ARIMA(count ~ pdq(2,1,1) + PDQ(0,1,1)), # # best for CO2
+        # arima_111_010 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,0)),
+        # arima_110_010 = ARIMA(count ~ pdq(1,1,0) + PDQ(0,1,0)), # best Temp w/ d=D = 1
+        # arima_012_010 = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,0)),
+        # arima_100_210 = ARIMA(count ~ pdq(1,0,0) + PDQ(2,1,0)), 
+        # # arima_100_110 = ARIMA(count ~ 1 + pdq(2,0,0) + PDQ(1,1,0)),
+        # arima_200_011 = ARIMA(count ~ pdq(2,0,0) + PDQ(1,1,0)),  
+        # # arima_200_110 = ARIMA(count ~ 1 + pdq(2,0,0) + PDQ(1,1,0)), # 2nd best for Temp
+        # arima_300_111 = ARIMA(count ~ pdq(3,0,0) + PDQ(1,1,0)), # Temperature opt long run
+        # arima_301_200 = ARIMA(count ~ 1 + pdq(3,0,1) + PDQ(2,0,0))
+        )
+    
 
-fc_arima_train <- fit_arima_train %>% fabletools::forecast(h = forecast_horison) # long running
+fc_arima_train <- fit_arima_train %>% fabletools::forecast(h = forecast_test_data_range) # long running
 fc_arima_train_save <- fc_arima_train  # be careful to keep the long running calculations
 # select best models according minimization of AICc and RMSE
-if (measure == "CO2") {
-  fc_arima_train <- filter(fc_arima_train, .model == "ARIMA_111_012" | 
-                       .model == "ARIMA_012_012" |
-                       .model == "ARIMA_211_011" |
-                       .model == "ARIMA_111_112")
-} else if (measure == "Temperature") {
-  fc_arima_train <- filter(fc_arima_train, .model == "ARIMA_111_012" | 
-                       .model == "ARIMA_012_012" |
-                       .model == "ARIMA_211_011" |
-                       .model == "ARIMA_100_210")
-} else if (measure == "Precipitation") {
-  fc_arima_train <- filter(fc_arima_train, .model == "ARIMA_012_012" | 
-                     #  .model == "ARIMA_111_012" | # overlapping w/ _012_012
-                       .model == "ARIMA_301_200" |  # straigth mean line
-                       .model == "ARIMA_100_210")
-}
+# if (measure == "CO2") {
+  fc_arima_train <- filter(fc_arima_train, 
+                       .model == "arima_111_011" | 
+                       .model == "arima_012_011" |
+                       .model == "arima_211_011")
+# } else if (measure == "Temperature") {
+#   fc_arima_train <- filter(fc_arima_train, 
+#                        .model == "arima_111_011" | 
+#                        .model == "arima_012_011" |
+#                        .model == "arima_211_011")
+# } else if (measure == "Precipitation") {
+#   fc_arima_train <- filter(fc_arima_train, 
+#                        .model == "arima_012_011" | 
+#                        .model == "arima_111_011" | 
+#                        .model == "arima_111_012")
+# }
 
 accuracy(fc_arima_train, 
          filter(data_monthly, year(Year_Month) > training_data_year_start )) %>% 
-  arrange(RMSE, MAE)
+  arrange(RMSE, MAE) %>% 
+  select(1:MAE)
 
 
 # with further data filtering only xlims are adapted, no forecast impact
@@ -929,14 +1094,14 @@ fc_arima_train %>%
 ```{r ARIMA model forecast, eval = eval_arima}
 
 # calculate forecasts
-fc_arima_all <- fit_arima_all %>% fabletools::forecast(h = forecast_horison) 
+fc_arima_all <- fit_arima_all %>% fabletools::forecast(h = forecast_test_data_range) 
 # long running
 
 fc__arima_all_save <- fc_arima_all  # be careful to keep the long running calculations
-fc_arima_all <- filter(fc_arima_all, .model == "ARIMA_012_012" | 
-                     #  .model == "ARIMA_111_012" | # overlapping w/ _012_012
-                       .model == "ARIMA_301_200" |  # straigth mean line
-                       .model == "ARIMA_100_210")
+fc_arima_all <- filter(fc_arima_all, .model == "arima_012_012" | 
+                     #  .model == "arima_111_012" | # overlapping w/ _012_012
+                       .model == "arima_301_200" |  # straigth mean line
+                       .model == "arima_100_210")
 
 # Plot ARIMA model forecasts and choose appropriate range of data before forecast
 # data <- filter(data_monthly, year(Year_Month) >= 2010) 
@@ -956,33 +1121,36 @@ fc_arima_all <- filter(fc_arima_all, .model == "ARIMA_012_012" |
 
 #######################################################
 ## Mauna Loa best: all fine, more or less the same
-# ARIMA_111_012 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,2)) => selected
-# ARIMA_111_112 = ARIMA(count ~ pdq(1,1,1) + PDQ(1,1,2))
-# ARIMA_012_012 = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,2))
-# ARIMA_211_011 = ARIMA(count ~ pdq(2,1,1) + PDQ(0,1,1))
+# arima_111_012 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,2)) => selected
+# arima_111_112 = ARIMA(count ~ pdq(1,1,1) + PDQ(1,1,2))
+# arima_012_012 = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,2))
+# arima_211_011 = ARIMA(count ~ pdq(2,1,1) + PDQ(0,1,1))
 #######################################################
 
 # best models - selection based on
 # ACF, PACF plots, AICc, residual accuracy, trainig accuracy
 
-if (measure == "CO2") {
-  # model_best <- expr("model(arima = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,2)))")
-  fit_arima <- filter(data_monthly, year(Year_Month) > training_data_year_start) %>% 
-    model(arima = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,2)))
-  selected_arima_model <- "ARIMA_111_012"
-} else if (measure == "Temperature") {
-  fit_arima <- filter(data_monthly, year(Year_Month) > training_data_year_start) %>% 
-    model(arima = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,2)))
-  selected_arima_model <- "ARIMA_012_012"
-} else if (measure == "Precipitation") {
-  fit_arima <- filter(data_monthly, year(Year_Month) > training_data_year_start) %>% 
-    model(arima = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,2)))
-  selected_arima_model <- "ARIMA_012_012"
-}
+# if (measure == "CO2") {
+#   # model_best <- expr("model(arima = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,1)))")
+  fit_arima <- 
+    filter(data_monthly, year(Year_Month) > training_data_year_start) %>% 
+    model(arima = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,1)))
+  selected_arima_model <- "arima_111_011"
+# } else if (measure == "Temperature") {
+#   fit_arima <- filter(data_monthly, year(Year_Month) > training_data_year_start) %>% 
+#     model(arima = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,1)))
+#   selected_arima_model <- "arima_111_011"
+# } else if (measure == "Precipitation") {
+#   fit_arima <- filter(data_monthly, year(Year_Month) > training_data_year_start) %>% 
+#     model(arima = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,1)))
+#   selected_arima_model <- "arima_111_011"
+# }
 
 model_arima <- as.character(format(fit_arima$arima))
 
 ```
+
+\newpage
 
 ## `r measure` - Forecasting with selected ARIMA model `r model_arima` 
 
@@ -1012,7 +1180,7 @@ fc_arima %>%
         subtitle = "w/ Prediction Interval")
 
 # augment(fit_arima) %>%
-#   features(.resid, ljung_box, lag = 36, dof = 6)
+#   features(.resid, ljung_box, lag = 24, dof = 3)
 
 ```
 
@@ -1038,12 +1206,12 @@ Required checks to be ready for forecasting:
 plot_1 <- filter(residuals(fit_arima), .model == "arima") %>%  
   ACF(.resid, lag.max = 36) %>% autoplot() +
   labs(title = "ACF Correlogram - Forecast Residuals",  subtitle = model_arima) +
-    facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free",
+    facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free_y",
              strip.position = "left")
 plot_2 <- filter(residuals(fit_arima), .model == "arima") %>%
   PACF(.resid, lag.max = 36) %>% autoplot() +
   labs(title = "PACF - Forecast Residuals", subtitle = model_arima) +
-    facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free",
+    facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free_y",
              strip.position = "left")
 gridExtra::grid.arrange(plot_1, plot_2)
 
@@ -1077,7 +1245,17 @@ if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) {
 }
 ```
 
-### Histogram of forecast residuals with overlaid normal curve
+### Ljung-Box Test and Histogram of forecast residuals with overlaid normal curve
+
+
+```{r Ljung-Box Test Arima, eval = eval_ets_arima}
+
+cat("Null Hypothesis of independence/white noise for residuals - for p < 0.05: reject H_0\n")
+augment(fit_arima) %>% filter(year(Year_Month) >= year_filter) %>% 
+  features(.resid, ljung_box, lag = 24, dof = 3)
+
+```
+
 
 ```{r Ljung-Box Tests residuals ARIMA, eval = eval_arima, fig.width= 7, fig.height= 4}
 
@@ -1096,11 +1274,6 @@ for (i in unique(key_data(data)[[1]])) {     # City
     
     data_filtered <- filter(augment(fit_arima), year(Year_Month) >= year_filter & 
                               City == i, Measure == j)
-    cat("Null Hypothesis of independence/white noise for residuals - for p < 0.05: reject H_0\n")
-    white_noise <- data_filtered %>%
-      features(.resid, ljung_box, lag = 36, dof = 6)
-    print(white_noise)
-    
     plot_histo <- ggts_histo_forecast_resid(data_filtered) +
       labs(title = paste("Histogram of Forecast Residuals -", i, j),  
            subtitle = model_arima)
@@ -1114,6 +1287,8 @@ for (i in unique(key_data(data)[[1]])) {     # City
 
 ```
 
+
+\newpage
 
 # ARIMA vs ETS
 
@@ -1133,17 +1308,19 @@ forecast well. Therefore the values of the Forecast Accuracy are the more releva
 
 ### Comparing Residual and Forecast Accuracy of selected ETS and ARIMA model
 
-```{r compare residual and forecast accuracy, eval = eval_ets_arima}
+```{r compare residual and forecast accuracy faulty, eval = eval_ets_arima}
 ## Comparing ARIMA() and ETS() on seasonal data
 
 bind_rows(
   fit_ets %>% accuracy(),
   fit_arima %>% accuracy(),
   accuracy(filter(fc_ets_train, .model == selected_ets_model), 
-           filter(data_monthly, year(Year_Month) > training_data_year_start )),
+           filter(data_monthly, year(Year_Month) > training_data_year_start)),
   accuracy(filter(fc_arima_train, .model ==  selected_arima_model),
-           filter(data_monthly, year(Year_Month) > training_data_year_start ))
-)
+           filter(data_monthly, year(Year_Month) > training_data_year_start))
+  ) %>% 
+   select(-ME, -MPE, -ACF1) %>% 
+  arrange(Measure, RMSE)
 
 ```
 
@@ -1151,28 +1328,28 @@ bind_rows(
 
 ```{r ETS Time Series Residuals Histo Forecast, eval = eval_ets_arima}
 
-if (measure == "CO2") {
-  # model_best <- expr("model(arima = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,2)))")
+# if (measure == "CO2") {
+#   # model_best <- expr("model(arima = ARIMA(count~ pdq(1,1,1) + PDQ(0,1,2)))")
   fit_ets_arima <- filter(data_monthly, year(Year_Month) > training_data_year_start) %>% 
-    model(ets = ETS(count ~ error("A") + trend("A") + season("A")),
-          arima = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,2)))
-} else if (measure == "Temperature") {
-  fit_ets_arima <- filter(data_monthly, year(Year_Month) > training_data_year_start) %>% 
-      model(ets = ETS(count ~ error("A") + trend("A") + season("A")),
-            arima = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,2)))
-} else if (measure == "Precipitation") {
-  fit_ets_arima <- filter(data_monthly, year(Year_Month) > training_data_year_start) %>% 
-    model(ets = ETS(count ~ error("A") + trend("A") + season("A")),
-          arima = ARIMA(count ~ pdq(0,1,2) + PDQ(0,1,2)))
-}
+    model(ETS_AAA = ETS(count~ error("A") + trend("A") + season("A")),
+          arima_111_011 = ARIMA(count~ pdq(1,1,1) + PDQ(0,1,1)))
+# } else if (measure == "Temperature") {
+#   fit_ets_arima <- filter(data_monthly, year(Year_Month) > training_data_year_start) %>% 
+#       model(ets = ETS(count~ error("A") + trend("A") + season("A")),
+#             arima = ARIMA(count~ pdq(0,1,2) + PDQ(0,1,2)))
+# } else if (measure == "Precipitation") {
+#   fit_ets_arima <- filter(data_monthly, year(Year_Month) > training_data_year_start) %>% 
+#     model(ets = ETS(count~ error("A") + trend("A") + season("A")),
+#           arima = ARIMA(count~ pdq(0,1,2) + PDQ(0,1,2)))
+#}
 
-fc_ets_arima <- fit_ets_arima %>% fabletools::forecast(h = "30 years")
+fc_ets_arima_monthly <- fit_ets_arima %>% fabletools::forecast(h = "25 years")
 
 # Plot ARIMA model forecasts and choose appropriate range of data before forecast
 #  autoplot: data + forecast AAA & forecast MAA w/ or w/o signif. level (def=80&95%)
 #   /prediction interval;  level = NULL /= 95 => w/o signif. level / w/ 95% 
 data <- filter(data_monthly, Year >= 2010) 
-fc_ets_arima %>% 
+fc_ets_arima_monthly %>% 
     autoplot(data) +
     labs(x = "Year", y = y_label, col = "Forecast",
         title = paste("Forecasts by ETS ", model_ets," and ARIMA model", model_arima),
@@ -1183,39 +1360,206 @@ fc_ets_arima %>%
 ```{r test for yearly(mean), eval = eval_ets_arima}
 
 # hilo() provides confidence intervals
-slice(hilo(fc_ets_arima) %>% group_by(City, Measure, .model), 1:3)  
-slice(hilo(fc_ets_arima) %>% group_by(City, Measure, .model), n() -2:0) 
+# slice(hilo(fc_ets_arima_monthly) %>% group_by(City, Measure, .model), 1:3)  
+# slice(hilo(fc_ets_arima_monthly) %>% group_by(City, Measure, .model), n() -2:0) 
 
 data <- filter(data_monthly, Year >= 1900) 
-fc_ets_arima %>% 
+fc_ets_arima_monthly %>% 
     autoplot(data) +
     labs(x = "Year", y = y_label, col = "Forecast",
         title = paste("Forecasts by ETS ", model_ets," and ARIMA model", model_arima),
         subtitle = "w/ Prediction Interval") 
 
-
-yearly_ets_arima_forecasts <- fc_ets_arima %>%
+yearly_ets_arima_forecasts <- fc_ets_arima_monthly %>%
     index_by(Year = ~ year(.)) %>%
     as_tibble() %>% 
     group_by(City, Measure, .model, Year) %>% 
-    summarise(Year_avg = mean(count))
-slice(yearly_ets_arima_forecasts, 1:3)
-slice(yearly_ets_arima_forecasts, n() -2:0)
+    summarise(count = mean(count))
+# slice(yearly_ets_arima_forecasts, 1:3)  # mean Jan, Feb, March
+# slice(yearly_ets_arima_forecasts, n() -2:0) # mean Oct, Nov, Dec
 
 # qnorm(0.975, mean =0, sd = 1.75558599)  # sd got from monthly data signif. level
 # qnorm(0.975, mean =13, sd = 0.547)    # sd got via yearly_avg
 
-```
 
-### Ljung-Box Test - independence/white noise of the forecasts residuals
+# data_temp_fc <- yearly_ets_arima_forecasts %>%
+#   group_by(.model, City, Measure, Year) %>%  
+#   summarise(Mean = mean(count))
 
-```{r Ljung-Box Test ETS Arima, eval = eval_ets_arima}
-
-augment(fit_ets_arima) %>%
-  features(.resid, ljung_box, lag = 36, dof = 6)
 
 ```
+\newpage
 
+
+
+```{r mean data table of past time periods, eval = TRUE}
+
+data_monthly <- data_monthly %>% 
+  mutate(Period_Time =  
+           paste0((((Year-11) %/% 30) * (30)) + 11, "-", (((Year-11) %/% 30) * (30)) + 40)) %>% 
+  mutate(Period_Time = 
+           case_when(Period_Time == "2021-2050" ~ paste0("2021-", last_year),
+                     .default = Period_Time
+                     ))
+
+data_yearly <- data_yearly %>% 
+  mutate(Period_Time =  
+           paste0((((Year-11) %/% 30) * (30)) + 11, "-", (((Year-11) %/% 30) * (30)) + 40)) %>% 
+  mutate(Period_Time = 
+           case_when(Period_Time == "2021-2050" ~ paste0("2021-", last_year),
+                     .default = Period_Time
+                     ))
+
+data_yearly_period <- tibble(data_yearly) %>% group_by(City, Measure, Period_Time) %>% 
+  summarise(Mean = mean(count))
+data_yearly_monthly <- tibble(data_monthly) %>% group_by(City, Measure, Year, Period_Time) %>% 
+  summarise(Mean = mean(count)) 
+data_yearly_monthly_period <- data_yearly_monthly %>% group_by(City, Measure, Period_Time) %>% 
+  summarise(Period_Mean = mean(Mean)) 
+
+data_yearly_monthly_period_wide <- data_yearly_monthly_period %>% 
+  ungroup() %>% select(-City) %>% 
+  pivot_wider(names_from = Measure,
+              values_from = Period_Mean)
+
+knitr::kable(data_yearly_monthly_period_wide, digits = 1, 
+             caption = "Mean values for the given time periods; 
+Units: Temperature (degree C), Precipitation (mm/Month), CO2 (ppm)")
+
+```
+
+```{r ETS ARIMA Forecast Table yearly mean of monthly data, eval = eval_ets_arima}
+
+cond <- c(last_year + 1, seq.int(2030, 2050, 5))
+Year.x = last_year + 1 
+Year.y = 2050
+
+fc_monthly_ets_arima <- fit_ets_arima %>% fabletools::forecast(h = "25 years")
+fc <- fc_monthly_ets_arima %>% 
+  mutate(Year =  year(Year_Month)) %>% 
+  group_by(City, Measure, .model, Year)
+
+data_monthly_fc <- tibble(fc) %>% 
+  group_by(City, Measure, .model, Year)
+
+data_yearly_fc <- tibble(fc) %>% 
+  group_by(City, Measure, .model, Year) %>% 
+  summarise(Yearly_Mean = mean(.mean))
+
+data_yearly_fc_wide <- data_yearly_fc %>% 
+  pivot_wider(names_from = .model,
+              values_from = Yearly_Mean)
+
+data_filter_fc <- filter(data_yearly_fc_wide,
+                         Year == cond[1] | Year == cond[2] | 
+                         Year == cond[3] | Year == cond[4] | 
+                         Year == cond[5] | Year == cond[6])
+
+knitr::kable(data_filter_fc, digits = 2, 
+             caption = "Mean Yearly ARIMA and ETS Forecast values (next 25 years);
+Units: Temperature (degree C), Precipitation (mm/Month), CO2 (ppm)")
+
+
+```
+
+
+```{r ETS ARIMA Yearly Forecast of monthly data Table delta}
+
+x <- data_yearly_fc %>% filter(Year == Year.x) %>% rename(Mean = Yearly_Mean)
+y <- data_yearly_fc %>% filter(Year == Year.y) %>% rename(Mean = Yearly_Mean)
+
+z <- left_join(x, y, join_by(City, Measure, .model)) %>% 
+  mutate(Delta = Mean.y - Mean.x)
+
+z_wide <- z %>% 
+  pivot_wider(names_from = .model,
+              values_from = c(Mean.x, Mean.y, Delta)) %>% 
+  rename(ETS.x = Mean.x_ETS_AAA, 
+         ARIMA.x = Mean.x_arima_111_011,
+         ETS.y = Mean.y_ETS_AAA, 
+         ARIMA.y = Mean.y_arima_111_011,
+         Delta_ETS = Delta_ETS_AAA, 
+         Delta_ARIMA = Delta_arima_111_011)
+
+data_z_wide <- z_wide %>% ungroup() %>% 
+  select(-City, Measure,  
+         Year.x, Year.y, 
+         ETS.x, ARIMA.x, ETS.y, ARIMA.y, Delta_ETS, Delta_ARIMA)
+
+knitr::kable(data_z_wide, digits = 2, 
+             caption = "Forecast increase/decrease over the next 25 years;
+Units: Temperature (degree C), Precipitation (mm/Month), CO2 (ppm)")
+
+```
+
+```{r test for yearly(mean) table A, eval = FALSE}
+
+# x_jan <- paste(last_year + 1, "Jan")
+# x_dec <- paste(last_year + 1, "Dec")
+# y_jan <- paste(last_year + 25, "Jan")
+# y_dec <- paste(last_year + 25, "Dec")
+# 
+# x <- as_tibble(fc_ets_arima_monthly %>% filter_index(x_jan ~ x_dec)) %>% 
+#   mutate(month = month(Year_Month, label = TRUE, locale = "UTC")) %>% 
+#   rename(Mean = .mean)
+# y <- as_tibble(fc_ets_arima_monthly %>% filter_index(y_jan ~ y_dec)) %>% 
+#   mutate(month = month(Year_Month, label = TRUE, locale = "UTC")) %>% 
+#   rename(Mean = .mean)
+# 
+# z <- left_join(x, y, join_by(City, Measure, .model, month)) %>% 
+#   mutate(Diff = Mean.y - Mean.x)
+# 
+# data_z <- z %>% 
+#   select(City, Measure, .model, 
+#          Year_Month.x, Year_Month.y, 
+#          Mean.x, Mean.y, Diff)
+# 
+# knitr::kable(data_z, digits = 2, caption =
+#                "Forecast increase/decrease over the next 25 years (monthly slices)")
+
+```
+
+```{r ETS ARIMA Monthly Forecast Table delta, eval = TRUE}
+# for ETS model in principle no monthly delta difference
+# for ARIMA model very small differences only => Yearly Forecast Table delta suficient 
+
+x_m <- data_monthly_fc %>% filter(Year == Year.x) %>% ungroup() %>% 
+  rename(Mean.x = .mean, Year_Month.x = Year_Month) %>% select(-count, -Year) %>% 
+ separate(Year_Month.x, c("Year.x", "Month"))
+y_m <- data_monthly_fc %>% filter(Year == Year.y) %>% ungroup() %>% 
+  rename(Mean.y = .mean, Year_Month.y = Year_Month) %>% select(-count, -Year) %>% 
+  separate(Year_Month.y, c("Year.y", "Month"))
+
+z_m <- left_join(x_m, y_m, join_by(City, Measure, .model, Month)) %>%
+  mutate(Delta = Mean.y - Mean.x)
+
+z_m_wide <- z_m %>% 
+  pivot_wider(names_from = .model,
+              values_from = c(Mean.x, Mean.y, Delta)) %>% 
+  rename(ETS.x = Mean.x_ETS_AAA, 
+         ARIMA.x = Mean.x_arima_111_011,
+         ETS.y = Mean.y_ETS_AAA, 
+         ARIMA.y = Mean.y_arima_111_011,
+         Delta_ETS = Delta_ETS_AAA, 
+         Delta_ARIMA = Delta_arima_111_011)
+
+
+data_z_m_wide <- z_m_wide %>% 
+  select(Measure,   
+         Month, Year.x, Year.y, 
+         ETS.x, ARIMA.x, ETS.y, ARIMA.y, Delta_ETS, Delta_ARIMA)
+
+knitr::kable(data_z_m_wide, digits = 2, 
+             caption = "Forecast increase/decrease over the next 25 years;
+Units: Temperature (degree C), Precipitation (mm/Month), CO2 (ppm)")
+
+
+```
+
+
+
+
+\newpage
 
 # Yearly Data Forecasts with ARIMA and ETS 
 
@@ -1234,71 +1578,157 @@ taken by leaving out the seasonal term $<ARIMA(0,1,2) w/ drift>$.
 
 ### Forecast Plot of selected ETS and ARIMA model
 
-```{r Yearly ETS ARIMA Forecast, eval = eval_yearly}
+```{r Yearly ETS ARIMA Forecast of mean yearly data, eval = eval_yearly}
 
-if (measure == "CO2") {
-  # model_best <- expr("model(arima = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,2)))")
+# if (measure == "CO2") {
+#   # model_best <- expr("model(arima = ARIMA(count~ pdq(1,1,1) + PDQ(0,1,2)))")
   fit_year_ets_arima <- filter(data_yearly, Year > training_data_year_start) %>% 
-      model(ets = ETS(Year_avg ~ error("A") + trend("A") + season("N")),
-          arima = ARIMA(Year_avg ~ 1 + pdq(0,2,1)))
-} else if (measure == "Temperature") {
-  fit_year_ets_arima <- filter(data_yearly, Year > training_data_year_start) %>% 
-      model(ets = ETS(Year_avg ~ error("A") + trend("A") + season("N")),
-          arima = ARIMA(Year_avg ~ 1 + pdq(0,1,2)))
-} else if (measure == "Precipitation") {
-  fit_year_ets_arima <- filter(data_yearly, Year > training_data_year_start) %>% 
-    model(ets = ETS(Year_avg ~ error("A") + trend("A") + season("N")),
-          arima = ARIMA(Year_avg ~ 1 + pdq(0,1,2)))
-}
+      model(ets_def = ETS(count),
+            ETS_AAN = ETS(count ~ error("A") + trend("A") + season("N")),
+            arima_def = ARIMA(count),
+            arima_111wd = ARIMA(count ~ 1 + pdq(1,1,1)))
+# } else if (measure == "Temperature") {
+#   fit_year_ets_arima <- filter(data_yearly, Year > training_data_year_start) %>% 
+#       model(ets = ETS(count ~ error("A") + trend("A") + season("N")),
+#             arima_count= (count), 
+#           # arima = ARIMA(count ~ 1 + pdq(0,1,2)))
+#             arima = ARIMA(count ~ 1 + pdq(1,1,1)))
+# } else if (measure == "Precipitation") {
+#   fit_year_ets_arima <- filter(data_yearly, Year > training_data_year_start) %>% 
+#     model(ets = ETS(count ~ error("A") + trend("A") + season("N")),
+#             arima = ARIMA(count ~ 1 + pdq(1,1,1)))
+# }
 
-model_year_ets <- as.character(format(fit_year_ets_arima$ets))
-model_year_arima <- as.character(format(fit_year_ets_arima$arima))
 
-fc_year_ets_arima <- fit_year_ets_arima %>% fabletools::forecast(h = "30 years")
+model_year_ets <- as.character(format(fit_year_ets_arima$ETS_AAN))
+model_year_arima <- as.character(format(fit_year_ets_arima$arima_111wd))
+
+cat("selected: ETS_AAN and arima_111 w/ drift")
+fit_year_ets_arima <- fit_year_ets_arima %>% select(-ets_def, -arima_def)
+fc_year_ets_arima <- fit_year_ets_arima %>% fabletools::forecast(h = "25 years")
 
 # Plot ARIMA model forecasts and choose appropriate range of data before forecast
 #  autoplot: data + forecast AAA & forecast MAA w/ or w/o signif. level (def=80&95%)
 #   /prediction interval;  level = NULL /= 95 => w/o signif. level / w/ 95%
-data <- filter(data_yearly, Year >= 2010) 
-fc_year_ets_arima %>% 
-    autoplot(data) +
-    labs(x = "Year", y = y_label, col = "Forecast",
-        title = paste("Yearly Data Forecasts by ETS ", 
-                      model_year_ets," and ARIMA model", model_year_arima),
-        subtitle = "w/ Prediction Interval") 
-
-```
-
-```{r Long run Yearly ETS ARIMA Forecast, eval = eval_yearly}
-
-# hilo() provides confidence intervals
-slice(hilo(fc_year_ets_arima) %>% group_by(City, Measure, .model), 1:3)  
-slice(hilo(fc_year_ets_arima) %>% group_by(City, Measure, .model), n() -2:0) 
 
 data <- filter(data_yearly, Year >= first_year) 
 fc_year_ets_arima %>% 
     autoplot(data) +
     labs(x = "Year", y = y_label, col = "Forecast",
-        title = paste("Yearly Data Forecasts by ETS ", 
+        title = paste("Yearly Forecasts by ETS ", 
                       model_year_ets," and ARIMA model", model_year_arima),
         subtitle = "w/ Prediction Interval") 
 
-# qnorm(0.975, mean =0, sd = 1.75558599)  # sd got from monthly data signif. level
-# qnorm(0.975, mean =13, sd = 0.547)    # sd got via yearly_avg
+data <- filter(data_yearly, Year >= (last_year - 30)) 
+fc_year_ets_arima %>% 
+    autoplot(data) +
+    labs(x = "Year", y = y_label, col = "Forecast",
+        title = paste("Yearly Forecasts by ETS ", 
+                      model_year_ets," and ARIMA model", model_year_arima),
+        subtitle = "w/ Prediction Interval") 
+
+glance( fit_year_ets_arima) %>% arrange(AICc)
+
 
 ```
-
-### Ljung-Box Test - independence/white noise of the forecasts residuals
+Ljung-Box Test - independence/white noise of the forecasts residuals
 
 ```{r Yearly Ljung-Box Test ETS Arima, eval = eval_yearly}
 
-augment(fit_year_ets_arima) %>%
-  features(.resid, ljung_box, lag = 36, dof = 6)
+# We suggest using L=10 for non-seasonal data and  L=2m for seasonal data, 
+# where  m is the period of seasonality. 
+# lag = 2*m (period of season, e.g. m=12 for monthly season) | no season: lag=10
+#     + dof = p + q + P + Q (for ARIMA models only, degree of freedom)
+
+augment(fit_year_ets_arima %>% select(ETS_AAN)) %>%
+  features(.resid, ljung_box, lag = 24)
+
+augment(fit_year_ets_arima %>% select(arima_111wd)) %>%
+  features(.resid, ljung_box, lag = 24, dof = 3)
+
+```
+
+\newpage
+
+
+```{r Long run Yearly ETS ARIMA Forecast of mean yearly data, eval = eval_yearly}
+
+# hilo() provides confidence intervals
+# slice(hilo(fc_year_ets_arima) %>% group_by(City, Measure, .model), 1:3)  
+# slice(hilo(fc_year_ets_arima) %>% group_by(City, Measure, .model), n() -2:0) 
+# data_temp_fc <- slice(hilo(fc_year_ets_arima) %>% group_by(City, Measure, .model), n() -25:0)
+# data_temp_fc <- data_temp_fc %>% select(City, Measure, Year, .mean) %>% 
+#   rename(Mean = .mean)
+
+
+
+```
+
+```{r Long run Yearly ETS ARIMA Forecast Table of mean yearly data, eval = eval_yearly}
+
+# cond <- c(last_year + 1, seq.int(2030, 2050, 5))
+# Year.x = last_year + 1 
+# Year.y = 2050
+
+# above:
+# fc_year_ets_arima <- fit_year_ets_arima %>% fabletools::forecast(h = "25 years")
+
+fc_y <- fc_year_ets_arima  %>% 
+  group_by(City, Measure, .model)
+
+data_yearly_fc_y <- tibble(fc_y) %>% 
+  group_by(City, Measure, .model, Year) %>% 
+  summarise(Yearly_Mean = mean(.mean))
+
+data_yearly_fc_y_wide <- data_yearly_fc_y %>% 
+  pivot_wider(names_from = .model,
+              values_from = Yearly_Mean)
+# data_yearly_fc_wide %>% rename(ETS_AAN = ets, arima_111 = arima)
+# should be ETS_AAN & arima_pdq only w/o PDQ
+
+
+data_filter_fc_y <- filter(data_yearly_fc_y_wide,
+                         Year == cond[1] | Year == cond[2] | 
+                         Year == cond[3] | Year == cond[4] | 
+                         Year == cond[5] | Year == cond[6])
+
+knitr::kable(data_filter_fc_y, digits = 2, 
+             caption = "Mean Yearly ARIMA and ETS Forecast values of mean yearly data (next 25 years);
+Units: Temperature (degree C), Precipitation (mm/Month), CO2 (ppm)")
 
 ```
 
 
-# Backup
+```{r ETS ARIMA Yearly Forecast of yearly mean data Table delta, eval = TRUE}
+
+xy <- data_yearly_fc_y %>% filter(Year == Year.x) %>% rename(Mean = Yearly_Mean)
+yy <- data_yearly_fc_y %>% filter(Year == Year.y) %>% rename(Mean = Yearly_Mean)
+
+zy <- left_join(xy, yy, join_by(City, Measure, .model)) %>% 
+  mutate(Delta = Mean.y - Mean.x)
+
+zy_wide <- zy %>% 
+  pivot_wider(names_from = .model,
+              values_from = c(Mean.x, Mean.y, Delta)) %>% 
+  rename(ETS.x = Mean.x_ETS_AAN, 
+         ARIMA.x = Mean.x_arima_111wd,
+         ETS.y = Mean.y_ETS_AAN, 
+         ARIMA.y = Mean.y_arima_111wd,
+         Delta_ETS = Delta_ETS_AAN, 
+         Delta_ARIMA = Delta_arima_111wd)
+
+data_zy_wide <- zy_wide %>% ungroup() %>% 
+  select(-City, Measure,  
+         Year.x, Year.y, 
+         ETS.x, ARIMA.x, ETS.y, ARIMA.y, Delta_ETS, Delta_ARIMA)
+
+knitr::kable(data_zy_wide, digits = 2, 
+             caption = "Forecast increase/decrease over the next 25 years;
+Units: Temperature (degree C), Precipitation (mm/Month), CO2 (ppm)")
+
+```
+
+<!-- # Backup -->
 
 
 ```{r eval = eval_test}
@@ -1313,7 +1743,8 @@ augment(fit_year_ets_arima) %>%
 ## Stationarity Test
 library(aTSA)     # for stationary.test(data_ts) and adf.test(data_ts) - same
 ## however, => name isse with fabletools::forecast
-library(fractal)  # for stationaryty()
+# library(fractal)  # for stationaryty()
+#       Package 'fractal' is removed from the CRAN repository.
 library(LaplacesDemon)
 
 # data <- data_monthly_stlplus  # w/ numeric "Time"
@@ -1324,22 +1755,22 @@ data_ts <- ts(data_monthly$count, start=c(first_year, 1), frequency = freq)
 stationary.test(data_ts)
 adf.test(data_ts)
 
-statio <-
-  stationarity(data_monthly$count, n.taper = 6,
-               n.block = max(c(12, floor(logb(length(data_ts), base = 12)))),
-               significance = 0.05, center = TRUE, recenter = FALSE)
-summary(statio)
+# statio <-
+#   stationarity(data_monthly$count, n.taper = 6,
+#                n.block = max(c(12, floor(logb(length(data_ts), base = 12)))),
+#                significance = 0.05, center = TRUE, recenter = FALSE)
+# summary(statio)
 
 is.stationary(data_monthly$count)
 # statcheck() from Schlittgen
-source("./Data_Schlittgen/tsutil.R")
-statcheck(data_monthly$count, 5) #Berechnung der deskriptiven Maßzahlen ist elementar. 
+# source("./Data_Schlittgen/tsutil.R")
+# statcheck(data_monthly$count, 5) #Berechnung der deskriptiven Maßzahlen ist elementar. 
      # Um die Kovarianzstationarität zu überprüfen, wird die Funktion eingesetzt
      #  plot ACF over Lag  for 5 segments
 #  function statcheck determines the means, standard deviations and acf’s
 #  of segments of a time series and plots the acf’s for the segments.
 
-vartable(data_ts,12) # variate Differenzen weisen darauf hin, dass einmal 
+# vartable(data_ts,12) # variate Differenzen weisen darauf hin, dass einmal 
                      # einfache und einmal saisonale Differenzen zu bilden sind
                      # sind, um Stationarität zu erreichen.
 

@@ -11,22 +11,34 @@ output:
     toc_depth: 3
   html_document: default
 params:
-  city: "Mauna Loa"
+  city: "Basel"
   temp_precip_both: "both"    
 urlcolor: blue
 papersize: a4
-
 knit: (
   function(inputFile, encoding) { 
-    city <- "CO2_Mauna_Loa" 
-  
+    city <- "Basel"
+     
     rmarkdown::render( 
       input       = inputFile, 
       output_file = paste(substr(inputFile,1,nchar(inputFile)-4), city, 
                           Sys.Date(), sep = "_")) })
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
+################################################################################
+## Plot and Analyze                                                           ##
+## Yearly/Monthly CO2 or Climate Temperature / Precipitation Data             ##
+##                                                                            ##
+##                                            Wolfgang Vollmer, January 2026  ##
+################################################################################
+# ~line 609 chunk "decomposition replace NAs" 
+# => for Mannheim and Giessen not running => decomposition only for temperature
+###
+
 knitr::opts_chunk$set(eval = TRUE, echo = FALSE, warning = FALSE,      
                       message = FALSE, fig.width = 7, fig.asp = 0.618)
 
@@ -45,14 +57,59 @@ eval_backup <- TRUE
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 ```
 
-
 ```{r Add config and data, child = 'Climate_Config.Rmd', eval=TRUE}
 ```
 
+```{r further parameters for period calculations, include=FALSE}
+
+### CLINO - Climatological normal (defined by WMO, Normalperiode)
+# up to 2020: Reference Period WMO: 1961 - 1990
+# as of 2021: Ref Period will change to 1991 - 2020
+
+data_monthly %>% as_tsibble(index = Year_Month, key = c(City, Measure))
+
+measure_nr <- nrow(data_monthly %>% distinct(Measure))
+measure <- measure_analysis
+# measure <- tibble(data_monthly) %>% distinct(Measure)
+# measure <- as.character(as_vector(measure))
+# also provided by 'Climate_Config.Rmd':
+#  measure_analysis <- as.character(unique(data_monthly_wide$Measure))
+
+period <- 30
+
+data_monthly <- data_monthly %>% 
+  mutate(Period_Time =  
+           paste0((((Year-11) %/% period) * (period)) + 11, "-", (((Year-11) %/% period) * (period)) + 40)) %>% 
+  mutate(Period_Time = 
+           case_when(Period_Time == "2021-2050" ~ paste0("2021-", last_year),
+                     .default = Period_Time
+                     ))
+
+data_yearly <- data_yearly %>% 
+  mutate(Period_Time =  
+           paste0((((Year-11) %/% period) * (period)) + 11, "-", (((Year-11) %/% period) * (period)) + 40)) %>% 
+  mutate(Period_Time = 
+           case_when(Period_Time == "2021-2050" ~ paste0("2021-", last_year),
+                     .default = Period_Time
+                     ))
+periods <- data_yearly %>% ungroup() %>% select(Period_Time) %>% unique()
+first_period <- periods[1,] %>% pull()
+last_period <- periods[nrow(periods),] %>% pull()
+ref_period <- periods[nrow(periods)-1,] %>% pull()
+ref_period_old <- periods[nrow(periods)-2,] %>% pull()
+
+```
 
 
 ```{r further parameter, echo = FALSE}
 ######  Further Paramaters #####################################################
+# 
+# data_monthly %>%   as_tsibble(index = Year_Month, key = c(City, Measure))
+# 
+# measure_nr <- nrow(data_monthly %>% distinct(Measure))
+# measure <- tibble(data_monthly) %>% distinct(Measure)
+# measure <- as.character(as_vector(measure))
+
 # define first, reference and last periods
 # 
 period <- span # for average temp and precip comparisons at begin & end of data
@@ -66,13 +123,19 @@ first_period_start <- first_year    # first year with January values
 first_period_end <- first_period_start + period - 1
 
 ### CLINO - Climatological normal (defined by WMO, Normalperiode)
-ref_period_start <- 1961   # Reference Period WMO: 1961 - 1990
+ref_period_start <- 1991   # Reference Period WMO: 1961 - 1990
                            # Begin 2021: Ref Period will change to 1991 - 2020
-if (last_year >= 2020) ref_period_end <- 2020                         
-ref_period_start <- ref_period_end - period + 1
+# if (last_year >= 2025) ref_period_start <- 1991
+ref_period_end <- ref_period_start + period - 1
+ref_period_old_start <- ref_period_start - 30
+ref_period_old_end <- ref_period_end - 30  
 
 last_period_end <- last_year      # last year with December values
 last_period_start <- last_period_end - period + 1
+
+ref_period <-  paste0(ref_period_start, "-", ref_period_end)
+ref_period_old <-  paste0(ref_period_old_start, "-", ref_period_old_end)
+
 
 # period_years <- c(paste(first_period_start, "-", first_period_end, sep = ""),
 #           paste(ref_period_start, "-", ref_period_end, sep = ""),
@@ -109,7 +172,6 @@ mean_monthly <- data_monthly %>%
 
 ## Monthly Time Plots with Rolling Mean
 
-
 ```{r time plot outlining replaced NAs, eval = eval_visualization, fig.asp = fig_asp_mult}
 
 # checks if data_monthly is extended by columns Raw , Interploated & NA_replace
@@ -124,29 +186,39 @@ data_plot <- as_tibble(data_monthly) %>%
 
 plot_monthly <- 
   ggts_w_rol_mean(data_plot, Year_Month, y = Raw, span = span_m) +
-  # geom_line(aes(y = data_monthly$NA_replace), col = "cyan", size = 0.8) +
-  facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free") +
+  # geom_line(aes(y = data_monthly$NA_replace), col = "cyan", linewidth = 0.8) +
+  facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free_y") +
   labs(y = y_label) +
   ggtitle(topic, subtitle = paste("with Rolling Mean over", span_m, "Months"))
 
+############## auskommetiert, führt zum Fehler
+# `summarise()` has grouped output by 'City'. You can override using the `.groups` argument.
+# Fehler in if (as_tibble(data_monthly) %>% summarise(nr_na = sum(!is.na(NA_replace))) >  : 
+#  Bedingung hat Länge > 1
+# Zusätzlich: Warnmeldung:
+# In Ops.factor(left, right) : ‘>’ ist nicht sinnvoll für Faktoren
 # if any interpolated values =>  add line
-if (as_tibble(data_monthly) %>% summarise(nr_na = sum(!is.na(NA_replace))) > 0) 
-{ 
-  plot_monthly <- 
+test_NA_replace <-
+  as_tibble(data_monthly) %>% summarise(nr_na = sum(!is.na(NA_replace)))
+# test_NA_replace$nr_na
+# sum(test_NA_replace$nr_na)
+if (sum(test_NA_replace$nr_na) > 0) {
+  plot_monthly <-
     plot_monthly +
-    geom_line(aes(y = data_monthly$NA_replace), col = "cyan", size = 0.8) +
-      ggtitle(topic, 
-              subtitle = paste("with Rolling Mean over", span_m, 
-                               "Months (Cyan: interpolated values (if any))"))
-}
+    geom_line(aes(y = data_monthly$NA_replace), col = "cyan", linewidth = 0.8) +
+    ggtitle(topic,
+            subtitle = paste("with Rolling Mean over", span_m,
+                             "Months (Cyan: interpolated values (if any))"))
+  }
 
 plot_monthly
 ```
 
+
 ```{r time plot with fabletools, eval = FALSE, fig.asp = fig_asp_mult}
 
 data_monthly %>% autoplot(count) +
-  facet_wrap(vars(!!!key(data_monthly)), ncol = 1, scales = "free") +
+  facet_wrap(vars(!!!key(data_monthly)), ncol = 1, scales = "free_y") +
   labs(y = y_label) +
   ggtitle(paste(topic, "(green: interpolated values)")) 
   
@@ -160,7 +232,7 @@ data_plot <- as_tibble(data_monthly) %>%
   group_by(City, Measure) %>%
   mutate(rol_mean_long = stats::filter(count, filter = rep(1/span_m, span_m)))
 
-years <- 15
+years <- period
 
 past_years <- TRUE  # tricky, since roll mean for early years to be kept
                     # and otherwise xlims and ylims has to be adapted
@@ -175,7 +247,7 @@ if (past_years) {
 
 # y_min/y_max same value for Temeperature & Percipitation => not useful to be taken
 y_min <- data_plot %$% min(count, na.rm = TRUE)
-y_max <- data_plot %$%  max(count, na.rm = TRUE)
+y_max <- data_plot %$% max(count, na.rm = TRUE)
 
 # mauna_co2_plot %+% plot_data not running: rol_mean missing 
 # => to be added before filtering
@@ -185,52 +257,71 @@ plot_monthly <-  # ggplot_w_rol_mean( , x = "")
   # geom_point() +
   labs(y = y_label,
        title = paste(topic, "- Past", years, "years only")) +
-      facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free")
-plot_monthly + geom_line(aes(y = rol_mean_long), col = "red", size = 1, na.rm = TRUE)
+      facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free_y")
+plot_monthly + geom_line(aes(y = rol_mean_long), col = "red", linewidth = 1, na.rm = TRUE)
                              
 ```
 
+## Annual seasonal plots with monthly breakdown
 
-## Yearly plots with monthly breakdown
+The seasonal charts show the monthly seasonal patterns, where available.
 
 ```{r monthly plot, eval = eval_visualization, fig.asp = fig_asp_mult}
 
 ggts_season_w_smooth(data = data_monthly) + 
   facet_wrap(vars(Measure), ncol = 1,  , # vars(!!!key(data_monthly))
-             scales = "free") +          # strip.position = "left")
+             scales = "free_y") +          # strip.position = "left")
   labs(y = y_label, 
        subtitle = paste(city, first_year, " - ", last_year))
 
 ```
 
+\newpage
+
 ```{r Period and ref data monthly, eval = eval_visualization}
+# eval = eval_visualization
 
 # Calculate period (= span years) means over the year  
 # 
 # assign years to periods with length = span (e.g. 15years) 
 #                                starting backwards with last full year
 
-period_adapt <- last_year %% span  # last_year mod x years => 
+# period_adapt <- last_year %% span  # last_year mod x years => 
 # last period has to be a full period, first period may be shorter 
 # assign Years to Periods w/ length of span and last full period until last year 
 
 data_monthly_period  <- as_tibble(data_monthly) %>% 
-  mutate(Period_end = span*ceiling((Year - period_adapt)/span) + period_adapt) %>%
-  # assign Year_Month to Periods w/ length of span with full period with last_year 
+  separate(Period_Time, c("Period_start", "Period_end")) %>% 
+  mutate(Period_start = as.integer(Period_start),
+         Period_end = as.integer(Period_end)) %>% 
   group_by(City, Measure, Month, Period_end) %>% 
   dplyr::summarise(count = mean(count, na.rm = TRUE)) %>% 
-  # mutate(Period_end = paste0(Period_end - span + 1, "-", Period_end)) %>% 
   ungroup() 
 
-data_monthly_ref_period <- as_tibble(data_monthly) %>% 
-  filter(Year >= ref_period_start & Year <= ref_period_end) %>% 
-  mutate(Period_end = ref_period_end) %>%
-  # assign Year_Month to Periods w/ length of span with full period with last_year 
+# data_monthly_period  <- as_tibble(data_monthly) %>% 
+#   mutate(Period_end = span*ceiling((Year - period_adapt)/span) + period_adapt) %>%
+#   # assign Year_Month to Periods w/ length of span with full period with last_year 
+#   group_by(City, Measure, Month, Period_end) %>% 
+#   dplyr::summarise(count = mean(count, na.rm = TRUE)) %>% 
+#   # mutate(Period_end = paste0(Period_end - span + 1, "-", Period_end)) %>% 
+#   ungroup() 
+
+data_monthly_ref_period <- data_monthly_period %>% 
+  filter(Period_end == ref_period_end) %>% 
   group_by(City, Measure, Month, Period_end) %>% 
   dplyr::summarise(count = mean(count, na.rm = TRUE)) %>% 
-  mutate(Ref_Period = paste0(Period_end - span + 1, "-", Period_end)) %>% 
   ungroup() %>% 
   rename(count_ref_period = count)
+  
+# data_monthly_ref_period <- as_tibble(data_monthly) %>% 
+#   filter(Year >= ref_period_start & Year <= ref_period_end) %>% 
+#   mutate(Period_end = ref_period_end) %>%
+#   # assign Year_Month to Periods w/ length of span with full period with last_year 
+#   group_by(City, Measure, Month, Period_end) %>% 
+#   dplyr::summarise(count = mean(count, na.rm = TRUE)) %>% 
+#   mutate(Ref_Period = paste0(Period_end - span + 1, "-", Period_end)) %>% 
+#   ungroup() %>% 
+#   rename(count_ref_period = count)
 
 data_monthly_period  <- 
   left_join(data_monthly_period, 
@@ -241,69 +332,89 @@ data_monthly_period  <-
 
 ```
 
-### `r span`-year period plots with monthly breakdown - Cartesian and Polar Coordinates
 
-```{r Period and ref data yearly, eval = eval_visualization}
 
-end_first_period <- min(data_monthly_period$Period_end)
-start_last_period <- max(data_monthly_period$Period_end) - span + 1
+
+
+```{r mean data table of past time periods old, eval = FALSE}
+
+# min_year <-  tibble(data_yearly) %>% group_by(City, Measure) %>% summarise(Min_Year = min(Year))
+# max_of_min_year <- min_year %$% max(Min_Year)
+# 
+# periods <- tibble(Period_Start = seq.int(ref_period_start+period, max_of_min_year, -period)) %>% 
+#   arrange(Period_Start) %>% 
+#   mutate(Period_End = Period_Start + period -1)
+# periods$Period_End[nrow(periods)] <- last_year
+# periods <- periods %>% mutate(Period_Time = paste0(Period_Start, "-", Period_End))
+#   
+# 
+# periods_mean <- matrix(nrow = nrow(periods), ncol =  measure_nr)
+# for (i in 1:nrow(periods)){
+#   z <- tibble(data_monthly) %>% group_by(City, Measure) %>% 
+#       filter(Year >= periods$Period_Start[i] & Year < periods$Period_End[i]) %>% 
+#       summarise(Mean = mean(count)) %>% pull()
+#   periods_mean [i,] <- z
+# }
+# 
+# periods_mean <- periods_mean %>% as_tibble() %>% rename_with(~measure)
+# mean_period_data <- bind_cols(periods$Period_Time, periods_mean) %>% 
+#   rename(Period_Time = ...1)
+# 
+# 
+# knitr::kable(mean_period_data, digits = 1, 
+#              caption = "Mean values for the given time periods; 
+# Units: Temperature (degree C), Precipitation (mm/Month), CO2 (ppm)")
+
+```
+
+```{r Period and ref data yearly, eval = TRUE}
+# no longer used for table 1 in "Yearly mean values of past time periods"
+# used for annual time plots
 
 data_yearly_period <- data_monthly_period %>%  
-  mutate(Period = paste0(Period_end - span + 1, "-", Period_end)) %>%
-  group_by(City, Measure, Period) %>% 
-  dplyr::summarise(count = mean(count, na.rm = TRUE)) %>% 
-  pivot_wider(names_from = Measure, values_from = count)
+  group_by(City, Measure, Period_end) %>% 
+  dplyr::summarise(count = mean(count, na.rm = TRUE)) 
 
-data_yearly_period$Period[1] <-  paste0(first_year, "-", end_first_period)
-
-data_yearly_ref_period <- data_monthly_ref_period %>%  
-  mutate(Period = paste0(Period_end - span + 1, "-", Period_end)) %>%
-  group_by(City, Measure, Ref_Period) %>% 
-  dplyr::summarise(count = mean(count_ref_period, na.rm = TRUE)) 
-
-data_yearly  <- 
-  left_join(data_yearly, data_yearly_ref_period %>% select(-Ref_Period), 
-            by = c("City",  "Measure")) %>% 
+data_yearly_ref_period <- data_yearly_period %>% 
+  filter(Period_end == ref_period_end) %>% 
   rename(count_ref_period = count)
 
-data_yearly_ref_period <- data_yearly_ref_period %>% 
-  pivot_wider(names_from = Measure, values_from = count)
+data_yearly_period  <- 
+  left_join(data_yearly_period, 
+            data_yearly_ref_period %>% select(-Period_end), 
+            by = c("City",  "Measure")) %>% 
+  group_by(City, Measure) %>% 
+  mutate(count_minus_ref = count - count_ref_period) 
 
-# cat("Note: First Period shorter, starts with first data year =", first_year)
-caption_measure <- paste0("Average Data (", y_label_text, ")")
-
-if ("Precipitation" %in% measure_analysis) {
-  data_yearly_period <- data_yearly_period %>% 
-    mutate("Annual Precipitation" = Precipitation * 12) %>% 
-    rename("Monthly Precipitation" = Precipitation)
-  data_yearly_ref_period <- data_yearly_ref_period %>% 
-    mutate("Annual Precipitation" = Precipitation * 12) %>% 
-    rename("Monthly Precipitation" = Precipitation)
-}
-
-knitr::kable(data_yearly_period, align = "c", digits = 1, 
-             caption = paste0(span, "-years Periods - ", caption_measure))
-knitr::kable(data_yearly_ref_period, align = "c", digits = 1)
+data_yearly  <- 
+  left_join(data_yearly, data_yearly_ref_period,  
+            by = c("City",  "Measure")) 
 ```
 
-Note: First Period shorter in general (starts with first data year = `r first_year`)
 
-```{r further period settings, eval = eval_visualization}
+\newpage
 
-period_years <- c(paste(first_year, "-", end_first_period, sep = ""),
-          paste(ref_period_start, "-", ref_period_end, sep = ""),
-          paste(start_last_period, "-", last_year, sep = ""))
-names(period_years) <- c("first", "ref", "last")
+```{r further period settings, eval = FALSE}
+# eval = eval_visualization
+# ref_period_start <- 1991
+# ref_period_end <- ref_period_start + 29
+# 
+# periods <- period_years <- periods
+# period_years <- c(paste(first_year, "-", end_first_period, sep = ""),
+#           paste(ref_period_start, "-", ref_period_end, sep = ""),
+#           paste(start_last_period, "-", last_year, sep = ""))
+# names(period_years) <- c("first", "ref", "last")
 
 ```
 
+### `r period`-year period plots with monthly breakdown - Cartesian and Polar Coordinates
 
 ```{r seasonal, eval = eval_visualization, fig.asp = 0.5}
 
 title <- paste0("Monthly Variations of ", span, "-Year Periods")
-subtitle <- paste("Periods: First", period_years["first"], 
-                  "/ Reference", period_years["ref"],
-                  "/ Last", period_years["last"])
+subtitle <- paste("Periods: First", periods[1,], 
+                  "/ Reference", ref_period,
+                  "/ Last", periods[nrow(periods),], "\n")
 # subtitle <- paste("First / Reference / Last Period:",
 #                         paste(period_years, collapse = " / "))
       
@@ -316,13 +427,18 @@ if (length(key(data_monthly)) == 1) {
   for (i in unique(key_data(data_monthly)[[1]])) {     # City
     data_filter <- filter(data_monthly_period, Measure == i)
     plot_monthly <- ggts_year_over_month(data_filter, period = Period_end) +
-      labs(y = y_label_measure[i], title = paste(title, "-", i), subtitle = subtitle)
-    ratio_display <- 4 # ratio x / y
-    ratio_values <- 12 /
-      (max(data_filter$count)-min(data_filter$count))
-    ratio <- ratio_values / ratio_display
-    print(plot_monthly) # + coord_fixed(ratio = ratio))
-    print(plot_monthly + coord_polar("x", start = pi))  # pi => rotate by 180 degrees
+      labs(y = y_label_measure[i], 
+           title = paste0(i, " - ", title), 
+           subtitle = subtitle)
+    ratio_x <- 4 # ratio x / y
+    ratio_y <- 12 / (max(data_filter$count)-min(data_filter$count))
+    ratio <- ratio_y / ratio_x # expressed as y / x
+    writeLines("\n")
+    print(plot_monthly) # + coord_fixed(ratio = ratio)
+    writeLines("\n")
+    print(plot_monthly + coord_polar("x", start = pi))  
+    # pi => rotate by 180 degrees
+    writeLines("\n_\n")
   }
   # }
 } else {
@@ -344,10 +460,10 @@ if (length(key(data_monthly)) == 1) {
     plot_monthly <- ggts_year_over_month(data_filter, period = Period_end,
                                          y = count_minus_ref) +
       labs(y = y_label_measure[i], 
-           title = paste0(title, " - Delta to Reference"), 
+           title = paste0(i, " - ", title, " (Delta to Reference)"), 
            subtitle = subtitle) 
 
-    print(plot_monthly) # + coord_fixed(ratio = ratio)) 
+    print(plot_monthly) # + coord_fixed(ratio = ratio))
     print(plot_monthly + coord_polar("x", start = pi)) 
     # pi => rotate by 180 degrees
   }
@@ -361,26 +477,30 @@ if (length(key(data_monthly)) == 1) {
 
 ```{r seasonal plots fabletools, eval = eval_visualization, fig.asp = 0.8 * fig_asp_mult}
 
-data_monthly %>% gg_season(count, labels = "none") +
-  facet_wrap(vars(!!!key(data_monthly)), ncol = 1, scales = "free") +
-  labs(x = "Month", y = y_label,
-       title = paste("Yearly Seasonal Plots - Monthly", topic))
+data_monthly %>% ggtime::gg_season(count, labels = "none") +
+  facet_wrap(vars(!!!key(data_monthly)), ncol = 1, scales = "free_y") +
+  labs(x = "Month", 
+       y = y_label,
+       title = paste("Annual Seasonal Plots - Monthly", topic))
 
 
 data_monthly %>%
-  gg_subseries(count) + 
-  labs(x = "Month", y = y_label,
+  ggtime::gg_subseries(count) + 
+    labs(x = "Month", 
+       y = y_label_inv,
+       # caption = y_label,
        title = paste("Monthly Subseries Plots - ", topic)) 
 
 ```
+The blue horizontal lines within the seasonal subseries plot indicate the means for each month.
 
+\newpage
 
-## Yearly  `r topic`
+## Annual `r topic`
 
-### Plot Yearly  `r measure`
+### Annual Time Plot of `r measure`
 
-
-```{r yearly, eval = eval_visualization, fig.asp = 0.8 * fig_asp_mult}
+```{r annual time plot, eval = eval_visualization, fig.asp = 0.8 * fig_asp_mult}
 
 # plot mean temperature & precipitation with running/rolling mean
 
@@ -424,15 +544,15 @@ filter_coef <- gauss(x, sig)/sum(gauss(x, sig))  # normalization
 data_yearly_tbl <- as_tibble(data_yearly) %>% group_by(Measure, City) 
 # to avoid rolling mean over Precip - Temp
 plot_yearly <- ggts_w_rol_mean(data_yearly_tbl, Year, Year_avg, span = span) +
-  geom_line(aes(y=count_ref_period),  linetype = "dashed", size = 0.7) +
-  facet_wrap(vars(!!!key(data_monthly)), ncol = 1, scales = "free")
+  geom_line(aes(y=count_ref_period),  linetype = "dashed", linewidth = 0.7) +
+  facet_wrap(vars(!!!key(data_monthly)), ncol = 1, scales = "free_y")
 
 plot_yearly +
   labs(y = y_label,
        title = paste0("Yearly Data with ", span, 
                       "−years Rolling Mean and Regression lines"),
        subtitle = paste0("Reference Period ", 
-                         ref_period_start, "-", ref_period_end, 
+                         ref_period, 
                          ": black dashed line"))
 
 
@@ -445,7 +565,7 @@ plot_yearly +
 
 ```
 
-### Plot Seasonal Yearly `r measure`
+### Annual Seasonal Plot of `r measure`
 
 ```{r season, eval = eval_visualization, fig.asp = 0.8 * fig_asp_mult}
 # 1)  seasonal values are calculated from the monthly data by averaging the three monthly values
@@ -455,38 +575,46 @@ plot_yearly +
 # 4)  Note for  ENGLAND TEMPERATURE data:  Seasonal data exist for Spring 1659 onwards..
 
 ggts_season(data = data_yearly) +
-  facet_wrap(vars(Measure), ncol = 1,  scales = "free") + 
+  facet_wrap(vars(Measure), ncol = 1,  scales = "free_y") +
                                               # vars(!!!key(data_yearly))
   labs(y = y_label)
 
 ```
-`
+
+\newpage
 
 # Trend and Seasonal Analysis
 
 ## Time Series Decomposition - Trend and Seasonal Components
 
-An *additive model* would be used when the variations around the trend do not vary
-with the level of the time series whereas a *multiplicative model* would be
-appropriate if the trend is proportional to the level of the time series.
+An *additive model* would be used when the variations around the trend
+do not vary with the level of the time series whereas a *multiplicative
+model* would be appropriate if the trend is proportional to the level of
+the time series.
 
 Time series using an
 
-* additive model: $y_t = T_t + C_t + S_t + \epsilon_t$  
+-   additive model: $y_t = T_t + C_t + S_t + \epsilon_t$
 
-* multiplicative model: $y_t = T_t * C_t * S_t * \epsilon_t$ 
+-   multiplicative model: $y_t = T_t * C_t * S_t * \epsilon_t$
 
-Trend / Cycle / Seasonal / Noise component  
+Trend / Cycle / Seasonal / Noise component\
 Cyclical components is often grouped into the Trend component
 
-For *Seasonal decomposition of time series by Loess (stlplus)* uses in general
-an additive error modle, it only provides facilities for additive decompositions.
-It is possible to obtain a multiplicative decomposition by first taking logs of 
-the data.
-
+For *Seasonal decomposition of time series by Loess (stlplus)* uses in
+general an additive error model, it only provides facilities for
+additive decompositions. It is possible to obtain a multiplicative
+decomposition by first taking logs of the data.
 
 ```{r decomposition replace NAs, eval = eval_trend_season, fig.asp = 1.2}
+# For Mannheim and Giessen replace eval = eval_trend_season by eval = FALSE !!
 ## decomposition
+
+if (city == "Mannheim" | city == "Giessen") {
+  data_monthly_save <- data_monthly
+  data_monthly <- filter(data_monthly, Measure == "Temperature")
+  
+}
 
 # filter(data_monthly, Measure == "Temperature")
 # filter(data_monthly, Measure == "Precipitation")
@@ -494,8 +622,6 @@ the data.
 # first_year <- data_monthly %$% min(year(Year_Month))
 # last_year <- data_monthly %$% max(year(Year_Month))
 # data_monthly <- data_monthly %>%  dplyr::select(Year_Month, count)
-
-
 
 # only one single time series for ts() and stl() allowed
 
@@ -520,8 +646,9 @@ if (length(key(data_monthly)) == 1) {
         mutate(Measure = i)
       # data_monthly_new <- bind_rows(data_monthly_stlplus, data_monthly_new) 
       
-      decomp_plot <- ggts_decomp(data_monthly_stlplus %>% filter(Year >= 2019))
-      print(decomp_plot + 
+      decomp_plot <- ggts_decomp(data_monthly_stlplus %>% 
+                                   filter(Year >= last_year-5))
+      print(decomp_plot +
               labs(title =  paste("Seasonal Decomposition by Loess - ", i),
                    subtitle = paste("by stlplus(); Data = Trend + Seasonal + Remainder; ",
                                     "Horiz. Lines: Mean values"),
@@ -538,9 +665,11 @@ if (length(key(data_monthly)) == 1) {
               n_keys(data_monthly), key_data(data_monthly), (key(data_monthly))))
 }
 
+if (city == "Mannheim" | city == "Giessen") {
+  data_monthly <- data_monthly_save
+}
+
 ```
-
-
 
 ```{r decomp with fabletools, eval = FALSE, fig.asp = 1.2}
 ## decomposition - needs selected keys
@@ -549,19 +678,23 @@ if (length(key(data_monthly)) == 1) {
 data_monthly %>% 
   # filter(year(Year_Month) >=2000) %>% 
   model(STL(count ~ trend(window=trend_window) + season(window=season_window))) %>% 
-  components() %>%
+  fabletools::components() %>%
   autoplot() + theme(legend.position = "bottom") + xlab("Year")
-  # facet_grid(vars(!!!key(data_monthly)), scales = "free")
+  # facet_grid(vars(!!!key(data_monthly)), scales = "free_y")
 
 
 ```
 
+## Periodicities - Season Frequency
 
+### Lag Plot - Differences
 
-
-## Periodicities - Season Frequency  
-
-### Lag Plot - Differences 
+Lagged scatterplots, where the horizontal axis shows lagged $(k = 1,..,12)$ values 
+of the time series. 
+Each graph shows $y_t$ plotted against $y_{t-k}$ for different values of k.
+For seasonal data the relationship is strongly positive at a lag $k=12$, 
+reflecting the strong seasonality of the data. 
+The strongly negative relationship is evident in the case oflag $k=6$.
 
 ```{r lag with single filter, eval = eval_trend_season}
 
@@ -577,7 +710,7 @@ data_monthly %>%
 # print(key(data_monthly))  # provides "group" key name;
 #                              for facet_wrap use: vars(!!!key(data_monthly))
 
-year_filter <- 2000
+year_filter <- last_year - 15
 
 # if (n_keys(data_monthly) == 1 | length(key(data_monthly)) == 2) { 
 if (length(key(data_monthly)) == 1) { 
@@ -586,11 +719,11 @@ if (length(key(data_monthly)) == 1) {
       
       plot_lag <- filter(data_monthly, year(Year_Month) >= year_filter & 
                            Measure == i) %>%   # City == i &Measure == j
-        gg_lag(count, lags = 1:12, geom = "path", arrow = TRUE) +
+        ggtime::gg_lag(count, lags = 1:12, geom = "point", arrow = TRUE) +
         labs(x = y_label_measure[i], y = "lag(x, n)",
              col = "Month",
              title ="Lag by n months - y(t) plotted against y(t-n)",
-             subtitle = paste(i, " - as of year", year_filter)) 
+             subtitle = paste(i, " - data as of year", year_filter)) 
 print(plot_lag)
     }
 #  }
@@ -600,44 +733,52 @@ print(plot_lag)
 }
 
 ```
+\newpage
 
-### ACF / PACF Correlogram
+<!-- ### ACF / PACF Correlogram -->
 
 ```{r ACF PACF plots, eval = FALSE}
 # Plots covered by next chunk - Triplet 
 # tsdisplay plot
 
+
 ## ACF Correlogram
-plot_1 <- data_monthly %>% ACF(count, lag_max = 24) %>% 
+plot_1 <- data_monthly %>% ACF(count, lag_max = 36) %>% 
   autoplot() + 
-  facet_wrap(vars(!!!key(data_monthly)), ncol = 1, scales = "free", 
+  facet_wrap(vars(!!!key(data_monthly)), ncol = 1, scales = "free_y", 
              strip.position = "left") +
   ggtitle("ACF Correlogram - w/ slow decrease as the lags increase", 
           subtitle = "- due to the trend, while the 'scalloped' shape is due the seasonality") +
-  labs(y = paste("ACF ", "bounds = 1.96/sqrt(nrow(data)) = ",
-                 round(2/sqrt(nrow(data)), digits = 3)))
+  labs(caption = paste("(P)ACF ", "bounds = 1.96/sqrt(nrow(data))"))
+                 # round(2/sqrt(nrow(data)/2), digits = 3)))
+
+
 
 ## PACF - Partial ACF
-plot_2 <- data_monthly %>% PACF(count, lag_max = 24) %>% 
+plot_2 <- data_monthly %>% PACF(count, lag_max = 36) %>% 
   autoplot() +
-  facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free",
+  facet_wrap(vars(!!!key(data_monthly)), ncol = 1,  scales = "free_y",
              strip.position = "left") +
   ggtitle("PACF - Partial Autocorrelation Function")
 
 gridExtra::grid.arrange(plot_1, plot_2)
 ```
 
-
 ### Periodogram - Spectral Density Estimation of a Time Series
 
 The spectral density characterizes the frequency content of the signal.
-One purpose of estimating the spectral density is to detect any periodicities 
-in the data, by observing peaks at the frequencies corresponding to these periodicities.
+One purpose of estimating the spectral density is to detect any
+periodicities in the data, by observing peaks at the frequencies
+corresponding to these periodicities.
 
-At frequency $\lambda = 1/12$ there is a significant peak
-=> This pattern repeats every full frequency = every 12 months / every year
+At frequency $\lambda = 1/12$ there is a significant peak =\> This
+pattern repeats every full frequency = every 12 months / every year
 
-The remaining peaks are random and therefore cannot be assigned significantly.
+The remaining peaks are random and therefore cannot be assigned
+significantly.
+
+Note: The blue dashed lines in the (P)ACF plots ((Partial) Autocorrelation Function) indicate white noise series limits. In that case 95% of the spikes lie within the dashed lines. 
+
 
 ```{r Triplet tsdisplay plot, eval = eval_trend_season}
 # , error = TRUE
@@ -657,7 +798,8 @@ if (length(key(data_monthly)) == 1) {
    # for (j in unique(key_data(data_monthly)[[2]])) {
       plot_ts_spec <- data_monthly %>% 
         filter(year(Year_Month) >= year_filter & Measure == i) %>%  
-        gg_tsdisplay(count,  lag_max = 24) +  # plot_type = "spectrum",
+        ggtime::gg_tsdisplay(count,  lag_max = 24) +  
+        # plot_type = "spectrum",
         labs( x = "Year", y = y_label_measure[i], 
               title = "Time series plot with ACF and Spectrum",
               subtitle = paste(i, " - as of year", year_filter))
@@ -665,7 +807,8 @@ if (length(key(data_monthly)) == 1) {
       
       plot_ts_pacf <- data_monthly %>% 
         filter(year(Year_Month) >= year_filter & Measure == i) %>%  
-        gg_tsdisplay(count, plot_type = "partial", lag_max = 24) + 
+        ggtime::gg_tsdisplay(count, 
+                             plot_type = "partial", lag_max = 24) + 
         labs( x = "Year", y = y_label_measure[i], 
               title = "Time series plot with ACF and PACF",
               subtitle = paste(i, " - as of year", year_filter))
@@ -678,24 +821,43 @@ if (length(key(data_monthly)) == 1) {
 }
 
 ```
+\newpage
 
 
-### Seasonal vs non Seasonal ACF / Strength (Seasonal/Trend)
+<!-- ### Seasonal vs non Seasonal ACF / Strength (Seasonal/Trend) -->
 
-* Check acf1 and season_acf1 and compare with ACF Correlogram Plot
-* acf1: first autocorrelation coefficient from the original data
-* acf10: sum of square of the first ten autocorrelation coefficients from the original data
-* diff1_acf1: first autocorrelation coefficient from the differenced data
-* season_acf1: autocorrelation coefficient at the first seasonal lag
+<!-- 
+-   Check acf1 and season_acf1 and compare with ACF Correlogram Plot
 
-* Check Trend & Seasonal Strength close to 0 / 1 : weak / strong and compare them
-* stl_e_acf1: first autocorrelation coefficient of the remainder series
-* stl_e_acf10: sum of squares of the first ten autocorrelation coefficients of the remainder series
-* linearity: linearity of the trend component of the STL decomposition. It is based on the coefficient of a linear regression applied to the trend component
-* curvature: curvature of the trend component of the STL decomposition. It is based on the coefficient from an orthogonal quadratic regression applied to the trend component.
+-   acf1: first autocorrelation coefficient from the original data
 
+-   acf10: sum of square of the first ten autocorrelation coefficients
+    from the original data
 
-```{r seasonal vs non seasonal, eval = eval_trend_season}
+-   diff1_acf1: first autocorrelation coefficient from the differenced
+    data
+
+-   season_acf1: autocorrelation coefficient at the first seasonal lag
+
+-   Check Trend & Seasonal Strength close to 0 / 1 : weak / strong and
+    compare them
+
+-   stl_e\_acf1: first autocorrelation coefficient of the remainder
+    series
+
+-   stl_e\_acf10: sum of squares of the first ten autocorrelation
+    coefficients of the remainder series
+
+-   linearity: linearity of the trend component of the STL
+    decomposition. It is based on the coefficient of a linear regression
+    applied to the trend component
+
+-   curvature: curvature of the trend component of the STL
+    decomposition. It is based on the coefficient from an orthogonal
+    quadratic regression applied to the trend component. 
+-->
+
+```{r seasonal vs non seasonal, eval = FALSE}
 
 print("Check acf1 and season_acf1 and compare with ACF Correlogram Plot")
 data_monthly %>% features(count, feat_acf)
@@ -718,13 +880,16 @@ gridExtra::grid.arrange(plot_1, plot_2)
 
 ```
 
+<!-- 
+### Spectral Entropy Test 
+-   Entropy close to 0 =\> series has strong trend and seasonality (=\>
+    easy to forecast)
+-   Entropy close to 1 =\> series is very noisy (and so is difficult to
+    forecast)
+-->
 
-### Spectral Entropy Test
 
-* Entropy close to 0 => series has strong trend and seasonality (=> easy to forecast)
-* Entropy close to 1 => series is very noisy (and so is difficult to forecast) 
-
-```{r Entropy test, eval = eval_trend_season}
+```{r Entropy test, eval = FALSE}
 # (Shannon) spectral entropy of a time series, which is a measure of how easy 
 # the series is to forecast. 
 # A series which has strong trend and seasonality (and so is easy to forecast) 
@@ -739,20 +904,22 @@ data_monthly %>% features(count, feat_spectral)
 
 ```
 
-
+<!-- 
 ## Stationary Process Test
 
 Strict-sense stationarity / Weak (wide-sense) stationarity
 
-Augmented Dickey-Fuller test => type3, a linear model with both drift and linear trend
+Augmented Dickey-Fuller test =\> type3, a linear model with both drift
+and linear trend
 
-Trend Stationary - underlying trend (function solely of time) can be removed, 
-leaving a stationary process
+Trend Stationary - underlying trend (function solely of time) can be
+removed, leaving a stationary process
+-->
 
 ```{r eval = FALSE}
 ## Stationarity Test
 library(aTSA)     # for stationary.test(data_ts) and adf.test(data_ts) - same
-library(fractal)  # for stationaryty()
+# library(fractal)  # for stationaryty()
 library(LaplacesDemon)
 
 first_year<- data_monthly %$% year(min((Year_Month)))
@@ -786,16 +953,16 @@ data_ts <- ts(data_monthly$count, start=c(first_year, 1), frequency = freq)
 # pp.test(data_ts)   # Phillips-Perron Unit Root Test
 
 # Priestley-Subba Rao (PSR) test
-statio <-
-  stationarity(data_monthly$count, n.taper = 6,
-               n.block = max(c(12, floor(logb(length(data_ts), base = 12)))),
-               significance = 0.05, center = TRUE, recenter = FALSE)
-summary(statio)
+# statio <-
+#   stationarity(data_monthly$count, n.taper = 6,
+#                n.block = max(c(12, floor(logb(length(data_ts), base = 12)))),
+#                significance = 0.05, center = TRUE, recenter = FALSE)
+# summary(statio)
 
 is.stationary(data_monthly$count)
 # statcheck() from Schlittgen
-source("./Data_Schlittgen/tsutil.R")
-statcheck(data_monthly$count, 5) #Berechnung der deskriptiven Maßzahlen ist elementar. 
+# source("./Data_Schlittgen/tsutil.R")
+# statcheck(data_monthly$count, 5) #Berechnung der deskriptiven Maßzahlen ist elementar. 
      # Um die Kovarianzstationarität zu überprüfen, wird die Funktion eingesetzt
      #  plot ACF over Lag  for 5 segments
 #  function statcheck determines the means, standard deviations and acf’s
@@ -823,7 +990,6 @@ statcheck(data_monthly$count, 5) #Berechnung der deskriptiven Maßzahlen ist ele
 
 
 ```
-
 
 ```{r Beispiel 10.10, eval = FALSE}
 library(dlm)                                                                                 
@@ -864,6 +1030,314 @@ points(2005+28/12,co2[29])
 
 ```
 
+\newpage
+
+# Forecasting
+
+## Estimate/Train the model
+
+```{r workflow estimation}
+
+data_monthly <- data_monthly |>
+  as_tsibble(index = Year_Month, key = c(City, Measure))
+
+data_monthly_range <-  data_monthly |>
+  filter(year(Year_Month) > last_year - 60) %>% 
+  select(City, Measure, Year_Month, Year, Month, count)
+
+# Estimate/Train the model
+fit <- data_monthly|>
+  filter(year(Year_Month) > last_year - 60) %>%  
+  model(
+    ETS_AAA = ETS(count ~ error("A") + trend("A") + season("A")),
+    arima_111_011 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,1)),
+    )
+fit
+
+# fit %>%
+#     pivot_longer(3:ncol(fit), names_to = "Model name",
+#                  values_to = "Orders")
+
+```
+
+
+```{r workflow evaluation report}
+
+fit_ets <- fit %>% select(Measure, ETS_AAA)
+fit_arima <- fit %>% select(Measure, arima_111_011)
+
+# for(i in 1:measure_nr) {
+#   print(city_measure[i])
+#   report(fit_ets %>% filter(Measure == measure[i]))
+#   report(fit_arima %>% filter(Measure == measure[i]))
+# }
+
+# tidy(fit)
+```
+
+
+
+###  forecast(fit, h = n|"x years")
+
+* forecast(fit, h = x) |> hilo() 
+    + converts forecast distributions into intervals. Default: 80% & 95% prediction intervals
+* accuracy(forecast h on "data_train", "data")
+    +  accuracy() function will automatically extract the relevant periods from the data
+
+```{r workflow forecast}
+# Forecast
+# print('forecast(fit, h = "10 years")')
+# forecast(fit, h = "10 years")
+# print('forecast(fit, h = "10 years") |> hilo()')
+# forecast(fit, h = "10 years") |> hilo() # w/ (80% & 95% prediction interval values)
+
+forecast(fit, h = "10 years") |>
+  autoplot(data_monthly %>% filter(year(Year_Month) > last_year - 30)) +   
+  facet_wrap(vars(Measure), ncol = 1, scales = "free_y", strip.position = "left") +
+  labs(title = "Monthly Climate Data w/ Forecast with fit on data set of past 60 years",
+       y="count")
+forecast(fit, h = "10 years") |>
+  autoplot(data_monthly %>% filter(year(Year_Month) > last_year - 10)) +   
+  facet_wrap(vars(Measure), ncol = 1, scales = "free_y", strip.position = "left") +
+  labs(title = paste("Monthly Climate Data w/ Forecast (plot as of ", last_year-9, ")"),
+       y="count")
+
+# Forecast Accuracy Evaluation w/ training data "data_train"
+data_train <- data_monthly |>
+  filter(year(Year_Month) > last_year - 60) %>%  
+  filter(year(Year_Month) <= last_year -10)
+# for last_year = 2025:
+# data_train from 1966 - 2015
+# data_test from 2026 - 2055
+
+fit_train <- data_train |>
+  model(
+    ETS_AAA = ETS(count ~ error("A") + trend("A") + season("A")),
+    # ETS_MAA = ETS(count ~ error("M") + trend("A") + season("A")),
+    arima_111_011 = ARIMA(count ~ pdq(1,1,1) + PDQ(0,1,1))
+    )
+fit_train 
+
+fc_data_train <- fit_train %>% forecast(h = "10 years") 
+
+# with further data filtering only xlims are adapted, no forecast impact
+# level = prediction interval in % or NULL
+fc_data_train %>%
+  autoplot(filter(data_monthly, year(Year_Month) > last_year - 30)) +  
+           #, level = NULL) + # level = prediction interval in % or NULL
+  facet_wrap(vars(Measure), ncol = 1, scales = "free_y", strip.position = "left") +
+  labs(y = "Count CO2 / Temp / Precip", 
+       title ="Accuracy of Monthly Forecasts", 
+       subtitle = "w/ Forecast on trainings data set comparing w/ real data") +
+  guides(colour=guide_legend(title="Forecast"))
+
+accuracy(fc_data_train, data_monthly %>% 
+           filter(year(Year_Month) > last_year - 60)) %>% 
+  arrange(RMSE)
+
+```
+
+* Forecast Accuracy Evaluation w/ training data "data_train" & test data "data_test"
+    + "data" : complete dataset includes the forecasted (future) data range on top of data_train
+    + "data_train" = "data" - forecast_range/"data_test" : data used to train the model (~80% of "data)
+    + "data_test" = "data" - "data_train"
+        + ~ 20% of "data"
+
+
+\newpage
+
+### components(fit_ets) - plot of the decomposition of the fitted ETS model
+
+* Note: compare Time series decomposition, for ETS model is valid:
+    + count = lag(level, 1) + lag(slope, 1) + lag(season, 12) + remainder
+
+```{r workflow ETS_AAA fit decomposition}
+
+for(i in 1:measure_nr) {
+  print(measure[i])
+  plot <- components(fit_ets) |> filter(Measure == measure[i]) %>%
+    filter(year(Year_Month) > last_year - 30)  %>% 
+    autoplot()
+  print(plot)
+}
+```
+
+
+\newpage
+
+### gg_tsresiduals(fit) - plot of innovation residuals, acf and histogram
+
+* gg_tsresiduals(fit) (Ch 7.3 Evaluating the regression model)    
+    + TS of innovation residuals, acf plot, histogram of residuals | PACF (plot_type='partial') 
+    + innovation residuals should have constant variance (“homoscedasticity”)
+    + histogram of the innovation residuals: should be normally distributed
+
+```{r workflow evaluation gg_tsresiduals, eval = TRUE}
+
+for(i in 1:measure_nr) {
+  # print(measure[i])
+  fit_ets_sel<- 
+    fit_ets %>% filter(Measure == measure[i]) %>% slice(1) %>% select(2) %>% pull()
+  fit_arima_sel<- 
+    fit_arima %>% filter(Measure == measure[i]) %>% slice(1) %>% select(2) %>% pull()
+  plot_ets <- fit_ets %>% filter(Measure == measure[i]) %>% 
+    ggtime::gg_tsresiduals(lag_max = 24) + 
+    # lag = 2*m (lenght of seasonal period), w/o seasonal: use lag = 10
+    labs(title = paste(measure[i], "- Residuals for fit model ", fit_ets_sel))
+  print(plot_ets)
+    plot_arima <- fit_arima %>% filter(Measure == measure[i]) %>% 
+    ggtime::gg_tsresiduals(lag_max = 24) + 
+    # lag = 2*m (lenght of seasonal period), w/o seasonal: use lag = 10
+    labs(title = paste(measure[i], "- Residuals for fit model ", fit_arima_sel))
+  print(plot_arima)
+}
+
+```
+
+
+
+\newpage
+
+# Forecast Tables
+
+## Yearly mean values of past time periods
+
+```{r mean data table of past time periods, eval = TRUE}
+
+# data_yearly_period <- tibble(data_yearly) %>% group_by(City, Measure, Period_Time) %>% 
+#   summarise(Mean = mean(count))
+data_yearly_monthly <- tibble(data_monthly) %>% group_by(City, Measure, Year, Period_Time) %>% 
+  summarise(Mean = mean(count)) 
+data_yearly_monthly_period <- data_yearly_monthly %>% group_by(City, Measure, Period_Time) %>% 
+  summarise(Period_Mean = mean(Mean)) 
+
+data_monthly_new_period <- tibble(data_monthly) %>% group_by(City, Measure, Month, Period_Time) %>% 
+  summarise(count = mean(count)) 
+
+
+
+data_yearly_monthly_period_wide <- data_yearly_monthly_period %>% 
+  ungroup() %>% select(-City) %>% 
+  pivot_wider(names_from = Measure,
+              values_from = Period_Mean)
+
+knitr::kable(data_yearly_monthly_period_wide, digits = 1, 
+             caption = "Mean values for the given time periods; 
+Units: Temperature (degree C), Precipitation (mm/Month), CO2 (ppm)")
+
+```
+
+## Yearly mean forecast values for the next 25 years
+
+```{r ETS ARIMA Forecast Table yearly mean of monthly data}
+
+cond <- c(last_year + 1, seq.int(2030, 2050, 5))
+Year.x = last_year + 1 
+Year.y = 2050
+
+fc_monthly_ets_arima <- fit %>% fabletools::forecast(h = "25 years")
+fc <- fc_monthly_ets_arima %>% 
+  mutate(Year = year(Year_Month)) %>% 
+  group_by(City, Measure, .model, Year)
+
+data_monthly_fc <- tibble(fc) %>% 
+  group_by(City, Measure, .model, Year)
+
+data_yearly_fc <- tibble(fc) %>% 
+  group_by(City, Measure, .model, Year) %>% 
+  summarise(Yearly_Mean = mean(.mean))
+
+data_yearly_fc_wide <- data_yearly_fc %>% 
+  pivot_wider(names_from = .model,
+              values_from = Yearly_Mean)
+
+data_filter_fc <- filter(data_yearly_fc_wide,
+                         Year == cond[1] | Year == cond[2] | 
+                         Year == cond[3] | Year == cond[4] | 
+                         Year == cond[5] | Year == cond[6])
+
+knitr::kable(data_filter_fc, digits = 2, 
+             caption = "Mean Yearly ARIMA and ETS Forecast values (next 25 years);
+Units: Temperature (degree C), Precipitation (mm/Month), CO2 (ppm)")
+
+```
+
+
+```{r ETS ARIMA Yearly Forecast of monthly data Table delta}
+
+x <- data_yearly_fc %>% filter(Year == Year.x) %>% rename(Mean = Yearly_Mean)
+y <- data_yearly_fc %>% filter(Year == Year.y) %>% rename(Mean = Yearly_Mean)
+
+z <- left_join(x, y, join_by(Measure, .model)) %>% 
+  mutate(Delta = Mean.y - Mean.x)
+
+z_wide <- z %>% 
+  pivot_wider(names_from = .model,
+              values_from = c(Mean.x, Mean.y, Delta)) %>% 
+  rename(ETS.x = Mean.x_ETS_AAA, 
+         ARIMA.x = Mean.x_arima_111_011,
+         ETS.y = Mean.y_ETS_AAA, 
+         ARIMA.y = Mean.y_arima_111_011,
+         Delta_ETS = Delta_ETS_AAA, 
+         Delta_ARIMA = Delta_arima_111_011)
+
+data_z_wide <- z_wide %>% ungroup() %>% 
+  select(Measure,  
+         Year.x, Year.y, 
+         ETS.x, ARIMA.x, ETS.y, ARIMA.y, Delta_ETS, Delta_ARIMA)
+
+knitr::kable(data_z_wide, digits = 2, 
+             caption = "Forecast increase/decrease over the next 25 years;
+Units: Temperature (degree C), Precipitation (mm/Month), CO2 (ppm)")
+
+```
+
+
+
+```{r ETS ARIMA Monthly Forecast Table delta, eval = TRUE}
+# for ETS model in principle no monthly delta difference
+# for ARIMA model very small differences only => Yearly Forecast Table delta suficient 
+
+data_monthly_fc <- data_monthly_fc %>% 
+  mutate(
+    # get Months in English, replace Mrz, ..., Okt, Dez by Mar, Oct, Dec)
+    Year = year(Year_Month),
+    Month = month(Year_Month)) %>%
+    mutate(Month = factor(Month)) %>% 
+  ungroup() %>% 
+  select(-count, -Year_Month)
+levels(data_monthly_fc$Month) <- month.abb
+
+# note: Year.x = 2026 and Year.y = 2050
+x_m <- data_monthly_fc %>% filter(Year == Year.x)  %>%
+  rename(Mean.x = .mean)
+y_m <- data_monthly_fc %>% filter(Year == Year.y)  %>%
+  rename(Mean.y = .mean)
+z_m <- left_join(x_m, y_m, join_by(City, Measure, .model, Month)) %>%
+  mutate(Delta = Mean.y - Mean.x)
+
+z_m_wide <- z_m %>% 
+  pivot_wider(names_from = .model,
+              values_from = c(Mean.x, Mean.y, Delta)) %>% 
+  rename(Mean.x_ETS = Mean.x_ETS_AAA, 
+         Mean.x_ARIMA = Mean.x_arima_111_011,
+         Mean.y_ETS = Mean.y_ETS_AAA, 
+         Mean.y_ARIMA = Mean.y_arima_111_011,
+         Delta_ETS = Delta_ETS_AAA, 
+         Delta_ARIMA = Delta_arima_111_011)
+
+data_z_m_wide <- z_m_wide %>% 
+  select(Measure,   
+         Month, Year.x, Year.y, 
+         Mean.x_ETS, Mean.x_ARIMA, Mean.y_ETS, Mean.y_ARIMA, Delta_ETS, Delta_ARIMA)
+
+knitr::kable(data_z_m_wide, digits = 2, 
+             caption = "Forecast increase/decrease over the next 25 years;
+Units: Temperature (degree C), Precipitation (mm/Month), CO2 (ppm)")
+
+```
+
+\newpage
 
 # Backup
 
@@ -878,26 +1352,26 @@ data_yearly_temp <- bind_rows(as_tibble(slice(data_yearly, 1:10)),
 
 # knitr printout in for loop not running, print(knitr()) destroys formatting
 i <- 1
-knitr::kable(filter(data_yearly_temp, Measure == measure_analysis[i]),
+knitr::kable(filter(data_yearly_temp, Measure == measure[i]),
              digits = 1, caption = 
-               paste("Annual", y_label_measure[measure_analysis[i]], 
+               paste("Annual", y_label_measure[measure[i]], 
                      "(first and last 10 years)"))
 
 # in if loop knitr printout only for last knitr() statement
-if (length(measure_analysis) >= 2) {
+if (length(measure) >= 2) {
   i <- 2
-  knitr::kable(filter(data_yearly_temp, Measure == measure_analysis[i]),
+  knitr::kable(filter(data_yearly_temp, Measure == measure[i]),
                digits = 1, caption = 
-                 paste("Annual", y_label_measure[measure_analysis[i]], 
+                 paste("Annual", y_label_measure[measure[i]], 
                        "(first and last 10 years)"))
 }
 
 # in if loop knitr printout only for last knitr() statement
-if (length(measure_analysis) == 3) {
+if (length(measure) == 3) {
   i <- 3
-  knitr::kable(filter(data_yearly_temp, Measure == measure_analysis[i]),
+  knitr::kable(filter(data_yearly_temp, Measure == measure[i]),
                digits = 1, caption = 
-                 paste("Annual", y_label_measure[measure_analysis[i]], 
+                 paste("Annual", y_label_measure[measure[i]], 
                        "(first and last 10 years)"))
 }
 
@@ -912,47 +1386,52 @@ knitr::kable(filter(mean_monthly_Wide),
 
 ```
 
-## Data Sources 
+## `r city` - Head and tail of data
 
+```{r}
+for(i in 1:measure_nr) {
+  print(data_monthly %>%  filter(Measure == measure[i]) %>% 
+          select(-Raw, -NA_replace) %>% 
+          slice(1:3, n()-2,n()-1,n()))
+}
+```
+
+
+\newpage
+
+## Data Sources
 
 ### Temperatures and Precipitation
 
-* Basel / Davos: **Federal Office of Meteorology and Climatology MeteoSwiss**
+* Basel / Davos: **Federal Office of Meteorology and Climatology
+    MeteoSwiss**
+    + <https://www.meteoswiss.admin.ch/home/climate/swiss-climate-in-detail/homogeneous-data-series-since-1864.html>
 
-<https://www.meteoswiss.admin.ch/home/climate/swiss-climate-in-detail/homogeneous-data-series-since-1864.html>
-
-* `r paste(city_dwd, collapse = "/ ")`: **DWD Archiv Monats- und Tageswerte**
-
-<https://www.dwd.de/DE/leistungen/klimadatendeutschland/klarchivtagmonat.html>  
-
-(*Monatswerte historisch und aktuell*, 
-column MO_TT (Temperature; Monatsmittel der Lufttemperatur in 2m Höhe in 
-\textdegree C and	MO_RR (Precipitation; Monatssumme der Niederschlagshoehe in mm))
+* `r paste(city_dwd, collapse = "/ ")`: **DWD Archiv Monats- und
+    Tageswerte**
+    + <https://www.dwd.de/DE/leistungen/klimadatendeutschland/klarchivtagmonat.html>
+    + *Monatswerte historisch und aktuell* 
+    + File: produkt_klima_monat_xy.txt
+        + column MO_TT (Temperature; Monatsmittel der Lufttemperatur in 2m Höhe in \textdegree C and MO_RR (Precipitation; Monatssumme der Niederschlagshoehe in mm))
 
 * England **Met Office - National Meteorological Service for the UK**
-
-<https://www.metoffice.gov.uk/hadobs/hadcet/data/download.html>
-Monthly_HadCET_mean.txt, 1659 to date
-
+    + <https://www.metoffice.gov.uk/hadobs/hadcet/data/download.html>
+    + Monthly_HadCET_mean.txt, 1659 to date
 
 ### CO2 Concentrations
 
-**National Oceanic & Atmospheric Administration - Earth System Research Laboratory**
-
-*NOAA ESRL *<https://www.esrl.noaa.gov/gmd/ccgg/trends/global.html>
-
-Data file: Mauna Loa CO2 monthly mean data
-
-<https://www.esrl.noaa.gov/gmd/ccgg/trends/data.html>
-
+* **National Oceanic & Atmospheric Administration - Earth System Research Laboratory**
+    + *NOAA ESRL* <https://www.esrl.noaa.gov/gmd/ccgg/trends/global.html>
+    + Data file: __*Mauna Loa CO2*__ monthly mean data
+    + <https://www.esrl.noaa.gov/gmd/ccgg/trends/data.html>
 
 ## R code
 
-Partially based on *c't Magazin* articles by *Andreas Krause*:    
-#3/2014 p.188 <http://www.ct.de/1403188> & #6/2014 p.180 <http://www.ct.de/1406180> 
-
-
-
+* Source code (maybe not yet the latest version) and output files are stored on GitHub repository  <https://github.com/WoVollmer/R-TimesSeriesAnalysis/tree/master/Climate>
+* Partially based on *c't Magazin* articles by *Andreas Krause*:
+    + #3/2014 p.188 <http://www.ct.de/1403188> & #6/2014 p.180 <http://www.ct.de/1406180>
+* *Forecasting: Principles and Practice (3rd ed)* <https://otexts.com/fpp3>
+    + Rob J Hyndman and George Athanasopoulos; Monash University, Australia
 
 ```{r ACF with ggplot, eval = FALSE}
 
@@ -995,7 +1474,7 @@ ggplot(data_acf_tbl, aes(Lag, value)) +
   # geom_line() +
   geom_hline(yintercept = bounds, col = "blue", lty = "dashed") +
   geom_hline(yintercept = -bounds, col = "blue", lty = "dashed") +  
-  facet_wrap( ~ ACF_PACF, ncol = 1, scales = "free", strip.position = "left") +
+  facet_wrap( ~ ACF_PACF, ncol = 1, scales = "free_y", strip.position = "left") +
   ggtitle(paste("Time Series Correlogram"),
           subtitle = paste("with Season Frequency = ", freq, ",  lag.max = ", lag_max)) +
   labs(y = "", x = "Lag / months")
@@ -1003,7 +1482,6 @@ ggplot(data_acf_tbl, aes(Lag, value)) +
   
 
 ```
-
 
 ```{r eval = FALSE}
 # Periodogramm
@@ -1029,8 +1507,6 @@ ggplot(data_period_tbl, aes(Frequency, Spectrum)) +
   ggtitle( paste("Time Series", data_period$method))
 
 ```
-
-
 
 ```{r yearly data with replaced NAs, eval = FALSE}
 

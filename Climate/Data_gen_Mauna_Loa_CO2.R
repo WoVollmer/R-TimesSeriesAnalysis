@@ -4,9 +4,9 @@
 # 
 # 
 # # https://www.esrl.noaa.gov/gmd/ccgg/trends/
-# data source: https://www.esrl.noaa.gov/gmd/ccgg/trends/data.html
+# %>% source: https://www.esrl.noaa.gov/gmd/ccgg/trends/data.html
 # 
-# Global Monitoring Laboratory (data start ~ 1968 ...)
+# Global Monitoring Laboratory (%>% start ~ 1968 ...)
 # Download area (also wordlwide stations, different gases):
 # https://www.esrl.noaa.gov/gmd/dv/data/index.php?pageID=8&category=Greenhouse%2BGases&site=MLO
 
@@ -30,7 +30,7 @@ city <- "Mauna Loa"
   header <- FALSE  # header line with column names exist
   sep <- " " # field separator in txt file = blank
   dec <- "."
-  skip <- 53 # old: 72 # skip # lines, start with next line and succeeding data
+  skip <- 42 # old: 58, 53 # old: 72 # skip # lines, start with next line and succeeding data
   na_sign <- "-99.99"  # NA value indicator in data source
   file <- "./Data_orig_Temp_Precip_CO2/Mauna_Loa_CO2_Data/co2_mm_mlo.txt"
   # verify if data file exists
@@ -62,7 +62,7 @@ city <- "Mauna Loa"
     mutate(City = city,
            Measure = "CO2")
   
-  ## monthly data wide 
+  ## monthly %>% wide 
   ## - adds automatically NAs for months before first month in first year and
   ## - adds automatically NAs for months after  last  month in last year
   data_monthly_wide <- data_monthly  %>% 
@@ -71,7 +71,7 @@ city <- "Mauna Loa"
                 names_from = Month, 
                 values_from = count) %>% 
     mutate(Measure = factor(Measure)) %>% 
-    dplyr::select(City, Measure, Year, month.abb) 
+    dplyr::select(City, Measure, Year, all_of(month.abb))
   # to get the right ordering Jan, Feb, ..., Dec
   
   # data_monthly - store with 'completed' first year, now with NA for Jan and Feb
