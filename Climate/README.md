@@ -15,12 +15,12 @@ See provided PDF files.
 
 ### Temperatures and Precipitation
 
--   Basel / Davos: **Federal Office of Meteorology and Climatology
-    MeteoSwiss**
+- Basel / Davos: **Federal Office of Meteorology and Climatology
+  MeteoSwiss**
 
 <https://www.meteoswiss.admin.ch/home/climate/swiss-climate-in-detail/homogeneous-data-series-since-1864.html>
 
--   German Cities: **DWD Archiv Monats- und Tageswerte**
+- German Cities: **DWD Archiv Monats- und Tageswerte**
 
 <https://www.dwd.de/DE/leistungen/klimadatendeutschland/klarchivtagmonat.html>
 
@@ -28,7 +28,7 @@ See provided PDF files.
 Monatsmittel der Lufttemperatur in 2m Höhe in C and MO_RR
 (Precipitation; Monatssumme der Niederschlagshoehe in mm))
 
--   England **Met Office - National Meteorological Service for the UK**
+- England **Met Office - National Meteorological Service for the UK**
 
 <https://www.metoffice.gov.uk/hadobs/hadcet/data/download.html>
 Monthly_HadCET_mean.txt, 1659 to date
