@@ -14,7 +14,7 @@ library(pkgTS)
 
 city_dwd <- c("Cottbus", "Giessen", "Hohenpeissenberg","Mannheim", "Potsdam")
 city_list <- c(city_dwd, "Basel", "Davos", "England") # all
-city_list <- c("Basel")  # selected
+city <- c("Basel")  # selected
 
 # loop for city <- city_list
 for (city in city_list) {
@@ -39,25 +39,25 @@ for (city in city_list) {
   
   if (city == "Cottbus") {
     file_his <-
-      "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Cottbus_klarchiv_00880_month_his/produkt_klima_monat_his_as_of_18890101_00880.txt"
+      "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Cottbus_klarchiv_00880_month_his/produkt_klima_monat_18881101_20211231_00880.txt"
     file_akt <-
-      "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Cottbus_klarchiv_00880_month_akt/produkt_klima_monat_20200101_20210131_00880.txt"
+      "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Cottbus_klarchiv_00880_month_akt/produkt_klima_monat_20210701_20230131_00880.txt"
   } else if  (city == "Giessen") {
-    file_his <- "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Giessen_klarchiv_01639_month_his/produkt_klima_monat_his_as_of_19390101_01639.txt"
-    file_akt <- "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Giessen_klarchiv_01639_month_akt/produkt_klima_monat_20200101_20201231_01639.txt"
+    file_his <- "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Giessen_klarchiv_01639_month_his/produkt_klima_monat_18810101_20211231_01639.txt"
+    file_akt <- "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Giessen_klarchiv_01639_month_akt/produkt_klima_monat_20210701_20230131_01639.txt"
   } else if  (city == "Hohenpeissenberg") {
-    file_his <- "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Hohenpeissenberg_klarchiv_02290_month_his/produkt_klima_monat_his_as_of_17940101_02290.txt"
-    file_akt <- "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Hohenpeissenberg_klarchiv_02290_month_akt/produkt_klima_monat_20190801_20210131_02290.txt"
+    file_his <- "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Hohenpeissenberg_klarchiv_02290_month_his/produkt_klima_monat_17810101_20211231_02290.txt"
+    file_akt <- "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Hohenpeissenberg_klarchiv_02290_month_akt/produkt_klima_monat_20210701_20230131_02290.txt"
   } else if  (city == "Mannheim") {
     file_his <-
-      "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Mannheim_klarchiv_05906_month_his/produkt_klima_monat_his_as_of_18810101_05906.txt"
+      "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Mannheim_klarchiv_05906_month_his/produkt_klima_monat_18810101_20211231_05906.txt"
     file_akt <-
-      "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Mannheim_klarchiv_05906_month_akt/produkt_klima_monat_20200201_20201231_05906.txt"
+      "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Mannheim_klarchiv_05906_month_akt/produkt_klima_monat_20210701_20230131_05906.txt"
   } else if  (city == "Potsdam") {
     file_his <-
-      "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Potsdam_klarchiv_03987_month_his/produkt_klima_monat_18930101_20191231_03987.txt"
+      "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Potsdam_klarchiv_03987_month_his/produkt_klima_monat_18930101_20211231_03987.txt"
     file_akt <-
-      "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Potsdam_klarchiv_03987_month_akt/produkt_klima_monat_20190801_20221231_03987.txt"
+      "./Data_orig_Temp_Precip_CO2/DWD_Weather_Data/Potsdam_klarchiv_03987_month_akt/produkt_klima_monat_20210701_20230131_03987.txt"
   } 
   
   weather_data_file <- paste("./Data_orig_Temp_Precip_CO2/Weather-Data-Input_", 
@@ -70,7 +70,7 @@ for (city in city_list) {
     sep <- ";" # field separator in txt file = blank
     dec <- "."
     skip <- 0 # skip no line, start with header line and succeeding data
-    na_sign <- "-999"  # NA temperature/recipitation values are indicated by -999
+    na_sign <- "-999"  # NA temperature/precipitation values are indicated by -999
     
     # verify if data file exists
     if(!file.exists(file_his))
@@ -120,11 +120,11 @@ for (city in city_list) {
     # 	1887	4
     # 	1889	3
     # 	1890	3
-    # issue for Hohenpeissenber his data:
-    #  	1887	4
-    #  	1888  11
-    #  	1889  3
-    #  	1890	3
+    # issue for Hohenpeissenber his data: overlapp his and akt data !!
+    #  	1887	4 no longer
+    #  	1888  11 no longe
+    #  	1889  3 no longe
+    #  	1890	3 no longe
     # issue for Giessen data: usefull only as of 1939
     #  	1944, 1945, 1946 missing, w/o NA's etc. 
 
@@ -148,7 +148,21 @@ for (city in city_list) {
       pivot_longer(cols = Temperature:Precipitation,
                    names_to = c("Measure"),
                    values_to = "count")
-    
+    if (city == "Giessen") {
+      weather_data <- weather_data %>% 
+        filter(Year >= 1901)
+      weather_data <- weather_data %>%  
+        filter(Measure != "Precipitation" | Year >= 1939)
+      # Temperature data are starting on 1901-01, 
+      # min/max Temperature data already 1881-01, Precipitation just on 1939-01-01
+      # results in STL decomposition issue
+    }    
+    if (city == "Mannheim") {
+      weather_data <- weather_data %>%  
+        filter(Measure != "Precipitation" | Year >= 1890)
+      # Temperature data are starting on 1881-01, Precipitation just on 1890-01-01
+      # results in STL decomposition issue
+    }
     ############## end DWD data ##########################
     
   } else if (data_format_source == "CH") {
@@ -175,10 +189,10 @@ for (city in city_list) {
   } else if (data_format_source == "England") {
     #      JAN  FEB MAR APR MAY   JUN   JUL   AUG   SEP   OCT  NOV   DEC     YEAR
     # 1659 3.0  4.0 6.0 7.0 11.0  13.0  16.0  16.0  13.0  10.0 5.0   2.0     8.87
-    file     <- "./Data_orig_Temp_Precip_CO2/England_Weather_Data/England_as_of_1659_cetml1659on.dat.txt"
+    file     <- "./Data_orig_Temp_Precip_CO2/England_Weather_Data/England_as_of_1659_meantemp_monthly_totals.txt"
     sep <- "" # field separator in txt file = blank
     header <- FALSE  # header line with column names exist (line 28 in txt file)
-    skip <- 7 # skip lines incl. header since "Year" name in header line missing
+    skip <- 5 # skip lines incl. header since "Year" name in header line missing
               # Year - head for years to be added and also month.abb, "avgYEAR"
               # given average YEAR values to be deleted rsp. will not be used
     
@@ -215,17 +229,27 @@ for (city in city_list) {
   }
   
   data_monthly <- weather_data %>% 
-    mutate(City = city) %>% 
-    uts_data_check_and_fill_w_na(add_precip = FALSE, key = "Measure") 
+    uts_data_check_and_fill_w_na(key = "Measure") %>%
+    mutate(City = city)    
+  # uts_data_check_and_fill_w_na(add_precip = FALSE, key = "Measure") 
   
   # data_yearly_seasonal <- uts_gen_yearly_seasonal_avg(data_monthly)
+  # 
+
+  data_monthly <- data_monthly %>%       
+    mutate(  
+    # provide separate Year and Month column, to eleminate NA's for year or month
+    Year = year(Year_Month),
+    Month = month(Year_Month)) %>% 
+    mutate(Month = factor(Month))
+  levels(data_monthly$Month) <- month.abb 
   
   data_monthly_wide <- data_monthly  %>% 
     as_tibble() %>% 
     pivot_wider(id_cols = c(Year, City, Measure), 
                 names_from = Month, 
                 values_from = count) %>% 
-    dplyr::select(City, Measure, Year, month.abb) 
+    dplyr::select(City, Measure, Year, all_of(month.abb))
   # to get the right ordering Jan, Feb, ..., Dec
   
   data_monthly_wide$Measure <- 
