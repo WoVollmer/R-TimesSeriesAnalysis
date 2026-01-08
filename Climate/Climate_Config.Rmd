@@ -128,8 +128,8 @@ if (city == "Mauna Loa") {
   measure <- "CO2"
   span <- 7   # width of the rolling window in years, weather: => 30
   # for Times Series decompsition with stlplus()
-  season_window <- 7     # odd, Temperature:  s.window=31, t.window=19
-  trend_window  <- 41
+  season_window <- 11     # odd, Temperature:  s.window=31, t.window=19
+  trend_window  <- 21 # 41
   
   title_rmd <- paste(city, "- Atmospheric Carbon Dioxide Analysis")
   topic <- "Mauna Loa CO2 Concentrations"
@@ -140,8 +140,8 @@ if (city == "Mauna Loa") {
 } else {
   measure <- str_to_title(match.arg(temp_precip_selected, temp_precip_both))
   span <- 30  # width of the rolling window in years, CO2: => 7 years
-  season_window <- 31  # odd, seasonal structure long running  # Precip to be checked
-  trend_window <- 19   # to allow more rapid changes    
+  season_window <- 11  # odd, seasonal structure long running  # Precip to be checked
+  trend_window <- 21 # 19   # to allow more rapid changes    
   
   if (measure == "Both") {
     measure <- "Temperature and Precipitation"
@@ -303,7 +303,7 @@ data_monthly <- data_monthly %>%  group_by(City, Measure)
 ```{r eval = FALSE}
 # settings beore manual run
 
-city <-  "Basel" # "Giessen" #
+city <-  "Mauna Loa" # Basel" # "Giessen" #
 temp_precip_selected  <- "both"
 ```
 
