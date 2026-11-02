@@ -1,13 +1,15 @@
 
+
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# Evaluations of Temperature, Precipitation and CO2 Times Series
+# Times Series Analysis of Temperature, Precipitation and $CO_2$ Data
 
 The **Climate Visualization** rsp. **Forecast** RMD files provide
-climate time series analysis. For **Mauna Loa** from *CO2* data, for
-**Basel / Davos / Cottbus/ Giessen/ Hohenpeissenberg/ Mannheim/
-Potsdam** from *Temperature & Precipitation* data and for England of
-long-term *Temperature* data.
+climate time series analysis. For **Mauna Loa** based on data on
+atmospheric $CO_2$ concentrations, for **Basel / Davos / Cottbus/
+Giessen/ Hohenpeissenberg/ Mannheim/ Potsdam** based on *Temperature &
+Precipitation* data; and for England, based on long-term *Temperature*
+data.
 
 See provided PDF files.
 
@@ -38,7 +40,7 @@ Monthly_HadCET_mean.txt, 1659 to date
 **National Oceanic & Atmospheric Administration - Earth System Research
 Laboratory**
 
-*NOAA ESRL *<https://www.esrl.noaa.gov/gmd/ccgg/trends/global.html>
+*NOAA ESRL* <https://www.esrl.noaa.gov/gmd/ccgg/trends/global.html>
 
 Data file: Mauna Loa CO2 monthly mean data
 
